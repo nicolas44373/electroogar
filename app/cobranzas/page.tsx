@@ -119,8 +119,9 @@ export default function CobranzasPage() {
 
 const cargarNotificaciones = async () => {
   const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
   const fechaLimite = new Date()
-  fechaLimite.setDate(hoy.getDate() + 7) // Próximos 7 días
+  fechaLimite.setDate(hoy.getDate() + 15) // Próximos 15 días
 
   const { data } = await supabase
     .from('pagos')
@@ -128,10 +129,13 @@ const cargarNotificaciones = async () => {
       *,
       transaccion:transacciones(
         id,
+        cliente_id,
         numero_factura,
+        monto_total,
+        monto_cuota,
+        tipo_transaccion,
         cliente:clientes(id, nombre, apellido, telefono, email),
-        producto:productos(nombre),
-        monto_total
+        producto:productos(nombre)
       )
     `)
     .in('estado', ['pendiente', 'parcial'])
@@ -139,39 +143,61 @@ const cargarNotificaciones = async () => {
     .order('fecha_vencimiento')
 
   if (data) {
-    const notificacionesMapeadas: NotificacionVencimiento[] = data.map(pago => {
-      const fechaVenc = new Date(pago.fecha_vencimiento)
-      const diferenciaDias = Math.floor((fechaVenc.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
-
-      let tipo: 'vencido' | 'por_vencer' | 'hoy'
-      if (diferenciaDias < 0) tipo = 'vencido'
-      else if (diferenciaDias === 0) tipo = 'hoy'
-      else tipo = 'por_vencer'
-
-      // Calculate monto_restante based on payment status
-      const montoPagado = pago.monto_pagado || 0
-      const montoCuota = pago.monto_cuota || 0
-      const montoRestante = montoCuota - montoPagado
-
-      return {
-        id: pago.id,
-        cliente_id: pago.transaccion?.cliente?.id || '',
-        cliente_nombre: pago.transaccion?.cliente?.nombre || 'Desconocido',
-        cliente_apellido: pago.transaccion?.cliente?.apellido || '',
-        cliente_telefono: pago.transaccion?.cliente?.telefono,
-        cliente_email: pago.transaccion?.cliente?.email,
-        producto_nombre: pago.transaccion?.producto?.nombre || '',
-        numero_cuota: pago.numero_cuota || 0,
-        monto: montoCuota, // Para compatibilidad con Dashboard
-        monto_cuota: montoCuota,
-        monto_restante: montoRestante,
-        fecha_vencimiento: pago.fecha_vencimiento,
-        dias_vencimiento: diferenciaDias,
-        tipo,
-        transaccion_id: pago.transaccion?.id || '',
-        numero_factura: pago.transaccion?.numero_factura
+    // Calcular saldo total por cliente
+    const saldosPorCliente = new Map<string, number>()
+    
+    data.forEach(pago => {
+      const clienteId = pago.transaccion?.cliente?.id
+      if (clienteId) {
+        const montoCuota = pago.monto_cuota || pago.transaccion?.monto_cuota || 0
+        const montoPagado = pago.monto_pagado || 0
+        const montoRestante = montoCuota - montoPagado
+        const saldoActual = saldosPorCliente.get(clienteId) || 0
+        saldosPorCliente.set(clienteId, saldoActual + montoRestante)
       }
     })
+
+    const notificacionesMapeadas: NotificacionVencimiento[] = data.map(pago => {
+  // Parsear fecha como local para evitar conversión UTC
+  const [year, month, day] = pago.fecha_vencimiento.split('-').map(Number)
+  const fechaVenc = new Date(year, month - 1, day)
+  fechaVenc.setHours(0, 0, 0, 0)
+  
+  const diferenciaDias = Math.floor((fechaVenc.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+
+  let tipo: 'vencido' | 'por_vencer' | 'hoy'
+  if (diferenciaDias < 0) tipo = 'vencido'
+  else if (diferenciaDias === 0) tipo = 'hoy'
+  else tipo = 'por_vencer'
+
+  const montoCuota = pago.monto_cuota || pago.transaccion?.monto_cuota || 0
+  const montoPagado = pago.monto_pagado || 0
+  const montoRestante = montoCuota - montoPagado
+  const clienteId = pago.transaccion?.cliente?.id || ''
+
+  return {
+    id: pago.id,
+    cliente_id: clienteId,
+    cliente_nombre: pago.transaccion?.cliente?.nombre || 'Desconocido',
+    cliente_apellido: pago.transaccion?.cliente?.apellido || '',
+    cliente_telefono: pago.transaccion?.cliente?.telefono,
+    cliente_email: pago.transaccion?.cliente?.email,
+    monto: montoRestante,
+    monto_cuota: montoCuota,
+    monto_cuota_total: montoCuota,
+    monto_pagado: montoPagado,
+    monto_restante: montoRestante,
+    fecha_vencimiento: pago.fecha_vencimiento,
+    dias_vencimiento: diferenciaDias,
+    tipo,
+    numero_cuota: pago.numero_cuota || 0,
+    producto_nombre: pago.transaccion?.producto?.nombre || 'Préstamo de Dinero',
+    transaccion_id: pago.transaccion?.id || '',
+    saldo_total_cliente: saldosPorCliente.get(clienteId) || 0,
+    tipo_transaccion: pago.transaccion?.tipo_transaccion || 'venta',
+    numero_factura: pago.transaccion?.numero_factura
+  }
+})
 
     setNotificaciones(notificacionesMapeadas)
   }
@@ -251,10 +277,15 @@ const cargarNotificaciones = async () => {
       case 'dashboard':
         return (
           <Dashboard
-            estadisticas={estadisticas}
-            notificaciones={notificaciones}
-            onVerNotificaciones={() => setVistaActiva('notificaciones')}
-          />
+  estadisticas={estadisticas}
+  notificaciones={notificaciones}
+  onVerNotificaciones={() => setVistaActiva('notificaciones')}
+  onRegistrarPago={() => setVistaActiva('pagos')}
+  onNuevaVenta={() => {
+    setVistaActiva('clientes')
+    setMostrarNuevaVenta(true)
+  }}
+/>
         )
       
       case 'clientes':

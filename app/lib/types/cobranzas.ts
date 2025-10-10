@@ -244,18 +244,22 @@ export interface NotificacionVencimiento {
   id: string
   cliente_id: string
   cliente_nombre: string
-  cliente_apellido: string
+  cliente_apellido?: string
   cliente_telefono?: string
   cliente_email?: string
-  producto_nombre: string
-  numero_cuota: number
-  monto: number // Agregar esta propiedad para compatibilidad
+  monto: number
   monto_cuota: number
+  monto_cuota_total: number
+  monto_pagado: number
   monto_restante: number
   fecha_vencimiento: string
   dias_vencimiento: number
   tipo: 'vencido' | 'por_vencer' | 'hoy'
+  numero_cuota: number
+  producto_nombre: string
   transaccion_id: string
+  saldo_total_cliente: number
+  tipo_transaccion: string
   numero_factura?: string
 }
 

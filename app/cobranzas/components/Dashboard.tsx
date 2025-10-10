@@ -21,9 +21,17 @@ interface DashboardProps {
   estadisticas: Estadisticas
   notificaciones: NotificacionVencimiento[]
   onVerNotificaciones: () => void
+  onRegistrarPago: () => void
+  onNuevaVenta: () => void
 }
 
-export default function Dashboard({ estadisticas, notificaciones, onVerNotificaciones }: DashboardProps) {
+export default function Dashboard({ 
+  estadisticas, 
+  notificaciones, 
+  onVerNotificaciones,
+  onRegistrarPago,
+  onNuevaVenta
+}: DashboardProps) {
   const formatearMoneda = (monto: number) => {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -260,11 +268,17 @@ export default function Dashboard({ estadisticas, notificaciones, onVerNotificac
             <AlertTriangle className="w-4 h-4" />
             <span>Ver Todos los Vencimientos</span>
           </button>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+          <button 
+            onClick={onRegistrarPago}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          >
             <CreditCard className="w-4 h-4" />
             <span>Registrar Pago</span>
           </button>
-          <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2">
+          <button 
+            onClick={onNuevaVenta}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+          >
             <Users className="w-4 h-4" />
             <span>Nueva Venta</span>
           </button>
