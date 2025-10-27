@@ -25,7 +25,13 @@ export default function FormularioVenta({
     monto_total: '',
     tipo_pago: 'semanal' as const,
     numero_cuotas: '',
-    fecha_inicio: new Date().toISOString().split('T')[0]
+    fecha_inicio: (() => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    })()
   })
   
   // Estado para intereses (ahora disponible para ambos tipos)
