@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
-import { Bell, AlertTriangle, Calendar, Clock, Phone, Mail, DollarSign, Eye, Check } from 'lucide-react'
+import { Bell, AlertTriangle, Calendar, Clock, Phone, Mail, DollarSign, Eye, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface NotificacionVencimiento {
   id: string
@@ -29,10 +29,14 @@ interface PanelNotificacionesProps {
 }
 
 export default function PanelNotificaciones({ notificaciones, onActualizar, onVerCuentaCliente }: PanelNotificacionesProps) {
-  const [filtroTipo, setFiltroTipo] = useState<'todos' | 'vencido' | 'hoy' | 'por_vencer'>('todos')
+  const [filtroTipo, setFiltroTipo] = useState<'todos' | 'vencido' | 'hoy' | 'calendario'>('todos')
   const [notificacionesDetalladas, setNotificacionesDetalladas] = useState<NotificacionVencimiento[]>([])
   const [loading, setLoading] = useState(false)
   const [mostrarContacto, setMostrarContacto] = useState<string | null>(null)
+  
+  // Estados para el calendario
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | null>(null)
+  const [mesActual, setMesActual] = useState(new Date())
   
   // Estados para el modal de pago
   const [mostrarModalPago, setMostrarModalPago] = useState(false)
@@ -46,7 +50,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     cargarNotificacionesDetalladas()
   }, [])
 
-  // Función centralizada para calcular diferencia de días (igual que GestorPagos)
+  // Función centralizada para calcular diferencia de días
   const calcularDiasVencimiento = (fechaVencimiento: string) => {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
@@ -59,7 +63,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     return diferencia
   }
 
-  // Función para obtener el monto de cuota correcto (igual que GestorPagos)
+  // Función para obtener el monto de cuota correcto
   const obtenerMontoCuota = (pago: any) => {
     if (pago.monto_cuota && pago.monto_cuota > 0) {
       return pago.monto_cuota
@@ -67,7 +71,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     return pago.transaccion?.monto_cuota || 0
   }
 
-  // Función para obtener el nombre del producto o tipo de transacción (igual que GestorPagos)
+  // Función para obtener el nombre del producto o tipo de transacción
   const obtenerNombreTransaccion = (transaccion: any) => {
     if (transaccion?.producto?.nombre) {
       return transaccion.producto.nombre
@@ -75,15 +79,79 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     return transaccion?.tipo_transaccion === 'prestamo' ? 'Préstamo de Dinero' : 'Venta'
   }
 
+  // Función para obtener notificaciones de una fecha específica
+  const obtenerNotificacionesPorFecha = (fecha: Date) => {
+    const año = fecha.getFullYear()
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0')
+    const dia = String(fecha.getDate()).padStart(2, '0')
+    const fechaStr = `${año}-${mes}-${dia}`
+    return notificacionesDetalladas.filter(notif => notif.fecha_vencimiento === fechaStr)
+  }
+
+  // Función para contar vencimientos en una fecha
+  const contarVencimientosPorFecha = (fecha: Date) => {
+    return obtenerNotificacionesPorFecha(fecha).length
+  }
+
+  // Función para generar los días del calendario
+  const generarDiasCalendario = () => {
+    const año = mesActual.getFullYear()
+    const mes = mesActual.getMonth()
+    const primerDia = new Date(año, mes, 1)
+    const ultimoDia = new Date(año, mes + 1, 0)
+    const diasEnMes = ultimoDia.getDate()
+    const primerDiaSemana = primerDia.getDay()
+    
+    const dias = []
+    
+    // Días vacíos al inicio
+    for (let i = 0; i < primerDiaSemana; i++) {
+      dias.push(null)
+    }
+    
+    // Días del mes
+    for (let i = 1; i <= diasEnMes; i++) {
+      dias.push(new Date(año, mes, i))
+    }
+    
+    return dias
+  }
+
+  // Función para cambiar de mes
+  const cambiarMes = (direccion: 'anterior' | 'siguiente') => {
+    setMesActual(prev => {
+      const nuevaFecha = new Date(prev)
+      if (direccion === 'anterior') {
+        nuevaFecha.setMonth(prev.getMonth() - 1)
+      } else {
+        nuevaFecha.setMonth(prev.getMonth() + 1)
+      }
+      return nuevaFecha
+    })
+    setFechaSeleccionada(null)
+  }
+
+  // Función para verificar si es hoy
+  const esHoy = (fecha: Date | null) => {
+    if (!fecha) return false
+    const hoy = new Date()
+    return fecha.getDate() === hoy.getDate() &&
+           fecha.getMonth() === hoy.getMonth() &&
+           fecha.getFullYear() === hoy.getFullYear()
+  }
+
+  // Función para verificar si es la fecha seleccionada
+  const esFechaSeleccionada = (fecha: Date | null) => {
+    if (!fecha || !fechaSeleccionada) return false
+    return fecha.getDate() === fechaSeleccionada.getDate() &&
+           fecha.getMonth() === fechaSeleccionada.getMonth() &&
+           fecha.getFullYear() === fechaSeleccionada.getFullYear()
+  }
+
   const cargarNotificacionesDetalladas = async () => {
     setLoading(true)
     try {
-      const hoy = new Date()
-      hoy.setHours(0, 0, 0, 0)
-      const fechaLimite = new Date()
-      fechaLimite.setDate(hoy.getDate() + 15) // Próximos 15 días
-
-      // Usar la misma consulta que GestorPagos
+      // Cargar todos los pagos pendientes sin límite de fecha
       const { data } = await supabase
         .from('pagos')
         .select(`
@@ -100,11 +168,10 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
           )
         `)
         .in('estado', ['pendiente', 'parcial'])
-        .lte('fecha_vencimiento', fechaLimite.toISOString().split('T')[0])
         .order('fecha_vencimiento')
 
       if (data) {
-        // Calcular saldo total por cliente usando la misma lógica que GestorPagos
+        // Calcular saldo total por cliente
         const saldosPorCliente = new Map<string, number>()
         
         data.forEach(pago => {
@@ -116,7 +183,6 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
         })
 
         const notificacionesMapeadas: NotificacionVencimiento[] = data.map(pago => {
-          // Usar la función centralizada de cálculo de días
           const diferenciaDias = calcularDiasVencimiento(pago.fecha_vencimiento)
           
           let tipo: 'vencido' | 'por_vencer' | 'hoy'
@@ -210,20 +276,20 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     }
   }
 
-  const notificacionesFiltradas = notificacionesDetalladas.filter(notif => {
-    if (filtroTipo === 'todos') return true
-    return notif.tipo === filtroTipo
-  })
+  const notificacionesFiltradas = (() => {
+    if (filtroTipo === 'calendario' && fechaSeleccionada) {
+      return obtenerNotificacionesPorFecha(fechaSeleccionada)
+    }
+    return notificacionesDetalladas.filter(notif => {
+      if (filtroTipo === 'todos') return true
+      return notif.tipo === filtroTipo
+    })
+  })()
 
   const estadisticas = {
     vencidos: notificacionesDetalladas.filter(n => n.tipo === 'vencido').length,
     hoy: notificacionesDetalladas.filter(n => n.tipo === 'hoy').length,
-    proximos: notificacionesDetalladas.filter(n => n.tipo === 'por_vencer').length,
     montoTotal: notificacionesDetalladas.reduce((sum, n) => sum + n.monto, 0)
-  }
-
-  const marcarComoVisto = async (notificacionId: string) => {
-    console.log(`Marcando notificación ${notificacionId} como vista`)
   }
 
   const enviarRecordatorio = async (notificacion: NotificacionVencimiento, metodo: 'whatsapp' | 'email') => {
@@ -271,7 +337,6 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
         nuevoMontoPagado = montoPagadoActual + montoNumerico
       }
 
-      // Actualizar el pago
       const { error } = await supabase
         .from('pagos')
         .update({
@@ -299,6 +364,13 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
       setLoading(false)
     }
   }
+
+  const nombresMeses = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ]
+
+  const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
   return (
     <div className="space-y-6">
@@ -342,13 +414,13 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
             </div>
           </div>
           
-          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-blue-600 font-medium">Próximos</div>
-                <div className="text-2xl font-bold text-blue-700">{estadisticas.proximos}</div>
+                <div className="text-sm text-purple-600 font-medium">Ver Calendario</div>
+                <div className="text-sm text-purple-700">Seleccionar fecha</div>
               </div>
-              <Calendar className="w-8 h-8 text-blue-500" />
+              <Calendar className="w-8 h-8 text-purple-500" />
             </div>
           </div>
           
@@ -371,22 +443,141 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
             { key: 'todos', label: 'Todos', count: notificacionesDetalladas.length },
             { key: 'vencido', label: 'Vencidos', count: estadisticas.vencidos },
             { key: 'hoy', label: 'Hoy', count: estadisticas.hoy },
-            { key: 'por_vencer', label: 'Próximos', count: estadisticas.proximos }
+            { key: 'calendario', label: '📅 Calendario', count: null }
           ].map(filtro => (
             <button
               key={filtro.key}
-              onClick={() => setFiltroTipo(filtro.key as any)}
+              onClick={() => {
+                setFiltroTipo(filtro.key as any)
+                if (filtro.key === 'calendario') {
+                  setFechaSeleccionada(null)
+                }
+              }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 filtroTipo === filtro.key
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {filtro.label} ({filtro.count})
+              {filtro.label} {filtro.count !== null && `(${filtro.count})`}
             </button>
           ))}
         </div>
       </div>
+
+      {/* Calendario */}
+      {filtroTipo === 'calendario' && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => cambiarMes('anterior')}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-semibold">
+              {nombresMeses[mesActual.getMonth()]} {mesActual.getFullYear()}
+            </h3>
+            <button
+              onClick={() => cambiarMes('siguiente')}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Días de la semana */}
+          <div className="grid grid-cols-7 gap-2 mb-2">
+            {diasSemana.map(dia => (
+              <div key={dia} className="text-center text-sm font-medium text-gray-600 py-2">
+                {dia}
+              </div>
+            ))}
+          </div>
+
+          {/* Días del mes */}
+          <div className="grid grid-cols-7 gap-2">
+            {generarDiasCalendario().map((dia, index) => {
+              if (!dia) {
+                return <div key={`empty-${index}`} className="h-20"></div>
+              }
+
+              const vencimientosDelDia = contarVencimientosPorFecha(dia)
+              const tieneVencimientos = vencimientosDelDia > 0
+              const seleccionado = esFechaSeleccionada(dia)
+              const hoy = esHoy(dia)
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => setFechaSeleccionada(dia)}
+                  className={`h-20 p-2 rounded-lg border transition-all relative ${
+                    seleccionado
+                      ? 'bg-blue-100 border-blue-500'
+                      : hoy
+                      ? 'bg-yellow-50 border-yellow-400'
+                      : tieneVencimientos
+                      ? 'bg-red-50 border-red-200 hover:bg-red-100'
+                      : 'bg-white border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="text-sm font-medium">
+                    {dia.getDate()}
+                  </div>
+                  {tieneVencimientos && (
+                    <div className="mt-1">
+                      <span className="inline-block px-2 py-1 text-xs bg-red-500 text-white rounded-full">
+                        {vencimientosDelDia}
+                      </span>
+                    </div>
+                  )}
+                  {hoy && (
+                    <div className="absolute bottom-1 right-1 text-xs text-yellow-600 font-medium">
+                      Hoy
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Leyenda */}
+          <div className="mt-4 flex items-center justify-center space-x-6 text-sm">
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-yellow-50 border border-yellow-400 rounded"></div>
+              <span>Hoy</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-red-50 border border-red-200 rounded"></div>
+              <span>Con vencimientos</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-blue-100 border border-blue-500 rounded"></div>
+              <span>Seleccionado</span>
+            </div>
+          </div>
+
+          {/* Mostrar fecha seleccionada */}
+          {fechaSeleccionada && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600 mb-1">Fecha seleccionada:</p>
+              <p className="font-semibold">
+                {fechaSeleccionada.toLocaleDateString('es-AR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </p>
+              <p className="text-sm text-gray-600 mt-2">
+                {notificacionesFiltradas.length > 0
+                  ? `${notificacionesFiltradas.length} vencimiento(s) en esta fecha`
+                  : 'No hay vencimientos en esta fecha'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Lista de notificaciones */}
       <div className="space-y-4">
@@ -455,7 +646,6 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  {/* Botón Registrar Pago */}
                   <button
                     onClick={() => abrirModalPago(notif)}
                     className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center space-x-2"
@@ -465,7 +655,6 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                     <span>Registrar Pago</span>
                   </button>
                   
-                  {/* Botón para ver cuenta corriente */}
                   {onVerCuentaCliente && (
                     <button
                       onClick={() => onVerCuentaCliente(notif.cliente_id)}
@@ -476,7 +665,6 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                     </button>
                   )}
                   
-                  {/* Botones de contacto */}
                   {notif.cliente_telefono && (
                     <button
                       onClick={() => enviarRecordatorio(notif, 'whatsapp')}
@@ -506,7 +694,6 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                 </div>
               </div>
 
-              {/* Panel de contacto expandido */}
               {mostrarContacto === notif.id && (
                 <div className="mt-4 p-4 bg-white rounded-lg border-2 border-blue-200">
                   <h4 className="font-medium text-gray-900 mb-3">Información de Contacto</h4>
@@ -541,7 +728,6 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                     )}
                   </div>
 
-                  {/* Resumen de deuda */}
                   <div className="mb-3 p-3 bg-gray-50 rounded">
                     <div className="text-sm font-medium text-gray-700 mb-2">Resumen de Deuda:</div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
@@ -580,7 +766,15 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No hay notificaciones</h3>
             <p className="text-gray-600">
-              {filtroTipo === 'todos' 
+              {filtroTipo === 'calendario' && fechaSeleccionada
+                ? `No hay vencimientos para el ${fechaSeleccionada.toLocaleDateString('es-AR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })}`
+                : filtroTipo === 'calendario'
+                ? 'Selecciona una fecha en el calendario para ver los vencimientos'
+                : filtroTipo === 'todos' 
                 ? 'No tienes notificaciones pendientes en este momento.'
                 : `No hay notificaciones de tipo "${filtroTipo}" en este momento.`
               }
@@ -604,7 +798,6 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
             </div>
 
             <div className="space-y-4">
-              {/* Información del pago */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600 mb-2">Cliente:</div>
                 <div className="font-medium">
@@ -639,7 +832,6 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                 )}
               </div>
 
-              {/* Formulario de pago */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Monto a pagar

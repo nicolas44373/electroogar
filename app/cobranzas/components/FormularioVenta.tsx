@@ -116,22 +116,30 @@ export default function FormularioVenta({
       if (transError) throw transError
       
       // Crear pagos programados
-      if (transData) {
-        const pagosACrear = []
-        const fechaInicio = new Date(formVenta.fecha_inicio)
-        
-        for (let i = 1; i <= parseInt(formVenta.numero_cuotas); i++) {
-          let fechaVencimiento = new Date(fechaInicio)
-          
-          // Calcular fecha de vencimiento según tipo de pago
-          if (formVenta.tipo_pago === 'semanal') {
-            fechaVencimiento.setDate(fechaVencimiento.getDate() + (7 * i))
-          } else if (formVenta.tipo_pago === 'quincenal') {
-            fechaVencimiento.setDate(fechaVencimiento.getDate() + (15 * i))
-          } else if (formVenta.tipo_pago === 'mensual') {
-            // Para pagos mensuales, mantener el mismo día del mes
-            fechaVencimiento.setMonth(fechaVencimiento.getMonth() + i)
-          }
+      // Crear pagos programados
+if (transData) {
+  const pagosACrear = []
+  const fechaInicio = new Date(formVenta.fecha_inicio)
+  
+  for (let i = 1; i <= parseInt(formVenta.numero_cuotas); i++) {
+    let fechaVencimiento = new Date(fechaInicio)
+    
+    // La primera cuota vence el mismo día, las siguientes según el tipo de pago
+    if (i === 1) {
+      // Primera cuota: mismo día de inicio
+      // No modificamos la fecha
+    } else {
+      // Calcular fecha de vencimiento según tipo de pago
+      // Restamos 1 a i porque la primera cuota es el día 0
+      if (formVenta.tipo_pago === 'semanal') {
+        fechaVencimiento.setDate(fechaVencimiento.getDate() + (7 * (i - 1)))
+      } else if (formVenta.tipo_pago === 'quincenal') {
+        fechaVencimiento.setDate(fechaVencimiento.getDate() + (15 * (i - 1)))
+      } else if (formVenta.tipo_pago === 'mensual') {
+        // Para pagos mensuales, mantener el mismo día del mes
+        fechaVencimiento.setMonth(fechaVencimiento.getMonth() + (i - 1))
+      }
+    }
           
           pagosACrear.push({
             transaccion_id: transData.id,

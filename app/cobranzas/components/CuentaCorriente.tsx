@@ -76,17 +76,19 @@ export default function CuentaCorriente({
 
     transacciones.forEach((transaccion) => {
       movimientosTemp.push({
-        id: `venta-${transaccion.id}`,
-        transaccionId: transaccion.id,
-        fecha: transaccion.created_at,
-        tipo: 'venta',
-        descripcion: `Venta - ${transaccion.producto?.nombre || 'Producto'}`,
-        debe: transaccion.monto_total || 0,
-        haber: 0,
-        saldo: 0,
-        referencia: `Fact. ${transaccion.numero_factura || transaccion.id.slice(0, 8)}`,
-        estado: transaccion.estado,
-      })
+  id: `venta-${transaccion.id}`,
+  transaccionId: transaccion.id,
+  fecha: transaccion.created_at,
+  tipo: 'venta',
+  descripcion: transaccion.tipo_transaccion === 'prestamo' 
+    ? 'Préstamo de Dinero'
+    : `Venta - ${transaccion.producto?.nombre || 'Producto'}`,
+  debe: transaccion.monto_total || 0,
+  haber: 0,
+  saldo: 0,
+  referencia: `Fact. ${transaccion.numero_factura || transaccion.id.slice(0, 8)}`,
+  estado: transaccion.estado,
+})
 
       const pagosTransaccion = pagos[transaccion.id] || []
       pagosTransaccion
@@ -98,7 +100,9 @@ export default function CuentaCorriente({
             transaccionId: transaccion.id,
             fecha: pago.fecha_pago!,
             tipo: 'pago',
-            descripcion: `Pago cuota ${pago.numero_cuota} - ${transaccion.producto?.nombre || 'Producto'}`,
+            descripcion: transaccion.tipo_transaccion === 'prestamo'
+  ? `Pago cuota ${pago.numero_cuota} - Préstamo de Dinero`
+  : `Pago cuota ${pago.numero_cuota} - ${transaccion.producto?.nombre || 'Producto'}`,
             debe: 0,
             haber: pago.monto_pagado || 0,
             saldo: 0,
