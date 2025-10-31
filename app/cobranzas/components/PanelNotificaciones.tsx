@@ -46,10 +46,20 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
   const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | 'cheque' | 'tarjeta'>('efectivo')
   const [observaciones, setObservaciones] = useState('')
 
-  useEffect(() => {
+   useEffect(() => {
     cargarNotificacionesDetalladas()
   }, [])
 
+  // Actualizar notificaciones cuando cambia el prop
+    useEffect(() => {
+    // Si no hay notificaciones del padre, cargar las propias
+    if (!notificaciones || notificaciones.length === 0) {
+      cargarNotificacionesDetalladas()
+    } else {
+      // Usar las notificaciones del padre
+      setNotificacionesDetalladas(notificaciones)
+    }
+  }, [notificaciones])
   // Función centralizada para calcular diferencia de días
   const calcularDiasVencimiento = (fechaVencimiento: string) => {
     const hoy = new Date()
@@ -167,7 +177,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
             producto:productos(nombre)
           )
         `)
-        .in('estado', ['pendiente', 'parcial'])
+        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
         .order('fecha_vencimiento')
 
       if (data) {

@@ -94,11 +94,16 @@ export default function CobranzasPage() {
     }
   }
 
-  const cargarNotificaciones = async () => {
-    const hoy = new Date()
-    hoy.setHours(0, 0, 0, 0)
-    const fechaLimite = new Date()
-    fechaLimite.setDate(hoy.getDate() + 15)
+  // Función cargarNotificaciones corregida para CobranzasPage
+// Usa la misma lógica que PanelNotificaciones para calcular montos
+
+const cargarNotificaciones = async () => {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const fechaLimite = new Date()
+  fechaLimite.setDate(hoy.getDate() + 15)
+  
+  try {
     const { data } = await supabase
       .from('pagos')
       .select(`
@@ -109,6 +114,7 @@ export default function CobranzasPage() {
           numero_factura,
           monto_total,
           monto_cuota,
+          numero_cuotas,
           tipo_transaccion,
           cliente:clientes(id, nombre, apellido, telefono, email),
           producto:productos(nombre)
@@ -117,31 +123,42 @@ export default function CobranzasPage() {
       .in('estado', ['pendiente', 'parcial'])
       .lte('fecha_vencimiento', fechaLimite.toISOString().split('T')[0])
       .order('fecha_vencimiento')
+    
     if (data) {
+      // Calcular saldo total por cliente
       const saldosPorCliente = new Map<string, number>()
+      
       data.forEach(pago => {
         const clienteId = pago.transaccion?.cliente?.id
         if (clienteId) {
-          const montoCuota = pago.monto_cuota || pago.transaccion?.monto_cuota || 0
+          // Obtener monto de cuota usando la misma lógica que PanelNotificaciones
+          const montoCuota = obtenerMontoCuota(pago)
           const montoPagado = pago.monto_pagado || 0
           const montoRestante = montoCuota - montoPagado
+          
           const saldoActual = saldosPorCliente.get(clienteId) || 0
           saldosPorCliente.set(clienteId, saldoActual + montoRestante)
         }
       })
+      
       const notificacionesMapeadas: NotificacionVencimiento[] = data.map(pago => {
         const [y, m, d] = pago.fecha_vencimiento.split('-').map(Number)
         const fechaVenc = new Date(y, m - 1, d)
         fechaVenc.setHours(0, 0, 0, 0)
         const diff = Math.floor((fechaVenc.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+        
         let tipo: 'vencido' | 'por_vencer' | 'hoy'
         if (diff < 0) tipo = 'vencido'
         else if (diff === 0) tipo = 'hoy'
         else tipo = 'por_vencer'
+        
         const clienteId = pago.transaccion?.cliente?.id || ''
-        const montoCuota = pago.monto_cuota || 0
+        
+        // Obtener monto de cuota
+        const montoCuota = obtenerMontoCuota(pago)
         const montoPagado = pago.monto_pagado || 0
         const montoRestante = montoCuota - montoPagado
+        
         return {
           id: pago.id,
           cliente_id: clienteId,
@@ -149,25 +166,55 @@ export default function CobranzasPage() {
           cliente_apellido: pago.transaccion?.cliente?.apellido || '',
           cliente_telefono: pago.transaccion?.cliente?.telefono,
           cliente_email: pago.transaccion?.cliente?.email,
-          monto: montoRestante,
-          monto_cuota: montoCuota,
-          monto_cuota_total: montoCuota,
-          monto_pagado: montoPagado,
-          monto_restante: montoRestante,
+          
+          // Campos de monto usando la misma lógica que PanelNotificaciones
+          monto: montoRestante, // Lo que falta pagar (restante)
+          monto_cuota: montoCuota, // Monto original de la cuota
+          monto_cuota_total: montoCuota, // Monto total de la cuota
+          monto_pagado: montoPagado, // Lo que ya se pagó
+          monto_restante: montoRestante, // Lo que falta
+          
           fecha_vencimiento: pago.fecha_vencimiento,
           dias_vencimiento: diff,
           tipo,
           numero_cuota: pago.numero_cuota || 0,
-          producto_nombre: pago.transaccion?.producto?.nombre || 'Préstamo de Dinero',
+          producto_nombre: obtenerNombreTransaccion(pago.transaccion),
           transaccion_id: pago.transaccion?.id || '',
           saldo_total_cliente: saldosPorCliente.get(clienteId) || 0,
           tipo_transaccion: pago.transaccion?.tipo_transaccion || 'venta',
-          numero_factura: pago.transaccion?.numero_factura
+          numero_factura: pago.transaccion?.numero_factura,
+          
+          // Incluir transacción completa
+          transaccion: pago.transaccion
         }
       })
+      
       setNotificaciones(notificacionesMapeadas)
     }
+  } catch (error) {
+    console.error('Error cargando notificaciones:', error)
   }
+}
+
+// Función auxiliar para obtener el monto de cuota correcto
+// (misma lógica que usa PanelNotificaciones)
+const obtenerMontoCuota = (pago: any) => {
+  // Si el pago tiene monto_cuota directo, usarlo
+  if (pago.monto_cuota && pago.monto_cuota > 0) {
+    return pago.monto_cuota
+  }
+  
+  // Si no, obtenerlo de la transacción
+  return pago.transaccion?.monto_cuota || 0
+}
+
+// Función auxiliar para obtener el nombre del producto o tipo de transacción
+const obtenerNombreTransaccion = (transaccion: any) => {
+  if (transaccion?.producto?.nombre) {
+    return transaccion.producto.nombre
+  }
+  return transaccion?.tipo_transaccion === 'prestamo' ? 'Préstamo de Dinero' : 'Venta'
+}
 
   const cargarEstadisticas = async () => {
     const hoy = new Date()
