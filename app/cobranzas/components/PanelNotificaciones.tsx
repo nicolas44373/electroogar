@@ -338,7 +338,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     const nombreCompleto = `${notificacion.cliente_nombre} ${notificacion.cliente_apellido || ''}`.trim()
     
     if (metodo === 'whatsapp' && notificacion.cliente_telefono) {
-      const mensaje = `Hola ${nombreCompleto}, te recordamos que tienes una cuota pendiente de ${formatearMoneda(notificacion.monto)} del producto ${notificacion.producto_nombre} (Cuota ${notificacion.numero_cuota}) que ${notificacion.tipo === 'vencido' ? 'venció' : 'vence'} el ${formatearFecha(notificacion.fecha_vencimiento)}. El saldo pendiente de esta deuda es de ${formatearMoneda(notificacion.saldo_total_cliente)}. Por favor, acercate a realizar el pago. Gracias.`
+      const mensaje = ``
       const url = `https://wa.me/${notificacion.cliente_telefono.replace(/[^\d]/g, '')}?text=${encodeURIComponent(mensaje)}`
       window.open(url, '_blank')
     } else if (metodo === 'email' && notificacion.cliente_email) {
@@ -903,7 +903,11 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                     </div>
                   </div>
 
-                  
+                  {/*<div className="pt-3 border-t">
+                    <div className="text-sm text-gray-600">
+                      <strong>Mensaje sugerido:</strong> "Hola {notif.cliente_nombre}, te recordamos que tienes una cuota de {formatearMoneda(notif.monto)} del producto {notif.producto_nombre} que {notif.tipo === 'vencido' ? 'venció' : 'vence'} el {formatearFecha(notif.fecha_vencimiento)}. El saldo pendiente de esta deuda es de {formatearMoneda(notif.saldo_total_cliente)}. Por favor, acercate a realizar el pago."
+                    </div>
+                  </div>*/}
                 </div>
               )}
             </div>
