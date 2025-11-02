@@ -535,49 +535,62 @@ export default function ExportadorPDFCliente({
 
   const descargarPDF = () => {
     const html = generarHTML()
-    const ventana = window.open('', '_blank')
     
-    if (ventana) {
-      ventana.document.write(html)
-      ventana.document.close()
-      
-      // Esperar a que cargue y luego imprimir
-      ventana.onload = () => {
-        setTimeout(() => {
-          ventana.print()
-        }, 250)
-      }
-    }
+    // Crear un blob con el HTML
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    
+    // Crear un enlace temporal para descargar
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `Estado_Cuenta_${cliente.nombre}_${cliente.apellido}_${new Date().toISOString().split('T')[0]}.html`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    // Limpiar el objeto URL
+    setTimeout(() => URL.revokeObjectURL(url), 100)
+    
+    // Mostrar mensaje de ayuda
+    setTimeout(() => {
+      alert('📄 Archivo descargado!\n\nPara convertirlo a PDF:\n1. Abre el archivo HTML descargado\n2. Presiona Ctrl+P (o Cmd+P en Mac)\n3. Selecciona "Guardar como PDF"\n4. Guarda el PDF')
+    }, 300)
   }
 
   const enviarPorWhatsApp = () => {
-    // Primero generar y abrir el PDF
     const html = generarHTML()
-    const ventana = window.open('', '_blank')
     
-    if (ventana) {
-      ventana.document.write(html)
-      ventana.document.close()
-      
-      // Esperar a que cargue y luego imprimir
-      ventana.onload = () => {
-        setTimeout(() => {
-          ventana.print()
-        }, 250)
-      }
-    }
+    // Crear un blob con el HTML
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
     
-    // Luego abrir WhatsApp con mensaje simple
+    // Crear un enlace temporal para descargar
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `Estado_Cuenta_${cliente.nombre}_${cliente.apellido}_${new Date().toISOString().split('T')[0]}.html`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    // Limpiar el objeto URL
+    setTimeout(() => URL.revokeObjectURL(url), 100)
+    
+    // Abrir WhatsApp con mensaje
     const nombreCompleto = `${cliente.nombre} ${cliente.apellido}`.trim()
-    const mensaje = `Hola ${nombreCompleto}, te envío tu estado de cuenta en el PDF adjunto. Si tienes alguna consulta, no dudes en contactarme.`
+    const mensaje = `Hola ${nombreCompleto}, te envío tu estado de cuenta. Por favor revísalo y cualquier consulta no dudes en contactarme.`
     
     const telefono = cliente.telefono || ''
-    const url = `https://wa.me/${telefono.replace(/[^\d]/g, '')}?text=${encodeURIComponent(mensaje)}`
+    const urlWhatsApp = `https://wa.me/${telefono.replace(/[^\d]/g, '')}?text=${encodeURIComponent(mensaje)}`
     
-    // Abrir WhatsApp después de un pequeño delay
+    // Abrir WhatsApp después de un delay
     setTimeout(() => {
-      window.open(url, '_blank')
-    }, 500)
+      window.open(urlWhatsApp, '_blank')
+      
+      // Mostrar instrucciones
+      setTimeout(() => {
+        alert('📱 WhatsApp abierto!\n\nPasos siguientes:\n1. Abre el archivo HTML descargado\n2. Presiona Ctrl+P y guarda como PDF\n3. Regresa a WhatsApp y adjunta el PDF\n4. Envía el mensaje')
+      }, 500)
+    }, 800)
   }
 
   if (!transacciones || transacciones.length === 0) {
@@ -612,8 +625,8 @@ export default function ExportadorPDFCliente({
       </div>
       
       <p className="text-xs text-gray-500 mt-3">
-        💡 El PDF incluirá todas las transacciones, cuotas pagadas y pendientes.
-        {cliente.telefono && ' Al enviar por WhatsApp, primero se abrirá el PDF para que lo guardes, y luego WhatsApp para que lo adjuntes manualmente.'}
+        💡 Se descargará un archivo HTML con el estado de cuenta. Para convertirlo a PDF, ábrelo y usa Ctrl+P (Cmd+P en Mac) → "Guardar como PDF".
+        {cliente.telefono && ' El botón de WhatsApp descarga el archivo y abre WhatsApp para que lo adjuntes.'}
       </p>
     </div>
   )
