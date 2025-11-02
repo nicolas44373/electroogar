@@ -1,5 +1,5 @@
 import { Cliente, Transaccion, Pago } from '@/app/lib/types/cobranzas'
-import { FileText, Download, Mail } from 'lucide-react'
+import { FileText, Download, Phone } from 'lucide-react'
 
 interface ExportadorPDFClienteProps {
   cliente: Cliente
@@ -550,17 +550,34 @@ export default function ExportadorPDFCliente({
     }
   }
 
-  const enviarPorEmail = () => {
-    const subject = encodeURIComponent(`Estado de Cuenta - ${cliente.nombre} ${cliente.apellido}`)
-    const body = encodeURIComponent(
-      `Estimado/a ${cliente.nombre},\n\n` +
-      `Adjuntamos el estado de cuenta actualizado.\n\n` +
-      `Por favor, revisa el documento y contáctanos si tienes alguna consulta.\n\n` +
-      `Saludos cordiales.`
-    )
+  const enviarPorWhatsApp = () => {
+    // Primero generar y abrir el PDF
+    const html = generarHTML()
+    const ventana = window.open('', '_blank')
     
-    const email = cliente.email || ''
-    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`
+    if (ventana) {
+      ventana.document.write(html)
+      ventana.document.close()
+      
+      // Esperar a que cargue y luego imprimir
+      ventana.onload = () => {
+        setTimeout(() => {
+          ventana.print()
+        }, 250)
+      }
+    }
+    
+    // Luego abrir WhatsApp con mensaje simple
+    const nombreCompleto = `${cliente.nombre} ${cliente.apellido}`.trim()
+    const mensaje = `Hola ${nombreCompleto}, te envío tu estado de cuenta en el PDF adjunto. Si tienes alguna consulta, no dudes en contactarme.`
+    
+    const telefono = cliente.telefono || ''
+    const url = `https://wa.me/${telefono.replace(/[^\d]/g, '')}?text=${encodeURIComponent(mensaje)}`
+    
+    // Abrir WhatsApp después de un pequeño delay
+    setTimeout(() => {
+      window.open(url, '_blank')
+    }, 500)
   }
 
   if (!transacciones || transacciones.length === 0) {
@@ -583,19 +600,20 @@ export default function ExportadorPDFCliente({
           Descargar PDF
         </button>
         
-        {cliente.email && (
+        {cliente.telefono && (
           <button
-            onClick={enviarPorEmail}
+            onClick={enviarPorWhatsApp}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
-            <Mail className="w-4 h-4" />
-            Enviar por Email
+            <Phone className="w-4 h-4" />
+            Enviar por WhatsApp
           </button>
         )}
       </div>
       
       <p className="text-xs text-gray-500 mt-3">
-        💡 El PDF incluirá todas las transacciones, cuotas pagadas y pendientes con sus fechas de vencimiento.
+        💡 El PDF incluirá todas las transacciones, cuotas pagadas y pendientes.
+        {cliente.telefono && ' Al enviar por WhatsApp, primero se abrirá el PDF para que lo guardes, y luego WhatsApp para que lo adjuntes manualmente.'}
       </p>
     </div>
   )
