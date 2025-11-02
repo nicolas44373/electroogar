@@ -406,10 +406,10 @@ Saludos cordiales.`)
                 <div className="mb-6 p-4 bg-gray-50 rounded">
                   <h3 className="font-semibold text-gray-900 mb-2">Datos del Comercio:</h3>
                   <div className="text-sm text-gray-700">
-                    <div>Tu Empresa S.A.</div>
-                    <div>Dirección de tu empresa</div>
-                    <div>Teléfono: (123) 456-7890</div>
-                    <div>Email: info@tuempresa.com</div>
+                    <div>ELECTRO HOGAR</div>
+                    <div>Las talitas - Tucumán, Parque Logistico 1300 - Ruta 9</div>
+                    <div>Teléfono: (381) 446-1795</div>
+                    <div>Gmail: lopezrodrigoalejandro2025@gmail.com</div>
                   </div>
                 </div>
 

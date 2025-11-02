@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '@/app/lib/supabase'
 import { Users, DollarSign, TrendingUp, AlertTriangle, Calendar, CreditCard } from 'lucide-react'
 
 interface NotificacionVencimiento {
@@ -8,10 +10,8 @@ interface NotificacionVencimiento {
   cliente_telefono?: string
   cliente_email?: string
   monto: number
-  monto_cuota: number
   monto_cuota_total: number
   monto_pagado: number
-  monto_restante: number
   fecha_vencimiento: string
   dias_vencimiento: number
   tipo: 'vencido' | 'por_vencer' | 'hoy'
@@ -20,8 +20,6 @@ interface NotificacionVencimiento {
   transaccion_id: string
   saldo_total_cliente: number
   tipo_transaccion: string
-  numero_factura?: string
-  transaccion?: any
 }
 
 interface Estadisticas {
@@ -34,7 +32,6 @@ interface Estadisticas {
 
 interface DashboardProps {
   estadisticas: Estadisticas
-  notificaciones: NotificacionVencimiento[]
   onVerNotificaciones: () => void
   onRegistrarPago: () => void
   onNuevaVenta: () => void
@@ -42,11 +39,121 @@ interface DashboardProps {
 
 export default function Dashboard({ 
   estadisticas, 
-  notificaciones, 
   onVerNotificaciones,
   onRegistrarPago,
   onNuevaVenta
 }: DashboardProps) {
+  
+  const [notificaciones, setNotificaciones] = useState<NotificacionVencimiento[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    cargarNotificaciones()
+  }, [])
+
+  // Función centralizada para calcular diferencia de días (misma que PanelNotificaciones)
+  const calcularDiasVencimiento = (fechaVencimiento: string) => {
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+    
+    const [year, month, day] = fechaVencimiento.split('-').map(Number)
+    const vencimiento = new Date(year, month - 1, day)
+    vencimiento.setHours(0, 0, 0, 0)
+    
+    const diferencia = Math.floor((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+    return diferencia
+  }
+
+  // Función para obtener el monto de cuota correcto
+  const obtenerMontoCuota = (pago: any) => {
+    if (pago.monto_cuota && pago.monto_cuota > 0) {
+      return pago.monto_cuota
+    }
+    return pago.transaccion?.monto_cuota || 0
+  }
+
+  // Función para obtener el nombre del producto o tipo de transacción
+  const obtenerNombreTransaccion = (transaccion: any) => {
+    if (transaccion?.producto?.nombre) {
+      return transaccion.producto.nombre
+    }
+    return transaccion?.tipo_transaccion === 'prestamo' ? 'Préstamo de Dinero' : 'Venta'
+  }
+
+  const cargarNotificaciones = async () => {
+    setLoading(true)
+    try {
+      // Cargar todos los pagos pendientes (misma lógica que PanelNotificaciones)
+      const { data } = await supabase
+        .from('pagos')
+        .select(`
+          *,
+          transaccion:transacciones(
+            id,
+            cliente_id,
+            monto_total,
+            monto_cuota,
+            numero_factura,
+            tipo_transaccion,
+            cliente:clientes(id, nombre, apellido, email, telefono),
+            producto:productos(nombre)
+          )
+        `)
+        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+        .order('fecha_vencimiento')
+
+      if (data) {
+        // Calcular saldo total por cliente
+        const saldosPorCliente = new Map<string, number>()
+        
+        data.forEach(pago => {
+          const clienteId = pago.transaccion.cliente_id
+          const montoCuota = obtenerMontoCuota(pago)
+          const montoRestante = montoCuota - (pago.monto_pagado || 0)
+          const saldoActual = saldosPorCliente.get(clienteId) || 0
+          saldosPorCliente.set(clienteId, saldoActual + montoRestante)
+        })
+
+        const notificacionesMapeadas: NotificacionVencimiento[] = data.map(pago => {
+          const diferenciaDias = calcularDiasVencimiento(pago.fecha_vencimiento)
+          
+          let tipo: 'vencido' | 'por_vencer' | 'hoy'
+          if (diferenciaDias < 0) tipo = 'vencido'
+          else if (diferenciaDias === 0) tipo = 'hoy'
+          else tipo = 'por_vencer'
+
+          const montoCuota = obtenerMontoCuota(pago)
+          const montoRestante = montoCuota - (pago.monto_pagado || 0)
+
+          return {
+            id: pago.id,
+            cliente_id: pago.transaccion.cliente_id,
+            cliente_nombre: pago.transaccion.cliente.nombre,
+            cliente_apellido: pago.transaccion.cliente.apellido,
+            cliente_telefono: pago.transaccion.cliente.telefono,
+            cliente_email: pago.transaccion.cliente.email,
+            monto: montoRestante,
+            monto_cuota_total: montoCuota,
+            monto_pagado: pago.monto_pagado || 0,
+            fecha_vencimiento: pago.fecha_vencimiento,
+            dias_vencimiento: diferenciaDias,
+            tipo,
+            numero_cuota: pago.numero_cuota,
+            producto_nombre: obtenerNombreTransaccion(pago.transaccion),
+            transaccion_id: pago.transaccion.id,
+            saldo_total_cliente: saldosPorCliente.get(pago.transaccion.cliente_id) || 0,
+            tipo_transaccion: pago.transaccion.tipo_transaccion
+          }
+        })
+
+        setNotificaciones(notificacionesMapeadas)
+      }
+    } catch (error) {
+      console.error('Error cargando notificaciones:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
   
   const formatearMoneda = (monto: number) => {
     return new Intl.NumberFormat('es-AR', {
@@ -55,37 +162,9 @@ export default function Dashboard({
     }).format(monto || 0)
   }
 
-  // Función para obtener el monto de cuota correcto (misma lógica que PanelNotificaciones)
-  const obtenerMontoCuota = (notif: any) => {
-    // Si ya viene calculado el monto restante (monto a pagar)
-    if (notif.monto && notif.monto > 0) {
-      return notif.monto
-    }
-    
-    // Si tiene monto_cuota_total
-    if (notif.monto_cuota_total && notif.monto_cuota_total > 0) {
-      const montoPagado = notif.monto_pagado || 0
-      return notif.monto_cuota_total - montoPagado
-    }
-    
-    // Si tiene monto_cuota directo
-    if (notif.monto_cuota && notif.monto_cuota > 0) {
-      const montoPagado = notif.monto_pagado || 0
-      return notif.monto_cuota - montoPagado
-    }
-    
-    // Obtener de la transacción
-    if (notif.transaccion?.monto_cuota && notif.transaccion.monto_cuota > 0) {
-      const montoPagado = notif.monto_pagado || 0
-      return notif.transaccion.monto_cuota - montoPagado
-    }
-    
-    return 0
-  }
-
   const notificacionesVencidas = notificaciones.filter(n => n.tipo === 'vencido')
   const notificacionesHoy = notificaciones.filter(n => n.tipo === 'hoy')
-  const notificacionesProximas = notificaciones.filter(n => n.tipo === 'por_vencer')
+  const notificacionesProximas = notificaciones.filter(n => n.tipo === 'por_vencer' && n.dias_vencimiento <= 7)
 
   const tarjetasEstadisticas = [
     {
@@ -174,29 +253,30 @@ export default function Dashboard({
             </div>
           </div>
           <div className="p-4">
-            {notificacionesVencidas.length > 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600"></div>
+              </div>
+            ) : notificacionesVencidas.length > 0 ? (
               <div className="space-y-3">
-                {notificacionesVencidas.slice(0, 5).map((notif, index) => {
-                  const montoCuota = obtenerMontoCuota(notif)
-                  return (
-                    <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                      <div>
-                        <p className="font-medium text-sm text-gray-900">
-                          {notif.cliente_nombre} {notif.cliente_apellido || ''}
-                        </p>
-                        <p className="text-xs text-red-600">
-                          Vencido hace {Math.abs(notif.dias_vencimiento)} días
-                        </p>
-                        {notif.numero_cuota > 0 && (
-                          <p className="text-xs text-gray-500">Cuota #{notif.numero_cuota}</p>
-                        )}
-                      </div>
-                      <p className="font-bold text-red-600 text-sm">
-                        {formatearMoneda(montoCuota)}
+                {notificacionesVencidas.slice(0, 5).map((notif, index) => (
+                  <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                    <div>
+                      <p className="font-medium text-sm text-gray-900">
+                        {notif.cliente_nombre} {notif.cliente_apellido || ''}
                       </p>
+                      <p className="text-xs text-red-600">
+                        Vencido hace {Math.abs(notif.dias_vencimiento)} días
+                      </p>
+                      {notif.numero_cuota > 0 && (
+                        <p className="text-xs text-gray-500">Cuota #{notif.numero_cuota}</p>
+                      )}
                     </div>
-                  )
-                })}
+                    <p className="font-bold text-red-600 text-sm">
+                      {formatearMoneda(notif.monto)}
+                    </p>
+                  </div>
+                ))}
                 {notificacionesVencidas.length > 5 && (
                   <button
                     onClick={onVerNotificaciones}
@@ -228,27 +308,28 @@ export default function Dashboard({
             </div>
           </div>
           <div className="p-4">
-            {notificacionesHoy.length > 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600"></div>
+              </div>
+            ) : notificacionesHoy.length > 0 ? (
               <div className="space-y-3">
-                {notificacionesHoy.map((notif, index) => {
-                  const montoCuota = obtenerMontoCuota(notif)
-                  return (
-                    <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                      <div>
-                        <p className="font-medium text-sm text-gray-900">
-                          {notif.cliente_nombre} {notif.cliente_apellido || ''}
-                        </p>
-                        <p className="text-xs text-orange-600">Vence hoy</p>
-                        {notif.numero_cuota > 0 && (
-                          <p className="text-xs text-gray-500">Cuota #{notif.numero_cuota}</p>
-                        )}
-                      </div>
-                      <p className="font-bold text-orange-600 text-sm">
-                        {formatearMoneda(montoCuota)}
+                {notificacionesHoy.map((notif, index) => (
+                  <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                    <div>
+                      <p className="font-medium text-sm text-gray-900">
+                        {notif.cliente_nombre} {notif.cliente_apellido || ''}
                       </p>
+                      <p className="text-xs text-orange-600">Vence hoy</p>
+                      {notif.numero_cuota > 0 && (
+                        <p className="text-xs text-gray-500">Cuota #{notif.numero_cuota}</p>
+                      )}
                     </div>
-                  )
-                })}
+                    <p className="font-bold text-orange-600 text-sm">
+                      {formatearMoneda(notif.monto)}
+                    </p>
+                  </div>
+                ))}
               </div>
             ) : (
               <p className="text-gray-500 text-sm text-center py-4">
@@ -272,29 +353,30 @@ export default function Dashboard({
             </div>
           </div>
           <div className="p-4">
-            {notificacionesProximas.length > 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              </div>
+            ) : notificacionesProximas.length > 0 ? (
               <div className="space-y-3">
-                {notificacionesProximas.slice(0, 5).map((notif, index) => {
-                  const montoCuota = obtenerMontoCuota(notif)
-                  return (
-                    <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                      <div>
-                        <p className="font-medium text-sm text-gray-900">
-                          {notif.cliente_nombre} {notif.cliente_apellido || ''}
-                        </p>
-                        <p className="text-xs text-blue-600">
-                          En {notif.dias_vencimiento} días
-                        </p>
-                        {notif.numero_cuota > 0 && (
-                          <p className="text-xs text-gray-500">Cuota #{notif.numero_cuota}</p>
-                        )}
-                      </div>
-                      <p className="font-bold text-blue-600 text-sm">
-                        {formatearMoneda(montoCuota)}
+                {notificacionesProximas.slice(0, 5).map((notif, index) => (
+                  <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                    <div>
+                      <p className="font-medium text-sm text-gray-900">
+                        {notif.cliente_nombre} {notif.cliente_apellido || ''}
                       </p>
+                      <p className="text-xs text-blue-600">
+                        En {notif.dias_vencimiento} días
+                      </p>
+                      {notif.numero_cuota > 0 && (
+                        <p className="text-xs text-gray-500">Cuota #{notif.numero_cuota}</p>
+                      )}
                     </div>
-                  )
-                })}
+                    <p className="font-bold text-blue-600 text-sm">
+                      {formatearMoneda(notif.monto)}
+                    </p>
+                  </div>
+                ))}
                 {notificacionesProximas.length > 5 && (
                   <button
                     onClick={onVerNotificaciones}

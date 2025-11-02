@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
-import { Bell, AlertTriangle, Calendar, Clock, Phone, Mail, DollarSign, Eye, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Bell, AlertTriangle, Calendar, Clock, Phone, Mail, DollarSign, Eye, Check, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
 
 interface NotificacionVencimiento {
   id: string
@@ -20,6 +20,7 @@ interface NotificacionVencimiento {
   transaccion_id: string
   saldo_total_cliente: number
   tipo_transaccion: string
+  fecha_inicio: string
 }
 
 interface PanelNotificacionesProps {
@@ -46,20 +47,24 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
   const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | 'cheque' | 'tarjeta'>('efectivo')
   const [observaciones, setObservaciones] = useState('')
 
-   useEffect(() => {
+  // Estados para reprogramación
+  const [mostrarModalReprogramacion, setMostrarModalReprogramacion] = useState(false)
+  const [notifReprogramar, setNotifReprogramar] = useState<NotificacionVencimiento | null>(null)
+  const [nuevaFechaVencimiento, setNuevaFechaVencimiento] = useState('')
+  const [interesesMora, setInteresesMora] = useState(0)
+  const [motivoReprogramacion, setMotivoReprogramacion] = useState('')
+
+  useEffect(() => {
     cargarNotificacionesDetalladas()
   }, [])
 
   // Actualizar notificaciones cuando cambia el prop
-    useEffect(() => {
-    // Si no hay notificaciones del padre, cargar las propias
-    if (!notificaciones || notificaciones.length === 0) {
-      cargarNotificacionesDetalladas()
-    } else {
-      // Usar las notificaciones del padre
+  useEffect(() => {
+    if (notificaciones && notificaciones.length > 0) {
       setNotificacionesDetalladas(notificaciones)
     }
   }, [notificaciones])
+  
   // Función centralizada para calcular diferencia de días
   const calcularDiasVencimiento = (fechaVencimiento: string) => {
     const hoy = new Date()
@@ -71,6 +76,14 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     
     const diferencia = Math.floor((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
     return diferencia
+  }
+
+  // Función para calcular intereses sugeridos
+  const calcularInteresesSugeridos = (diasAtraso: number, montoBase: number) => {
+    // Ejemplo: 1% por cada 30 días de atraso
+    const tasaMensual = 0.01
+    const mesesAtraso = Math.ceil(Math.abs(diasAtraso) / 30)
+    return montoBase * tasaMensual * mesesAtraso
   }
 
   // Función para obtener el monto de cuota correcto
@@ -162,7 +175,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     setLoading(true)
     try {
       // Cargar todos los pagos pendientes sin límite de fecha
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('pagos')
         .select(`
           *,
@@ -173,6 +186,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
             monto_cuota,
             numero_factura,
             tipo_transaccion,
+            fecha_inicio,
             cliente:clientes(id, nombre, apellido, email, telefono),
             producto:productos(nombre)
           )
@@ -180,19 +194,36 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
         .in('estado', ['pendiente', 'parcial', 'reprogramado'])
         .order('fecha_vencimiento')
 
-      if (data) {
-        // Calcular saldo total por cliente
-        const saldosPorCliente = new Map<string, number>()
-        
-        data.forEach(pago => {
-          const clienteId = pago.transaccion.cliente_id
-          const montoCuota = obtenerMontoCuota(pago)
-          const montoRestante = montoCuota - (pago.monto_pagado || 0)
-          const saldoActual = saldosPorCliente.get(clienteId) || 0
-          saldosPorCliente.set(clienteId, saldoActual + montoRestante)
-        })
+      if (error) {
+        console.error('Error en la consulta:', error)
+        return
+      }
 
-        const notificacionesMapeadas: NotificacionVencimiento[] = data.map(pago => {
+      if (!data || data.length === 0) {
+        console.log('No se encontraron pagos pendientes')
+        setNotificacionesDetalladas([])
+        return
+      }
+
+      // Calcular saldo total POR TRANSACCIÓN (no por cliente)
+      const saldosPorTransaccion = new Map<string, number>()
+      
+      data.forEach(pago => {
+        if (!pago.transaccion) {
+          console.warn('Pago sin transacción:', pago.id)
+          return
+        }
+        
+        const transaccionId = pago.transaccion.id
+        const montoCuota = obtenerMontoCuota(pago)
+        const montoRestante = montoCuota - (pago.monto_pagado || 0)
+        const saldoActual = saldosPorTransaccion.get(transaccionId) || 0
+        saldosPorTransaccion.set(transaccionId, saldoActual + montoRestante)
+      })
+
+      const notificacionesMapeadas: NotificacionVencimiento[] = data
+        .filter(pago => pago.transaccion && pago.transaccion.cliente) // Filtrar pagos válidos
+        .map(pago => {
           const diferenciaDias = calcularDiasVencimiento(pago.fecha_vencimiento)
           
           let tipo: 'vencido' | 'por_vencer' | 'hoy'
@@ -207,9 +238,9 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
             id: pago.id,
             cliente_id: pago.transaccion.cliente_id,
             cliente_nombre: pago.transaccion.cliente.nombre,
-            cliente_apellido: pago.transaccion.cliente.apellido,
-            cliente_telefono: pago.transaccion.cliente.telefono,
-            cliente_email: pago.transaccion.cliente.email,
+            cliente_apellido: pago.transaccion.cliente.apellido || '',
+            cliente_telefono: pago.transaccion.cliente.telefono || '',
+            cliente_email: pago.transaccion.cliente.email || '',
             monto: montoRestante,
             monto_cuota_total: montoCuota,
             monto_pagado: pago.monto_pagado || 0,
@@ -219,13 +250,14 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
             numero_cuota: pago.numero_cuota,
             producto_nombre: obtenerNombreTransaccion(pago.transaccion),
             transaccion_id: pago.transaccion.id,
-            saldo_total_cliente: saldosPorCliente.get(pago.transaccion.cliente_id) || 0,
-            tipo_transaccion: pago.transaccion.tipo_transaccion
+            saldo_total_cliente: saldosPorTransaccion.get(pago.transaccion.id) || 0,
+            tipo_transaccion: pago.transaccion.tipo_transaccion,
+            fecha_inicio: pago.transaccion.fecha_inicio
           }
         })
 
-        setNotificacionesDetalladas(notificacionesMapeadas)
-      }
+      console.log(`Notificaciones cargadas: ${notificacionesMapeadas.length}`)
+      setNotificacionesDetalladas(notificacionesMapeadas)
     } catch (error) {
       console.error('Error cargando notificaciones detalladas:', error)
     } finally {
@@ -306,12 +338,12 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     const nombreCompleto = `${notificacion.cliente_nombre} ${notificacion.cliente_apellido || ''}`.trim()
     
     if (metodo === 'whatsapp' && notificacion.cliente_telefono) {
-      const mensaje = `Hola ${nombreCompleto}, te recordamos que tienes una cuota pendiente de ${formatearMoneda(notificacion.monto)} del producto ${notificacion.producto_nombre} (Cuota ${notificacion.numero_cuota}) que ${notificacion.tipo === 'vencido' ? 'venció' : 'vence'} el ${formatearFecha(notificacion.fecha_vencimiento)}. Tu saldo total pendiente es de ${formatearMoneda(notificacion.saldo_total_cliente)}. Por favor, acercate a realizar el pago. Gracias.`
+      const mensaje = `Hola ${nombreCompleto}, te recordamos que tienes una cuota pendiente de ${formatearMoneda(notificacion.monto)} del producto ${notificacion.producto_nombre} (Cuota ${notificacion.numero_cuota}) que ${notificacion.tipo === 'vencido' ? 'venció' : 'vence'} el ${formatearFecha(notificacion.fecha_vencimiento)}. El saldo pendiente de esta deuda es de ${formatearMoneda(notificacion.saldo_total_cliente)}. Por favor, acercate a realizar el pago. Gracias.`
       const url = `https://wa.me/${notificacion.cliente_telefono.replace(/[^\d]/g, '')}?text=${encodeURIComponent(mensaje)}`
       window.open(url, '_blank')
     } else if (metodo === 'email' && notificacion.cliente_email) {
       const subject = encodeURIComponent('Recordatorio de pago pendiente')
-      const body = encodeURIComponent(`Estimado/a ${nombreCompleto},\n\nTe recordamos que tienes una cuota pendiente:\n\nProducto: ${notificacion.producto_nombre}\nCuota: ${notificacion.numero_cuota}\nMonto cuota: ${formatearMoneda(notificacion.monto_cuota_total)}\nMonto pagado: ${formatearMoneda(notificacion.monto_pagado)}\nMonto restante: ${formatearMoneda(notificacion.monto)}\nFecha de vencimiento: ${formatearFecha(notificacion.fecha_vencimiento)}\n\nSaldo total pendiente: ${formatearMoneda(notificacion.saldo_total_cliente)}\n\nPor favor, acercate a realizar el pago a la brevedad.\n\nSaludos cordiales.`)
+      const body = encodeURIComponent(`Estimado/a ${nombreCompleto},\n\nTe recordamos que tienes una cuota pendiente:\n\nProducto: ${notificacion.producto_nombre}\nCuota: ${notificacion.numero_cuota}\nMonto cuota: ${formatearMoneda(notificacion.monto_cuota_total)}\nMonto pagado: ${formatearMoneda(notificacion.monto_pagado)}\nMonto restante: ${formatearMoneda(notificacion.monto)}\nFecha de vencimiento: ${formatearFecha(notificacion.fecha_vencimiento)}\n\nSaldo pendiente de esta deuda: ${formatearMoneda(notificacion.saldo_total_cliente)}\n\nPor favor, acercate a realizar el pago a la brevedad.\n\nSaludos cordiales.`)
       const url = `mailto:${notificacion.cliente_email}?subject=${subject}&body=${body}`
       window.location.href = url
     }
@@ -324,6 +356,24 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     setMetodoPago('efectivo')
     setObservaciones('')
     setMostrarModalPago(true)
+  }
+
+  const abrirModalReprogramacion = (notif: NotificacionVencimiento) => {
+    setNotifReprogramar(notif)
+    const interesesSugeridos = notif.dias_vencimiento < 0 ? 
+      calcularInteresesSugeridos(notif.dias_vencimiento, notif.monto_cuota_total) : 0
+    setInteresesMora(interesesSugeridos)
+    setNuevaFechaVencimiento('')
+    setMotivoReprogramacion('')
+    setMostrarModalReprogramacion(true)
+  }
+
+  const cerrarModalReprogramacion = () => {
+    setMostrarModalReprogramacion(false)
+    setNotifReprogramar(null)
+    setNuevaFechaVencimiento('')
+    setInteresesMora(0)
+    setMotivoReprogramacion('')
   }
 
   const registrarPago = async () => {
@@ -361,15 +411,69 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
 
       if (error) throw error
 
+      // Cerrar modal antes de recargar
       setMostrarModalPago(false)
       setNotifSeleccionada(null)
-      await cargarNotificacionesDetalladas()
-      onActualizar()
+      
+      // Solo recargar localmente si NO hay notificaciones del padre
+      if (!notificaciones || notificaciones.length === 0) {
+        await cargarNotificacionesDetalladas()
+      }
+      
+      // Siempre llamar al callback del padre para que actualice
+      if (onActualizar) {
+        onActualizar()
+      }
       
       alert('Pago registrado correctamente')
     } catch (error) {
       console.error('Error registrando pago:', error)
       alert('Error al registrar el pago')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const reprogramarPago = async () => {
+    if (!notifReprogramar || !nuevaFechaVencimiento) {
+      alert('Por favor complete todos los campos requeridos')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const nuevoMonto = notifReprogramar.monto_cuota_total + interesesMora
+
+      const { error } = await supabase
+        .from('pagos')
+        .update({
+          fecha_vencimiento: nuevaFechaVencimiento,
+          monto_cuota: nuevoMonto,
+          intereses_mora: interesesMora,
+          fecha_reprogramacion: new Date().toISOString().split('T')[0],
+          motivo_reprogramacion: motivoReprogramacion || null,
+          estado: 'reprogramado'
+        })
+        .eq('id', notifReprogramar.id)
+      
+      if (error) throw error
+      
+      // Cerrar modal antes de recargar
+      cerrarModalReprogramacion()
+      
+      // Solo recargar localmente si NO hay notificaciones del padre
+      if (!notificaciones || notificaciones.length === 0) {
+        await cargarNotificacionesDetalladas()
+      }
+      
+      // Siempre llamar al callback del padre para que actualice
+      if (onActualizar) {
+        onActualizar()
+      }
+      
+      alert('✅ Pago reprogramado exitosamente')
+    } catch (error: any) {
+      alert('Error al reprogramar el pago: ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -392,13 +496,31 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
             Centro de Notificaciones
           </h2>
           <button
-            onClick={() => {
-              cargarNotificacionesDetalladas()
-              onActualizar()
+            onClick={async () => {
+              // Solo recargar si no estamos usando notificaciones del padre
+              if (!notificaciones || notificaciones.length === 0) {
+                await cargarNotificacionesDetalladas()
+              }
+              
+              // Siempre llamar al callback del padre para que actualice
+              if (onActualizar) {
+                onActualizar()
+              }
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            disabled={loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
-            Actualizar
+            {loading ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Actualizando...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                <span>Actualizar</span>
+              </>
+            )}
           </button>
         </div>
 
@@ -633,7 +755,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                       </div>
                       <span className="text-gray-300">|</span>
                       <div>
-                        <span className="text-sm text-gray-500">Saldo total: </span>
+                        <span className="text-sm text-gray-500">Saldo de esta deuda: </span>
                         <span className="text-lg font-bold text-red-600">
                           {formatearMoneda(notif.saldo_total_cliente)}
                         </span>
@@ -663,6 +785,15 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                   >
                     <DollarSign className="w-4 h-4" />
                     <span>Registrar Pago</span>
+                  </button>
+
+                  <button
+                    onClick={() => abrirModalReprogramacion(notif)}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center space-x-2"
+                    title="Reprogramar pago"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Reprogramar</span>
                   </button>
                   
                   {onVerCuentaCliente && (
@@ -706,7 +837,19 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
 
               {mostrarContacto === notif.id && (
                 <div className="mt-4 p-4 bg-white rounded-lg border-2 border-blue-200">
-                  <h4 className="font-medium text-gray-900 mb-3">Información de Contacto</h4>
+                  <h4 className="font-medium text-gray-900 mb-3">Información de Contacto y Transacción</h4>
+                  
+                  {/* Fecha de Inicio de la Transacción */}
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-900">Fecha de Inicio:</span>
+                      <span className="font-bold text-blue-800">{formatearFecha(notif.fecha_inicio)}</span>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-1 ml-6">
+                      Esta {notif.tipo_transaccion === 'prestamo' ? 'préstamo' : 'venta'} comenzó el {formatearFecha(notif.fecha_inicio)}
+                    </p>
+                  </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {notif.cliente_telefono && (
@@ -754,7 +897,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                         <div className="font-semibold text-orange-600">{formatearMoneda(notif.monto)}</div>
                       </div>
                       <div>
-                        <span className="text-gray-600">Saldo total cliente:</span>
+                        <span className="text-gray-600">Saldo de esta deuda:</span>
                         <div className="font-semibold text-red-600">{formatearMoneda(notif.saldo_total_cliente)}</div>
                       </div>
                     </div>
@@ -762,7 +905,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
 
                   <div className="pt-3 border-t">
                     <div className="text-sm text-gray-600">
-                      <strong>Mensaje sugerido:</strong> "Hola {notif.cliente_nombre}, te recordamos que tienes una cuota de {formatearMoneda(notif.monto)} del producto {notif.producto_nombre} que {notif.tipo === 'vencido' ? 'venció' : 'vence'} el {formatearFecha(notif.fecha_vencimiento)}. Tu saldo total pendiente es de {formatearMoneda(notif.saldo_total_cliente)}. Por favor, acercate a realizar el pago."
+                      <strong>Mensaje sugerido:</strong> "Hola {notif.cliente_nombre}, te recordamos que tienes una cuota de {formatearMoneda(notif.monto)} del producto {notif.producto_nombre} que {notif.tipo === 'vencido' ? 'venció' : 'vence'} el {formatearFecha(notif.fecha_vencimiento)}. El saldo pendiente de esta deuda es de {formatearMoneda(notif.saldo_total_cliente)}. Por favor, acercate a realizar el pago."
                     </div>
                   </div>
                 </div>
@@ -919,6 +1062,131 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                   <>
                     <Check className="w-4 h-4" />
                     <span>Confirmar Pago</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Reprogramación */}
+      {mostrarModalReprogramacion && notifReprogramar && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <RefreshCw className="w-5 h-5 mr-2" />
+                Reprogramar Pago
+              </h3>
+              <button
+                onClick={cerrarModalReprogramacion}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="text-sm text-gray-600 mb-2">Cliente:</div>
+                <div className="font-medium">
+                  {notifReprogramar.cliente_nombre} {notifReprogramar.cliente_apellido || ''}
+                </div>
+                
+                <div className="text-sm text-gray-600 mb-2 mt-3">Concepto:</div>
+                <div className="font-medium">{notifReprogramar.producto_nombre}</div>
+                
+                <div className="text-sm text-gray-600 mb-2 mt-3">Cuota:</div>
+                <div className="font-medium">#{notifReprogramar.numero_cuota}</div>
+                
+                <div className="text-sm text-gray-600 mb-2 mt-3">Vencimiento original:</div>
+                <div className="font-medium">{formatearFecha(notifReprogramar.fecha_vencimiento)}</div>
+                
+                {notifReprogramar.dias_vencimiento < 0 && (
+                  <p className="text-sm text-red-600 mt-2">
+                    Vencido hace {Math.abs(notifReprogramar.dias_vencimiento)} días
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nueva fecha de vencimiento *
+                </label>
+                <input
+                  type="date"
+                  value={nuevaFechaVencimiento}
+                  onChange={(e) => setNuevaFechaVencimiento(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Intereses por mora ($)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={interesesMora}
+                  onChange={(e) => setInteresesMora(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00"
+                />
+                <div className="mt-2 p-3 bg-gray-50 rounded text-sm">
+                  <p className="flex justify-between">
+                    <span className="text-gray-600">Monto original:</span>
+                    <span className="font-medium">{formatearMoneda(notifReprogramar.monto_cuota_total)}</span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="text-gray-600">Intereses mora:</span>
+                    <span className="font-medium">{formatearMoneda(interesesMora)}</span>
+                  </p>
+                  <p className="flex justify-between border-t pt-1 mt-1">
+                    <span className="text-gray-600 font-semibold">Total nuevo:</span>
+                    <span className="font-bold">{formatearMoneda(notifReprogramar.monto_cuota_total + interesesMora)}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Motivo de la reprogramación
+                </label>
+                <textarea
+                  value={motivoReprogramacion}
+                  onChange={(e) => setMotivoReprogramacion(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  placeholder="Ej: Problemas económicos temporales, enfermedad, etc."
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={cerrarModalReprogramacion}
+                disabled={loading}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={reprogramarPago}
+                disabled={!nuevaFechaVencimiento || loading}
+                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Procesando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Confirmar Reprogramación</span>
                   </>
                 )}
               </button>

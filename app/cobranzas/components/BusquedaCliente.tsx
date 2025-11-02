@@ -13,39 +13,80 @@ export default function BusquedaCliente({
   clienteSeleccionado, 
   onClienteSeleccionado 
 }: BusquedaClienteProps) {
-  const [busquedaDocumento, setBusquedaDocumento] = useState('')
+  const [busqueda, setBusqueda] = useState('')
   const [buscando, setBuscando] = useState(false)
+  const [resultadosBusqueda, setResultadosBusqueda] = useState<Cliente[]>([])
+  const [mostrarResultados, setMostrarResultados] = useState(false)
 
-  const buscarPorDocumento = async () => {
-    if (!busquedaDocumento.trim()) {
-      alert('Por favor ingrese un documento')
+  const buscarCliente = async () => {
+    if (!busqueda.trim()) {
+      alert('Por favor ingrese un término de búsqueda')
       return
     }
     
     setBuscando(true)
+    setResultadosBusqueda([])
+    
     try {
-      const { data, error } = await supabase
+      const terminoBusqueda = busqueda.trim()
+      
+      // Intentar búsqueda por ID primero (búsqueda exacta)
+      let { data, error } = await supabase
         .from('clientes')
         .select('*')
-        .eq('documento', busquedaDocumento.trim())
-        .single()
+        .eq('id', terminoBusqueda)
+      
+      // Si no se encontró por ID, buscar por otros campos
+      if (!data || data.length === 0) {
+        const busquedaPattern = `%${terminoBusqueda}%`
+        
+        const response = await supabase
+          .from('clientes')
+          .select('*')
+          .or(`nombre.ilike.${busquedaPattern},apellido.ilike.${busquedaPattern},documento.ilike.${busquedaPattern}`)
+        
+        data = response.data
+        error = response.error
+      }
       
       if (error) throw error
       
-      if (data) {
-        onClienteSeleccionado(data.id)
-        setBusquedaDocumento('')
+      if (data && data.length > 0) {
+        setResultadosBusqueda(data)
+        setMostrarResultados(true)
+        
+        // Si solo hay un resultado, seleccionarlo automáticamente
+        if (data.length === 1) {
+          onClienteSeleccionado(data[0].id)
+          setBusqueda('')
+          setMostrarResultados(false)
+          setResultadosBusqueda([])
+        }
+      } else {
+        alert('No se encontraron clientes con ese criterio de búsqueda')
       }
     } catch (error) {
-      alert('Cliente no encontrado')
+      console.error('Error en búsqueda:', error)
+      alert('Error al buscar cliente. Por favor intenta de nuevo.')
     } finally {
       setBuscando(false)
     }
   }
 
+  const seleccionarCliente = (cliente: Cliente) => {
+    onClienteSeleccionado(cliente.id)
+    setBusqueda('')
+    setMostrarResultados(false)
+    setResultadosBusqueda([])
+  }
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      buscarPorDocumento()
+      buscarCliente()
+    }
+    if (e.key === 'Escape') {
+      setMostrarResultados(false)
+      setResultadosBusqueda([])
     }
   }
 
@@ -57,23 +98,37 @@ export default function BusquedaCliente({
       <div className="flex flex-col lg:flex-row gap-3 lg:gap-4">
         
         {/* Grupo de búsqueda - Se mantiene junto */}
-        <div className="flex flex-col sm:flex-row gap-3 flex-1">
+        <div className="flex flex-col sm:flex-row gap-3 flex-1 relative">
           {/* Input de búsqueda */}
-          <input
-            type="text"
-            placeholder="Buscar por documento/ID"
-            value={busquedaDocumento}
-            onChange={(e) => setBusquedaDocumento(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="border p-2 rounded flex-1 w-full text-sm sm:text-base"
-            disabled={buscando}
-          />
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              placeholder="Buscar por nombre, apellido, documento o ID..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="border p-2 rounded w-full text-sm sm:text-base pr-8"
+              disabled={buscando}
+            />
+            {busqueda && !buscando && (
+              <button
+                onClick={() => {
+                  setBusqueda('')
+                  setMostrarResultados(false)
+                  setResultadosBusqueda([])
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           
           {/* Botón de búsqueda */}
           <button
-            onClick={buscarPorDocumento}
-            disabled={buscando}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 w-full sm:w-auto text-sm sm:text-base font-medium transition-colors"
+            onClick={buscarCliente}
+            disabled={buscando || !busqueda.trim()}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto text-sm sm:text-base font-medium transition-colors"
           >
             {buscando ? (
               <span className="flex items-center justify-center gap-2">
@@ -90,6 +145,40 @@ export default function BusquedaCliente({
               </span>
             )}
           </button>
+
+          {/* Resultados de búsqueda */}
+          {mostrarResultados && resultadosBusqueda.length > 1 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white border rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+              <div className="p-2">
+                <div className="flex items-center justify-between mb-2 px-2">
+                  <p className="text-sm font-medium text-gray-700">
+                    {resultadosBusqueda.length} resultados encontrados
+                  </p>
+                  <button
+                    onClick={() => setMostrarResultados(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {resultadosBusqueda.map((cliente) => (
+                  <button
+                    key={cliente.id}
+                    onClick={() => seleccionarCliente(cliente)}
+                    className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded transition-colors"
+                  >
+                    <div className="font-medium text-gray-900">
+                      {cliente.nombre} {cliente.apellido}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Doc: {cliente.documento}
+                      {cliente.telefono && ` • Tel: ${cliente.telefono}`}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Separador visual en móvil */}
@@ -117,10 +206,14 @@ export default function BusquedaCliente({
         </select>
       </div>
       
-      {/* Texto de ayuda en móvil */}
-      <p className="text-xs text-gray-500 mt-3 sm:hidden">
-        💡 Puedes buscar por documento o seleccionar de la lista
-      </p>
+      {/* Texto de ayuda */}
+      <div className="mt-3 flex items-start gap-2 text-xs text-gray-500">
+        <span>💡</span>
+        <div>
+          <p className="font-medium">Búsqueda inteligente:</p>
+          <p>Busca por nombre, apellido, documento o ID. Si hay múltiples resultados, podrás elegir.</p>
+        </div>
+      </div>
     </div>
   )
 }

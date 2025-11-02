@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Cliente, Transaccion, Pago } from '@/app/lib/types/cobranzas'
 import TablaPagos from './TablaPagos'
 import ResumenPagos from './ResumenPagos'
+import ExportadorPDFCliente from './Exportadorpdfcliente'
 
 interface HistorialTransaccionesProps {
   cliente: Cliente
@@ -81,6 +82,13 @@ export default function HistorialTransacciones({
       <h2 className="text-lg sm:text-xl font-semibold text-center sm:text-left">
         Historial de Compras y Préstamos
       </h2>
+      
+      {/* Exportador PDF */}
+      <ExportadorPDFCliente 
+        cliente={cliente}
+        transacciones={transacciones}
+        pagos={pagos}
+      />
       
       {transacciones.map((transaccion) => (
         <div

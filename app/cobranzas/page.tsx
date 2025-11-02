@@ -95,126 +95,128 @@ export default function CobranzasPage() {
   }
 
   // Función cargarNotificaciones corregida para CobranzasPage
-// Usa la misma lógica que PanelNotificaciones para calcular montos
-
-const cargarNotificaciones = async () => {
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-  const fechaLimite = new Date()
-  fechaLimite.setDate(hoy.getDate() + 15)
-  
-  try {
-    const { data } = await supabase
-      .from('pagos')
-      .select(`
-        *,
-        transaccion:transacciones(
-          id,
-          cliente_id,
-          numero_factura,
-          monto_total,
-          monto_cuota,
-          numero_cuotas,
-          tipo_transaccion,
-          cliente:clientes(id, nombre, apellido, telefono, email),
-          producto:productos(nombre)
-        )
-      `)
-      .in('estado', ['pendiente', 'parcial'])
-      .lte('fecha_vencimiento', fechaLimite.toISOString().split('T')[0])
-      .order('fecha_vencimiento')
+  // Usa la misma lógica que PanelNotificaciones para calcular montos
+  const cargarNotificaciones = async () => {
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+    const fechaLimite = new Date()
+    fechaLimite.setDate(hoy.getDate() + 15)
     
-    if (data) {
-      // Calcular saldo total por cliente
-      const saldosPorCliente = new Map<string, number>()
+    try {
+      const { data } = await supabase
+        .from('pagos')
+        .select(`
+          *,
+          transaccion:transacciones(
+            id,
+            cliente_id,
+            numero_factura,
+            monto_total,
+            monto_cuota,
+            numero_cuotas,
+            tipo_transaccion,
+            fecha_inicio,
+            cliente:clientes(id, nombre, apellido, telefono, email),
+            producto:productos(nombre)
+          )
+        `)
+        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+        .lte('fecha_vencimiento', fechaLimite.toISOString().split('T')[0])
+        .order('fecha_vencimiento')
       
-      data.forEach(pago => {
-        const clienteId = pago.transaccion?.cliente?.id
-        if (clienteId) {
-          // Obtener monto de cuota usando la misma lógica que PanelNotificaciones
+      if (data) {
+        // Calcular saldo total POR TRANSACCIÓN (no por cliente)
+        const saldosPorTransaccion = new Map<string, number>()
+        
+        data.forEach(pago => {
+          const transaccionId = pago.transaccion?.id
+          if (transaccionId) {
+            const montoCuota = obtenerMontoCuota(pago)
+            const montoPagado = pago.monto_pagado || 0
+            const montoRestante = montoCuota - montoPagado
+            
+            const saldoActual = saldosPorTransaccion.get(transaccionId) || 0
+            saldosPorTransaccion.set(transaccionId, saldoActual + montoRestante)
+          }
+        })
+        
+        const notificacionesMapeadas: NotificacionVencimiento[] = data.map(pago => {
+          const [y, m, d] = pago.fecha_vencimiento.split('-').map(Number)
+          const fechaVenc = new Date(y, m - 1, d)
+          fechaVenc.setHours(0, 0, 0, 0)
+          const diff = Math.floor((fechaVenc.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+          
+          let tipo: 'vencido' | 'por_vencer' | 'hoy'
+          if (diff < 0) tipo = 'vencido'
+          else if (diff === 0) tipo = 'hoy'
+          else tipo = 'por_vencer'
+          
+          const clienteId = pago.transaccion?.cliente?.id || ''
+          const transaccionId = pago.transaccion?.id || ''
+          
+          // Obtener monto de cuota
           const montoCuota = obtenerMontoCuota(pago)
           const montoPagado = pago.monto_pagado || 0
           const montoRestante = montoCuota - montoPagado
           
-          const saldoActual = saldosPorCliente.get(clienteId) || 0
-          saldosPorCliente.set(clienteId, saldoActual + montoRestante)
-        }
-      })
-      
-      const notificacionesMapeadas: NotificacionVencimiento[] = data.map(pago => {
-        const [y, m, d] = pago.fecha_vencimiento.split('-').map(Number)
-        const fechaVenc = new Date(y, m - 1, d)
-        fechaVenc.setHours(0, 0, 0, 0)
-        const diff = Math.floor((fechaVenc.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+          return {
+            id: pago.id,
+            cliente_id: clienteId,
+            cliente_nombre: pago.transaccion?.cliente?.nombre || 'Desconocido',
+            cliente_apellido: pago.transaccion?.cliente?.apellido || '',
+            cliente_telefono: pago.transaccion?.cliente?.telefono,
+            cliente_email: pago.transaccion?.cliente?.email,
+            
+            // Campos de monto usando la misma lógica que PanelNotificaciones
+            monto: montoRestante, // Lo que falta pagar (restante)
+            monto_cuota: montoCuota, // Monto original de la cuota
+            monto_cuota_total: montoCuota, // Monto total de la cuota
+            monto_pagado: montoPagado, // Lo que ya se pagó
+            monto_restante: montoRestante, // Lo que falta
+            
+            fecha_vencimiento: pago.fecha_vencimiento,
+            dias_vencimiento: diff,
+            tipo,
+            numero_cuota: pago.numero_cuota || 0,
+            producto_nombre: obtenerNombreTransaccion(pago.transaccion),
+            transaccion_id: transaccionId,
+            saldo_total_cliente: saldosPorTransaccion.get(transaccionId) || 0,
+            tipo_transaccion: pago.transaccion?.tipo_transaccion || 'venta',
+            numero_factura: pago.transaccion?.numero_factura,
+            fecha_inicio: pago.transaccion?.fecha_inicio || '',
+            
+            // Incluir transacción completa
+            transaccion: pago.transaccion
+          }
+        })
         
-        let tipo: 'vencido' | 'por_vencer' | 'hoy'
-        if (diff < 0) tipo = 'vencido'
-        else if (diff === 0) tipo = 'hoy'
-        else tipo = 'por_vencer'
-        
-        const clienteId = pago.transaccion?.cliente?.id || ''
-        
-        // Obtener monto de cuota
-        const montoCuota = obtenerMontoCuota(pago)
-        const montoPagado = pago.monto_pagado || 0
-        const montoRestante = montoCuota - montoPagado
-        
-        return {
-          id: pago.id,
-          cliente_id: clienteId,
-          cliente_nombre: pago.transaccion?.cliente?.nombre || 'Desconocido',
-          cliente_apellido: pago.transaccion?.cliente?.apellido || '',
-          cliente_telefono: pago.transaccion?.cliente?.telefono,
-          cliente_email: pago.transaccion?.cliente?.email,
-          
-          // Campos de monto usando la misma lógica que PanelNotificaciones
-          monto: montoRestante, // Lo que falta pagar (restante)
-          monto_cuota: montoCuota, // Monto original de la cuota
-          monto_cuota_total: montoCuota, // Monto total de la cuota
-          monto_pagado: montoPagado, // Lo que ya se pagó
-          monto_restante: montoRestante, // Lo que falta
-          
-          fecha_vencimiento: pago.fecha_vencimiento,
-          dias_vencimiento: diff,
-          tipo,
-          numero_cuota: pago.numero_cuota || 0,
-          producto_nombre: obtenerNombreTransaccion(pago.transaccion),
-          transaccion_id: pago.transaccion?.id || '',
-          saldo_total_cliente: saldosPorCliente.get(clienteId) || 0,
-          tipo_transaccion: pago.transaccion?.tipo_transaccion || 'venta',
-          numero_factura: pago.transaccion?.numero_factura,
-          
-          // Incluir transacción completa
-          transaccion: pago.transaccion
-        }
-      })
-      
-      setNotificaciones(notificacionesMapeadas)
+        console.log(`Notificaciones cargadas del padre: ${notificacionesMapeadas.length}`)
+        setNotificaciones(notificacionesMapeadas)
+      }
+    } catch (error) {
+      console.error('Error cargando notificaciones:', error)
     }
-  } catch (error) {
-    console.error('Error cargando notificaciones:', error)
   }
-}
 
-// Función auxiliar para obtener el monto de cuota correcto
-// (misma lógica que usa PanelNotificaciones)
-const obtenerMontoCuota = (pago: any) => {
-  // Si el pago tiene monto_cuota directo, usarlo
-  if (pago.monto_cuota && pago.monto_cuota > 0) {
-    return pago.monto_cuota
+  // Función auxiliar para obtener el monto de cuota correcto
+  // (misma lógica que usa PanelNotificaciones)
+  const obtenerMontoCuota = (pago: any) => {
+    // Si el pago tiene monto_cuota directo, usarlo
+    if (pago.monto_cuota && pago.monto_cuota > 0) {
+      return pago.monto_cuota
+    }
+    
+    // Si no, obtenerlo de la transacción
+    return pago.transaccion?.monto_cuota || 0
   }
-  
-  // Si no, obtenerlo de la transacción
-  return pago.transaccion?.monto_cuota || 0
-}
 
-// Función auxiliar para obtener el nombre del producto o tipo de transacción
-const obtenerNombreTransaccion = (transaccion: any) => {
-  if (transaccion?.producto?.nombre) {
-    return transaccion.producto.nombre
+  // Función auxiliar para obtener el nombre del producto o tipo de transacción
+  const obtenerNombreTransaccion = (transaccion: any) => {
+    if (transaccion?.producto?.nombre) {
+      return transaccion.producto.nombre
+    }
+    return transaccion?.tipo_transaccion === 'prestamo' ? 'Préstamo de Dinero' : 'Venta'
   }
-  return transaccion?.tipo_transaccion === 'prestamo' ? 'Préstamo de Dinero' : 'Venta'
-}
 
   const cargarEstadisticas = async () => {
     const hoy = new Date()
@@ -240,10 +242,17 @@ const obtenerNombreTransaccion = (transaccion: any) => {
   const clienteActual = clientes.find(c => c.id === clienteSeleccionado)
   const notificacionesUrgentes = notificaciones.filter(n => n.tipo === 'vencido' || n.tipo === 'hoy')
 
+  // Función para ver la cuenta de un cliente desde las notificaciones
+  const verCuentaCliente = (clienteId: string) => {
+    setClienteSeleccionado(clienteId)
+    setVistaActiva('clientes')
+    setMostrarNuevaVenta(false)
+  }
+
   const renderVistaActiva = () => {
     switch (vistaActiva) {
       case 'dashboard':
-        return <Dashboard estadisticas={estadisticas} notificaciones={notificaciones} onVerNotificaciones={() => setVistaActiva('notificaciones')} onRegistrarPago={() => setVistaActiva('pagos')} onNuevaVenta={() => { setVistaActiva('clientes'); setMostrarNuevaVenta(true) }} />
+        return <Dashboard estadisticas={estadisticas} onVerNotificaciones={() => setVistaActiva('notificaciones')} onRegistrarPago={() => setVistaActiva('pagos')} onNuevaVenta={() => { setVistaActiva('clientes'); setMostrarNuevaVenta(true) }} />
       case 'clientes':
         return (
           <div className="space-y-6">
@@ -262,7 +271,7 @@ const obtenerNombreTransaccion = (transaccion: any) => {
         )
       case 'pagos': return <GestorPagos clientes={clientes} onPagoRegistrado={() => cargarHistorial(clienteSeleccionado)} />
       case 'recibos': return <GeneradorRecibos clientes={clientes} transacciones={transacciones} pagos={pagos} />
-      case 'notificaciones': return <PanelNotificaciones notificaciones={notificaciones} onActualizar={cargarNotificaciones} />
+      case 'notificaciones': return <PanelNotificaciones notificaciones={notificaciones} onActualizar={cargarNotificaciones} onVerCuentaCliente={verCuentaCliente} />
       default: return null
     }
   }

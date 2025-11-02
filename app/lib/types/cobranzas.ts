@@ -239,7 +239,7 @@ export interface EstadisticasDashboard {
   promedioTicket: number
 }
 
-// En tu archivo app/lib/types/cobranzas.ts
+// ✅ ACTUALIZADO: NotificacionVencimiento con fecha_inicio
 export interface NotificacionVencimiento {
   id: string
   cliente_id: string
@@ -261,6 +261,8 @@ export interface NotificacionVencimiento {
   saldo_total_cliente: number
   tipo_transaccion: string
   numero_factura?: string
+  fecha_inicio: string  // ✅ NUEVO CAMPO AGREGADO
+  transaccion?: Transaccion  // ✅ NUEVO CAMPO AGREGADO
 }
 
 // Interfaces para formularios
@@ -346,7 +348,6 @@ export enum EstadoTransaccion {
   CANCELADO = 'cancelado',
   SUSPENDIDO = 'suspendido'
 }
-
 
 export enum MetodoPago {
   EFECTIVO = 'efectivo',
