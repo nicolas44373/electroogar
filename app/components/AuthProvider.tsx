@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (user: string, pass: string): boolean => {
     setError('')
-    if (user === 'electro' && pass === '132465') {
+    if (user === 'electro' && pass === '270306') {
       setIsAuthenticated(true)
       sessionStorage.setItem('isAuthenticated', 'true')
       return true
