@@ -903,11 +903,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t">
-                    <div className="text-sm text-gray-600">
-                      <strong>Mensaje sugerido:</strong> "Hola {notif.cliente_nombre}, te recordamos que tienes una cuota de {formatearMoneda(notif.monto)} del producto {notif.producto_nombre} que {notif.tipo === 'vencido' ? 'venció' : 'vence'} el {formatearFecha(notif.fecha_vencimiento)}. El saldo pendiente de esta deuda es de {formatearMoneda(notif.saldo_total_cliente)}. Por favor, acercate a realizar el pago."
-                    </div>
-                  </div>
+                  
                 </div>
               )}
             </div>
