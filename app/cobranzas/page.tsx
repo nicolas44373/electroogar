@@ -94,8 +94,33 @@ export default function CobranzasPage() {
     }
   }
 
-  // Función cargarNotificaciones corregida para CobranzasPage
-  // Usa la misma lógica que PanelNotificaciones para calcular montos
+  // Función auxiliar para obtener el monto de cuota correcto
+  const obtenerMontoCuota = (pago: any) => {
+    let montoBase = 0
+    
+    // Primero intentar obtener el monto_cuota del pago
+    if (pago.monto_cuota && pago.monto_cuota > 0) {
+      montoBase = pago.monto_cuota
+    } else {
+      // Si no, obtenerlo de la transacción
+      montoBase = pago.transaccion?.monto_cuota || 0
+    }
+    
+    // Sumar intereses de mora si existen
+    const interesesMora = pago.intereses_mora || 0
+    
+    return montoBase + interesesMora
+  }
+
+  // Función auxiliar para obtener el nombre del producto o tipo de transacción
+  const obtenerNombreTransaccion = (transaccion: any) => {
+    if (transaccion?.producto?.nombre) {
+      return transaccion.producto.nombre
+    }
+    return transaccion?.tipo_transaccion === 'prestamo' ? 'Préstamo de Dinero' : 'Venta'
+  }
+
+  // Función cargarNotificaciones CORREGIDA - calcula correctamente el saldo total
   const cargarNotificaciones = async () => {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
@@ -103,7 +128,8 @@ export default function CobranzasPage() {
     fechaLimite.setDate(hoy.getDate() + 15)
     
     try {
-      const { data } = await supabase
+      // Primero, cargar notificaciones dentro del rango de 15 días
+      const { data: notificacionesRango } = await supabase
         .from('pagos')
         .select(`
           *,
@@ -124,98 +150,139 @@ export default function CobranzasPage() {
         .lte('fecha_vencimiento', fechaLimite.toISOString().split('T')[0])
         .order('fecha_vencimiento')
       
-      if (data) {
-        // Calcular saldo total POR TRANSACCIÓN (no por cliente)
-        const saldosPorTransaccion = new Map<string, number>()
+      if (!notificacionesRango) return
+
+      // Obtener IDs únicos de transacciones
+      const transaccionIds = [...new Set(notificacionesRango
+        .map(p => p.transaccion?.id)
+        .filter(Boolean))]
+
+      // CAMBIO IMPORTANTE: Cargar TODOS los pagos de esas transacciones para calcular el saldo correcto
+      const { data: todosPagosCompletos } = await supabase
+        .from('pagos')
+        .select('*')
+        .in('transaccion_id', transaccionIds)
+      // NO filtrar por estado ni fecha aquí - necesitamos TODOS los pagos
+
+      // Calcular saldo total REAL por transacción
+      const saldosPorTransaccion = new Map<string, number>()
+      
+      if (todosPagosCompletos) {
+        // Agrupar pagos por transacción con tipo explícito
+        interface PagosAgrupados {
+          [key: string]: any[]
+        }
         
-        data.forEach(pago => {
-          const transaccionId = pago.transaccion?.id
-          if (transaccionId) {
-            const montoCuota = obtenerMontoCuota(pago)
-            const montoPagado = pago.monto_pagado || 0
-            const montoRestante = montoCuota - montoPagado
-            
-            const saldoActual = saldosPorTransaccion.get(transaccionId) || 0
-            saldosPorTransaccion.set(transaccionId, saldoActual + montoRestante)
-          }
+        const pagosAgrupados = todosPagosCompletos.reduce<PagosAgrupados>((acc, pago) => {
+          const tid = pago.transaccion_id
+          if (!acc[tid]) acc[tid] = []
+          acc[tid].push(pago)
+          return acc
+        }, {})
+
+        // Calcular el saldo real de cada transacción
+        Object.entries(pagosAgrupados).forEach(([transaccionId, pagos]: [string, any[]]) => {
+          let saldoTotalTransaccion = 0
+          
+          // Sumar TODAS las cuotas que no estén completamente pagadas
+          pagos.forEach((pago: any) => {
+            // Si el pago no está completamente pagado
+            if (pago.estado !== 'pagado') {
+              const montoCuota = pago.monto_cuota || 0
+              const intereses = pago.intereses_mora || 0
+              const totalCuota = montoCuota + intereses
+              const pagado = pago.monto_pagado || 0
+              const restante = totalCuota - pagado
+              
+              saldoTotalTransaccion += restante
+            }
+          })
+          
+          saldosPorTransaccion.set(transaccionId, saldoTotalTransaccion)
+          
+          // Debug para verificar el cálculo
+          console.log(`Transacción ${transaccionId}: ${pagos.length} pagos totales, saldo pendiente: $${saldoTotalTransaccion}`)
         })
-        
-        const notificacionesMapeadas: NotificacionVencimiento[] = data.map(pago => {
-          const [y, m, d] = pago.fecha_vencimiento.split('-').map(Number)
-          const fechaVenc = new Date(y, m - 1, d)
-          fechaVenc.setHours(0, 0, 0, 0)
-          const diff = Math.floor((fechaVenc.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
-          
-          let tipo: 'vencido' | 'por_vencer' | 'hoy'
-          if (diff < 0) tipo = 'vencido'
-          else if (diff === 0) tipo = 'hoy'
-          else tipo = 'por_vencer'
-          
-          const clienteId = pago.transaccion?.cliente?.id || ''
-          const transaccionId = pago.transaccion?.id || ''
-          
-          // Obtener monto de cuota
-          const montoCuota = obtenerMontoCuota(pago)
-          const montoPagado = pago.monto_pagado || 0
-          const montoRestante = montoCuota - montoPagado
-          
-          return {
-            id: pago.id,
-            cliente_id: clienteId,
-            cliente_nombre: pago.transaccion?.cliente?.nombre || 'Desconocido',
-            cliente_apellido: pago.transaccion?.cliente?.apellido || '',
-            cliente_telefono: pago.transaccion?.cliente?.telefono,
-            cliente_email: pago.transaccion?.cliente?.email,
-            
-            // Campos de monto usando la misma lógica que PanelNotificaciones
-            monto: montoRestante, // Lo que falta pagar (restante)
-            monto_cuota: montoCuota, // Monto original de la cuota
-            monto_cuota_total: montoCuota, // Monto total de la cuota
-            monto_pagado: montoPagado, // Lo que ya se pagó
-            monto_restante: montoRestante, // Lo que falta
-            
-            fecha_vencimiento: pago.fecha_vencimiento,
-            dias_vencimiento: diff,
-            tipo,
-            numero_cuota: pago.numero_cuota || 0,
-            producto_nombre: obtenerNombreTransaccion(pago.transaccion),
-            transaccion_id: transaccionId,
-            saldo_total_cliente: saldosPorTransaccion.get(transaccionId) || 0,
-            tipo_transaccion: pago.transaccion?.tipo_transaccion || 'venta',
-            numero_factura: pago.transaccion?.numero_factura,
-            fecha_inicio: pago.transaccion?.fecha_inicio || '',
-            
-            // Incluir transacción completa
-            transaccion: pago.transaccion
-          }
-        })
-        
-        console.log(`Notificaciones cargadas del padre: ${notificacionesMapeadas.length}`)
-        setNotificaciones(notificacionesMapeadas)
       }
+      
+      // Mapear las notificaciones con el saldo correcto
+      const notificacionesMapeadas: NotificacionVencimiento[] = notificacionesRango.map(pago => {
+        const [y, m, d] = pago.fecha_vencimiento.split('-').map(Number)
+        const fechaVenc = new Date(y, m - 1, d)
+        fechaVenc.setHours(0, 0, 0, 0)
+        const diff = Math.floor((fechaVenc.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+        
+        let tipo: 'vencido' | 'por_vencer' | 'hoy'
+        if (diff < 0) tipo = 'vencido'
+        else if (diff === 0) tipo = 'hoy'
+        else tipo = 'por_vencer'
+        
+        const clienteId = pago.transaccion?.cliente?.id || ''
+        const transaccionId = pago.transaccion?.id || ''
+        
+        // Obtener monto de cuota
+        const montoCuota = obtenerMontoCuota(pago)
+        const montoPagado = pago.monto_pagado || 0
+        const montoRestante = montoCuota - montoPagado
+        
+        // Obtener el saldo total calculado o usar el monto_total como fallback
+        let saldoTotal = saldosPorTransaccion.get(transaccionId) || 0
+        
+        // Si el saldo calculado es 0 pero hay monto_total en la transacción, usar ese valor
+        if (saldoTotal === 0 && pago.transaccion?.monto_total) {
+          // Esto puede ocurrir si todos los pagos están pendientes pero no se calculó correctamente
+          const montoTotal = pago.transaccion.monto_total
+          const numeroCuotas = pago.transaccion.numero_cuotas || 1
+          const montoCuotaBase = pago.transaccion.monto_cuota || (montoTotal / numeroCuotas)
+          
+          // Si todas las cuotas están pendientes, el saldo debería ser el monto total
+          saldoTotal = montoTotal
+        }
+        
+        return {
+          id: pago.id,
+          cliente_id: clienteId,
+          cliente_nombre: pago.transaccion?.cliente?.nombre || 'Desconocido',
+          cliente_apellido: pago.transaccion?.cliente?.apellido || '',
+          cliente_telefono: pago.transaccion?.cliente?.telefono,
+          cliente_email: pago.transaccion?.cliente?.email,
+          
+          // Campos de monto
+          monto: montoRestante, // Lo que falta pagar de ESTA cuota
+          monto_cuota: montoCuota,
+          monto_cuota_total: montoCuota,
+          monto_pagado: montoPagado,
+          monto_restante: montoRestante,
+          
+          fecha_vencimiento: pago.fecha_vencimiento,
+          dias_vencimiento: diff,
+          tipo,
+          numero_cuota: pago.numero_cuota || 0,
+          producto_nombre: obtenerNombreTransaccion(pago.transaccion),
+          transaccion_id: transaccionId,
+          
+          // SALDO TOTAL DE LA DEUDA
+          saldo_total_cliente: saldoTotal,
+          
+          tipo_transaccion: pago.transaccion?.tipo_transaccion || 'venta',
+          numero_factura: pago.transaccion?.numero_factura,
+          fecha_inicio: pago.transaccion?.fecha_inicio || '',
+          
+          // Campos de reprogramación
+          fecha_reprogramacion: pago.fecha_reprogramacion || undefined,
+          intereses_mora: pago.intereses_mora || undefined,
+          motivo_reprogramacion: pago.motivo_reprogramacion || undefined,
+          
+          // Incluir transacción completa
+          transaccion: pago.transaccion
+        }
+      })
+      
+      console.log(`Notificaciones cargadas del padre: ${notificacionesMapeadas.length}`)
+      setNotificaciones(notificacionesMapeadas)
     } catch (error) {
       console.error('Error cargando notificaciones:', error)
     }
-  }
-
-  // Función auxiliar para obtener el monto de cuota correcto
-  // (misma lógica que usa PanelNotificaciones)
-  const obtenerMontoCuota = (pago: any) => {
-    // Si el pago tiene monto_cuota directo, usarlo
-    if (pago.monto_cuota && pago.monto_cuota > 0) {
-      return pago.monto_cuota
-    }
-    
-    // Si no, obtenerlo de la transacción
-    return pago.transaccion?.monto_cuota || 0
-  }
-
-  // Función auxiliar para obtener el nombre del producto o tipo de transacción
-  const obtenerNombreTransaccion = (transaccion: any) => {
-    if (transaccion?.producto?.nombre) {
-      return transaccion.producto.nombre
-    }
-    return transaccion?.tipo_transaccion === 'prestamo' ? 'Préstamo de Dinero' : 'Venta'
   }
 
   const cargarEstadisticas = async () => {
@@ -226,13 +293,22 @@ export default function CobranzasPage() {
       const { data: ventasMes } = await supabase.from('transacciones').select('monto_total').gte('created_at', inicioMes.toISOString())
       const { data: cobrosMes } = await supabase.from('pagos').select('monto_pagado').eq('estado', 'pagado').gte('fecha_pago', inicioMes.toISOString().split('T')[0])
       const { count: clientesVencidos } = await supabase.from('pagos').select('transaccion_id', { count: 'exact', head: true }).eq('estado', 'pendiente').lt('fecha_vencimiento', hoy.toISOString().split('T')[0])
-      const { data: montosPendientes } = await supabase.from('pagos').select('monto_cuota').in('estado', ['pendiente', 'parcial'])
+      const { data: montosPendientes } = await supabase.from('pagos').select('monto_cuota, monto_pagado, intereses_mora').in('estado', ['pendiente', 'parcial', 'reprogramado'])
+      
+      // Calcular el monto total pendiente correctamente
+      const montoTotalPendiente = montosPendientes?.reduce((sum, pago) => {
+        const montoCuotaTotal = (pago.monto_cuota || 0) + (pago.intereses_mora || 0)
+        const montoPagado = pago.monto_pagado || 0
+        const montoRestante = montoCuotaTotal - montoPagado
+        return sum + montoRestante
+      }, 0) || 0
+      
       setEstadisticas({
         totalClientes: totalClientes || 0,
         ventasDelMes: ventasMes?.reduce((s, v) => s + v.monto_total, 0) || 0,
         cobrosDelMes: cobrosMes?.reduce((s, v) => s + v.monto_pagado, 0) || 0,
         clientesVencidos: clientesVencidos || 0,
-        montoTotalPendiente: montosPendientes?.reduce((s, p) => s + p.monto_cuota, 0) || 0
+        montoTotalPendiente
       })
     } catch (err) {
       console.error('Error cargando estadísticas:', err)

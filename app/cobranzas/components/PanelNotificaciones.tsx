@@ -21,6 +21,9 @@ interface NotificacionVencimiento {
   saldo_total_cliente: number
   tipo_transaccion: string
   fecha_inicio: string
+  fecha_reprogramacion?: string
+  intereses_mora?: number
+  motivo_reprogramacion?: string
 }
 
 interface PanelNotificacionesProps {
@@ -88,10 +91,20 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
 
   // Función para obtener el monto de cuota correcto
   const obtenerMontoCuota = (pago: any) => {
+    let montoBase = 0
+    
+    // Primero intentar obtener el monto_cuota del pago
     if (pago.monto_cuota && pago.monto_cuota > 0) {
-      return pago.monto_cuota
+      montoBase = pago.monto_cuota
+    } else {
+      // Si no, obtenerlo de la transacción
+      montoBase = pago.transaccion?.monto_cuota || 0
     }
-    return pago.transaccion?.monto_cuota || 0
+    
+    // Sumar intereses de mora si existen
+    const interesesMora = pago.intereses_mora || 0
+    
+    return montoBase + interesesMora
   }
 
   // Función para obtener el nombre del producto o tipo de transacción
@@ -172,98 +185,104 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
   }
 
   const cargarNotificacionesDetalladas = async () => {
-    setLoading(true)
-    try {
-      // Cargar todos los pagos pendientes sin límite de fecha
-      const { data, error } = await supabase
-        .from('pagos')
-        .select(`
-          *,
-          transaccion:transacciones(
-            id,
-            cliente_id,
-            monto_total,
-            monto_cuota,
-            numero_factura,
-            tipo_transaccion,
-            fecha_inicio,
-            cliente:clientes(id, nombre, apellido, email, telefono),
-            producto:productos(nombre)
-          )
-        `)
-        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
-        .order('fecha_vencimiento')
+  setLoading(true)
+  try {
+    // Cargar todos los pagos pendientes sin límite de fecha
+    const { data, error } = await supabase
+      .from('pagos')
+      .select(`
+        *,
+        transaccion:transacciones(
+          id,
+          cliente_id,
+          monto_total,
+          monto_cuota,
+          numero_factura,
+          tipo_transaccion,
+          fecha_inicio,
+          cliente:clientes(id, nombre, apellido, email, telefono),
+          producto:productos(nombre)
+        )
+      `)
+      .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+      .order('fecha_vencimiento')
 
-      if (error) {
-        console.error('Error en la consulta:', error)
+    if (error) {
+      console.error('Error en la consulta:', error)
+      return
+    }
+
+    if (!data || data.length === 0) {
+      console.log('No se encontraron pagos pendientes')
+      setNotificacionesDetalladas([])
+      return
+    }
+
+    // Calcular saldo total POR TRANSACCIÓN (TODAS las cuotas pendientes)
+    const saldosPorTransaccion = new Map<string, number>()
+    
+    data.forEach(pago => {
+      if (!pago.transaccion) {
+        console.warn('Pago sin transacción:', pago.id)
         return
       }
-
-      if (!data || data.length === 0) {
-        console.log('No se encontraron pagos pendientes')
-        setNotificacionesDetalladas([])
-        return
-      }
-
-      // Calcular saldo total POR TRANSACCIÓN (no por cliente)
-      const saldosPorTransaccion = new Map<string, number>()
       
-      data.forEach(pago => {
-        if (!pago.transaccion) {
-          console.warn('Pago sin transacción:', pago.id)
-          return
-        }
+      const transaccionId = pago.transaccion.id
+      const montoCuota = obtenerMontoCuota(pago)
+      const montoRestante = montoCuota - (pago.monto_pagado || 0)
+      const saldoActual = saldosPorTransaccion.get(transaccionId) || 0
+      saldosPorTransaccion.set(transaccionId, saldoActual + montoRestante)
+    })
+
+    const notificacionesMapeadas: NotificacionVencimiento[] = data
+      .filter(pago => pago.transaccion && pago.transaccion.cliente)
+      .map(pago => {
+        const diferenciaDias = calcularDiasVencimiento(pago.fecha_vencimiento)
         
-        const transaccionId = pago.transaccion.id
+        let tipo: 'vencido' | 'por_vencer' | 'hoy'
+        if (diferenciaDias < 0) tipo = 'vencido'
+        else if (diferenciaDias === 0) tipo = 'hoy'
+        else tipo = 'por_vencer'
+
         const montoCuota = obtenerMontoCuota(pago)
         const montoRestante = montoCuota - (pago.monto_pagado || 0)
-        const saldoActual = saldosPorTransaccion.get(transaccionId) || 0
-        saldosPorTransaccion.set(transaccionId, saldoActual + montoRestante)
+
+        return {
+          id: pago.id,
+          cliente_id: pago.transaccion.cliente_id,
+          cliente_nombre: pago.transaccion.cliente.nombre,
+          cliente_apellido: pago.transaccion.cliente.apellido || '',
+          cliente_telefono: pago.transaccion.cliente.telefono || '',
+          cliente_email: pago.transaccion.cliente.email || '',
+          monto: montoRestante,
+          monto_cuota_total: montoCuota,
+          monto_pagado: pago.monto_pagado || 0,
+          fecha_vencimiento: pago.fecha_vencimiento,
+          dias_vencimiento: diferenciaDias,
+          tipo,
+          numero_cuota: pago.numero_cuota,
+          producto_nombre: obtenerNombreTransaccion(pago.transaccion),
+          transaccion_id: pago.transaccion.id,
+          
+          // SALDO TOTAL DE TODAS LAS CUOTAS PENDIENTES DE ESTA TRANSACCIÓN
+          saldo_total_cliente: saldosPorTransaccion.get(pago.transaccion.id) || 0,
+          
+          tipo_transaccion: pago.transaccion.tipo_transaccion,
+          fecha_inicio: pago.transaccion.fecha_inicio,
+          fecha_reprogramacion: pago.fecha_reprogramacion || undefined,
+          intereses_mora: pago.intereses_mora || undefined,
+          motivo_reprogramacion: pago.motivo_reprogramacion || undefined
+        }
       })
 
-      const notificacionesMapeadas: NotificacionVencimiento[] = data
-        .filter(pago => pago.transaccion && pago.transaccion.cliente) // Filtrar pagos válidos
-        .map(pago => {
-          const diferenciaDias = calcularDiasVencimiento(pago.fecha_vencimiento)
-          
-          let tipo: 'vencido' | 'por_vencer' | 'hoy'
-          if (diferenciaDias < 0) tipo = 'vencido'
-          else if (diferenciaDias === 0) tipo = 'hoy'
-          else tipo = 'por_vencer'
-
-          const montoCuota = obtenerMontoCuota(pago)
-          const montoRestante = montoCuota - (pago.monto_pagado || 0)
-
-          return {
-            id: pago.id,
-            cliente_id: pago.transaccion.cliente_id,
-            cliente_nombre: pago.transaccion.cliente.nombre,
-            cliente_apellido: pago.transaccion.cliente.apellido || '',
-            cliente_telefono: pago.transaccion.cliente.telefono || '',
-            cliente_email: pago.transaccion.cliente.email || '',
-            monto: montoRestante,
-            monto_cuota_total: montoCuota,
-            monto_pagado: pago.monto_pagado || 0,
-            fecha_vencimiento: pago.fecha_vencimiento,
-            dias_vencimiento: diferenciaDias,
-            tipo,
-            numero_cuota: pago.numero_cuota,
-            producto_nombre: obtenerNombreTransaccion(pago.transaccion),
-            transaccion_id: pago.transaccion.id,
-            saldo_total_cliente: saldosPorTransaccion.get(pago.transaccion.id) || 0,
-            tipo_transaccion: pago.transaccion.tipo_transaccion,
-            fecha_inicio: pago.transaccion.fecha_inicio
-          }
-        })
-
-      console.log(`Notificaciones cargadas: ${notificacionesMapeadas.length}`)
-      setNotificacionesDetalladas(notificacionesMapeadas)
-    } catch (error) {
-      console.error('Error cargando notificaciones detalladas:', error)
-    } finally {
-      setLoading(false)
-    }
+    console.log(`Notificaciones cargadas: ${notificacionesMapeadas.length}`)
+    setNotificacionesDetalladas(notificacionesMapeadas)
+  } catch (error) {
+    console.error('Error cargando notificaciones detalladas:', error)
+  } finally {
+    setLoading(false)
   }
+}
 
   const formatearMoneda = (monto: number) => {
     return new Intl.NumberFormat('es-AR', {
@@ -850,6 +869,32 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                       Esta {notif.tipo_transaccion === 'prestamo' ? 'préstamo' : 'venta'} comenzó el {formatearFecha(notif.fecha_inicio)}
                     </p>
                   </div>
+
+                  {/* NUEVA SECCIÓN: Información de Reprogramación */}
+                  {notif.fecha_reprogramacion && (
+                    <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <RefreshCw className="w-4 h-4 text-orange-600" />
+                        <span className="text-sm font-medium text-orange-900">Pago Reprogramado</span>
+                      </div>
+                      <div className="space-y-1 ml-6 text-sm">
+                        <p className="text-gray-700">
+                          <span className="font-medium">Fecha de reprogramación:</span> {formatearFecha(notif.fecha_reprogramacion)}
+                        </p>
+                        {notif.intereses_mora && notif.intereses_mora > 0 && (
+                          <p className="text-gray-700">
+                            <span className="font-medium">Intereses por mora:</span> {formatearMoneda(notif.intereses_mora)}
+                          </p>
+                        )}
+                        {notif.motivo_reprogramacion && (
+                          <div className="mt-2 p-2 bg-white rounded border border-orange-200">
+                            <p className="font-medium text-orange-800 text-xs mb-1">Motivo:</p>
+                            <p className="text-gray-700 text-xs">{notif.motivo_reprogramacion}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {notif.cliente_telefono && (
@@ -902,12 +947,6 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                       </div>
                     </div>
                   </div>
-
-                  {/*<div className="pt-3 border-t">
-                    <div className="text-sm text-gray-600">
-                      <strong>Mensaje sugerido:</strong> "Hola {notif.cliente_nombre}, te recordamos que tienes una cuota de {formatearMoneda(notif.monto)} del producto {notif.producto_nombre} que {notif.tipo === 'vencido' ? 'venció' : 'vence'} el {formatearFecha(notif.fecha_vencimiento)}. El saldo pendiente de esta deuda es de {formatearMoneda(notif.saldo_total_cliente)}. Por favor, acercate a realizar el pago."
-                    </div>
-                  </div>*/}
                 </div>
               )}
             </div>

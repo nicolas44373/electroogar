@@ -72,57 +72,60 @@ export default function CuentaCorriente({
   }
 
   const generarMovimientos = () => {
-    const movimientosTemp: MovimientoCuentaCorriente[] = []
+  const movimientosTemp: MovimientoCuentaCorriente[] = []
 
-    transacciones.forEach((transaccion) => {
-      movimientosTemp.push({
-  id: `venta-${transaccion.id}`,
-  transaccionId: transaccion.id,
-  fecha: transaccion.created_at,
-  tipo: 'venta',
-  descripcion: transaccion.tipo_transaccion === 'prestamo' 
-    ? 'Préstamo de Dinero'
-    : `Venta - ${transaccion.producto?.nombre || 'Producto'}`,
-  debe: transaccion.monto_total || 0,
-  haber: 0,
-  saldo: 0,
-  referencia: `Fact. ${transaccion.numero_factura || transaccion.id.slice(0, 8)}`,
-  estado: transaccion.estado,
-})
+  transacciones.forEach((transaccion) => {
+    // Agregar la venta/transacción
+    movimientosTemp.push({
+      id: `venta-${transaccion.id}`,
+      transaccionId: transaccion.id,
+      fecha: transaccion.created_at,
+      tipo: 'venta',
+      descripcion: transaccion.tipo_transaccion === 'prestamo' 
+        ? 'Préstamo de Dinero'
+        : `Venta - ${transaccion.producto?.nombre || 'Producto'}`,
+      debe: transaccion.monto_total || 0,
+      haber: 0,
+      saldo: 0,
+      referencia: `Fact. ${transaccion.numero_factura || transaccion.id.slice(0, 8)}`,
+      estado: transaccion.estado,
+    })
 
-      const pagosTransaccion = pagos[transaccion.id] || []
-      pagosTransaccion
-        .filter((p) => p.estado === 'pagado' && p.fecha_pago)
-        .forEach((pago) => {
-          movimientosTemp.push({
-            id: `pago-${pago.id}`,
-            pagoId: pago.id,
-            transaccionId: transaccion.id,
-            fecha: pago.fecha_pago!,
-            tipo: 'pago',
-            descripcion: transaccion.tipo_transaccion === 'prestamo'
-  ? `Pago cuota ${pago.numero_cuota} - Préstamo de Dinero`
-  : `Pago cuota ${pago.numero_cuota} - ${transaccion.producto?.nombre || 'Producto'}`,
-            debe: 0,
-            haber: pago.monto_pagado || 0,
-            saldo: 0,
-            referencia: `Recibo ${pago.numero_recibo || pago.id.slice(0, 8)}`,
-            estado: pago.estado,
-          })
+    // Agregar los pagos (solo los que están realmente pagados)
+    const pagosTransaccion = pagos[transaccion.id] || []
+    pagosTransaccion
+      .filter((p) => p.estado === 'pagado' && p.fecha_pago)
+      .forEach((pago) => {
+        movimientosTemp.push({
+          id: `pago-${pago.id}`,
+          pagoId: pago.id,
+          transaccionId: transaccion.id,
+          fecha: pago.fecha_pago!,
+          tipo: 'pago',
+          descripcion: transaccion.tipo_transaccion === 'prestamo'
+            ? `Pago cuota ${pago.numero_cuota} - Préstamo de Dinero`
+            : `Pago cuota ${pago.numero_cuota} - ${transaccion.producto?.nombre || 'Producto'}`,
+          debe: 0,
+          haber: pago.monto_pagado || 0,
+          saldo: 0,
+          referencia: `Recibo ${pago.numero_recibo || pago.id.slice(0, 8)}`,
+          estado: pago.estado,
         })
-    })
+      })
+  })
 
-    movimientosTemp.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+  // Ordenar por fecha
+  movimientosTemp.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
 
-    let saldoAcumulado = 0
-    movimientosTemp.forEach((mov) => {
-      saldoAcumulado += (mov.debe || 0) - (mov.haber || 0)
-      mov.saldo = saldoAcumulado
-    })
+  // Calcular saldos acumulados
+  let saldoAcumulado = 0
+  movimientosTemp.forEach((mov) => {
+    saldoAcumulado += (mov.debe || 0) - (mov.haber || 0)
+    mov.saldo = saldoAcumulado
+  })
 
-    setMovimientos(movimientosTemp)
-  }
-
+  setMovimientos(movimientosTemp)
+}
   const movimientosFiltrados = movimientos.filter((mov) => {
     if (filtroTipo !== 'todos') {
       if (filtroTipo === 'ventas' && mov.tipo !== 'venta') return false
