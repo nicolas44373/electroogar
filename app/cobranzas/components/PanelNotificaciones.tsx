@@ -218,21 +218,57 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
       return
     }
 
-    // Calcular saldo total POR TRANSACCIÓN (TODAS las cuotas pendientes)
+    // Obtener IDs únicos de transacciones
+    const transaccionIds = [...new Set(data
+      .map(p => p.transaccion?.id)
+      .filter(Boolean))]
+
+    // IMPORTANTE: Cargar TODOS los pagos de esas transacciones (no solo pendientes)
+    const { data: todosPagosCompletos } = await supabase
+      .from('pagos')
+      .select('*')
+      .in('transaccion_id', transaccionIds)
+
+    // Calcular saldo total REAL por transacción
     const saldosPorTransaccion = new Map<string, number>()
     
-    data.forEach(pago => {
-      if (!pago.transaccion) {
-        console.warn('Pago sin transacción:', pago.id)
-        return
-      }
+    if (todosPagosCompletos) {
+      // Agrupar pagos por transacción
+      const pagosAgrupados = todosPagosCompletos.reduce<{[key: string]: any[]}>((acc, pago) => {
+        const tid = pago.transaccion_id
+        if (!acc[tid]) acc[tid] = []
+        acc[tid].push(pago)
+        return acc
+      }, {})
+
+      // Calcular el saldo real de cada transacción
+      Object.entries(pagosAgrupados).forEach(([transaccionId, pagos]) => {
+        let saldoTotalTransaccion = 0
+        
+        console.log(`📊 Calculando saldo para transacción ${transaccionId}:`)
+        
+        // Sumar TODAS las cuotas que no estén completamente pagadas
+        pagos.forEach((pago: any) => {
+          if (pago.estado !== 'pagado') {
+            const montoCuota = pago.monto_cuota || 0
+            const intereses = pago.intereses_mora || 0
+            const totalCuota = montoCuota + intereses
+            const pagado = pago.monto_pagado || 0
+            const restante = totalCuota - pagado
+            
+            console.log(`  - Cuota ${pago.numero_cuota}: ${totalCuota} - ${pagado} = ${restante} (estado: ${pago.estado})`)
+            
+            saldoTotalTransaccion += restante
+          }
+        })
+        
+        console.log(`  ✅ Saldo total transacción ${transaccionId}: ${saldoTotalTransaccion}`)
+        
+        saldosPorTransaccion.set(transaccionId, saldoTotalTransaccion)
+      })
       
-      const transaccionId = pago.transaccion.id
-      const montoCuota = obtenerMontoCuota(pago)
-      const montoRestante = montoCuota - (pago.monto_pagado || 0)
-      const saldoActual = saldosPorTransaccion.get(transaccionId) || 0
-      saldosPorTransaccion.set(transaccionId, saldoActual + montoRestante)
-    })
+      console.log(`💾 Mapa de saldos calculado:`, Object.fromEntries(saldosPorTransaccion))
+    }
 
     const notificacionesMapeadas: NotificacionVencimiento[] = data
       .filter(pago => pago.transaccion && pago.transaccion.cliente)
