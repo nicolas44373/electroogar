@@ -35,6 +35,7 @@ interface PanelNotificacionesProps {
 export default function PanelNotificaciones({ notificaciones, onActualizar, onVerCuentaCliente }: PanelNotificacionesProps) {
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'vencido' | 'hoy' | 'calendario'>('todos')
   const [notificacionesDetalladas, setNotificacionesDetalladas] = useState<NotificacionVencimiento[]>([])
+  const [notificacionesCalendario, setNotificacionesCalendario] = useState<NotificacionVencimiento[]>([])
   const [loading, setLoading] = useState(false)
   const [mostrarContacto, setMostrarContacto] = useState<string | null>(null)
   
@@ -57,16 +58,29 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
   const [interesesMora, setInteresesMora] = useState(0)
   const [motivoReprogramacion, setMotivoReprogramacion] = useState('')
 
+  // Cargar todas las notificaciones al montar el componente
   useEffect(() => {
     cargarNotificacionesDetalladas()
   }, [])
 
-  // Actualizar notificaciones cuando cambia el prop
+  // Actualizar notificaciones cuando cambia el prop o el filtro
   useEffect(() => {
-    if (notificaciones && notificaciones.length > 0) {
+    if (filtroTipo === 'calendario') {
+      // Para el calendario, siempre cargar TODAS las notificaciones sin límite
+      cargarTodasLasNotificaciones()
+    } else if (notificaciones && notificaciones.length > 0) {
+      // Para otras vistas, usar las notificaciones del padre
       setNotificacionesDetalladas(notificaciones)
     }
-  }, [notificaciones])
+  }, [notificaciones, filtroTipo])
+
+  // 🆕 NUEVO: Recargar datos cuando cambia el mes en vista calendario
+  useEffect(() => {
+    if (filtroTipo === 'calendario') {
+      console.log('🔄 Mes cambió, recargando notificaciones del calendario...')
+      cargarTodasLasNotificaciones()
+    }
+  }, [mesActual])
   
   // Función centralizada para calcular diferencia de días
   const calcularDiasVencimiento = (fechaVencimiento: string) => {
@@ -121,7 +135,17 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     const mes = String(fecha.getMonth() + 1).padStart(2, '0')
     const dia = String(fecha.getDate()).padStart(2, '0')
     const fechaStr = `${año}-${mes}-${dia}`
-    return notificacionesDetalladas.filter(notif => notif.fecha_vencimiento === fechaStr)
+    
+    // 🔍 DEBUGGING
+    console.log('🔎 Buscando notificaciones para fecha:', fechaStr)
+    console.log('🔎 Total notificaciones en calendario:', notificacionesCalendario.length)
+    
+    // Usar notificacionesCalendario si estamos en modo calendario
+    const fuente = filtroTipo === 'calendario' ? notificacionesCalendario : notificacionesDetalladas
+    const resultado = fuente.filter(notif => notif.fecha_vencimiento === fechaStr)
+    
+    console.log('🔎 Notificaciones encontradas:', resultado.length)
+    return resultado
   }
 
   // Función para contar vencimientos en una fecha
@@ -184,56 +208,130 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
            fecha.getFullYear() === fechaSeleccionada.getFullYear()
   }
 
-  const cargarNotificacionesDetalladas = async () => {
+  // 🔧 SOLUCIÓN DEFINITIVA: Cargar TODAS las notificaciones con paginación automática
+// 🔧 SOLUCIÓN DEFINITIVA: Cargar TODAS las notificaciones con paginación automática
+const cargarTodasLasNotificaciones = async () => {
   setLoading(true)
   try {
-    // Cargar todos los pagos pendientes sin límite de fecha
-    const { data, error } = await supabase
-      .from('pagos')
-      .select(`
-        *,
-        transaccion:transacciones(
-          id,
-          cliente_id,
-          monto_total,
-          monto_cuota,
-          numero_factura,
-          tipo_transaccion,
-          fecha_inicio,
-          cliente:clientes(id, nombre, apellido, email, telefono),
-          producto:productos(nombre)
-        )
-      `)
-      .in('estado', ['pendiente', 'parcial', 'reprogramado'])
-      .order('fecha_vencimiento')
+    console.log('📅 Cargando TODAS las notificaciones para el calendario con paginación...')
+    
+    const BATCH_SIZE = 1000
+    let allPagos: any[] = []
+    let start = 0
+    let hasMore = true
+    let batchNumber = 1
 
-    if (error) {
-      console.error('Error en la consulta:', error)
+    // Cargar en lotes hasta obtener TODO
+    while (hasMore) {
+      console.log(`📦 Cargando lote ${batchNumber} (registros ${start} a ${start + BATCH_SIZE - 1})...`)
+      
+      const { data, error, count } = await supabase
+        .from('pagos')
+        .select(`
+          *,
+          transaccion:transacciones(
+            id,
+            cliente_id,
+            monto_total,
+            monto_cuota,
+            numero_factura,
+            tipo_transaccion,
+            fecha_inicio,
+            cliente:clientes(id, nombre, apellido, email, telefono),
+            producto:productos(nombre)
+          )
+        `, { count: 'exact' })
+        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+        .order('fecha_vencimiento')
+        .range(start, start + BATCH_SIZE - 1)
+
+      if (error) {
+        console.error('❌ Error en la consulta:', error)
+        return
+      }
+
+      if (batchNumber === 1) {
+        console.log(`✅ Total de registros en la BD: ${count}`)
+      }
+
+      if (!data || data.length === 0) {
+        hasMore = false
+        console.log('✅ No hay más registros para cargar')
+      } else {
+        allPagos = allPagos.concat(data)
+        console.log(`✅ Lote ${batchNumber} cargado: ${data.length} registros`)
+        console.log(`📊 Total acumulado: ${allPagos.length} registros`)
+        
+        start += BATCH_SIZE
+        hasMore = data.length === BATCH_SIZE
+        batchNumber++
+      }
+    }
+
+    if (allPagos.length === 0) {
+      console.log('⚠️ No se encontraron pagos pendientes')
+      setNotificacionesCalendario([])
       return
     }
 
-    if (!data || data.length === 0) {
-      console.log('No se encontraron pagos pendientes')
-      setNotificacionesDetalladas([])
-      return
+    console.log(`🎉 Carga completa: ${allPagos.length} pagos totales`)
+
+    // 🔍 DEBUGGING: Verificar fechas
+    const fechasUnicas = [...new Set(allPagos.map(p => p.fecha_vencimiento))].sort()
+    console.log('📅 Fechas únicas encontradas:', fechasUnicas.length)
+    console.log('📅 Primera fecha:', fechasUnicas[0])
+    console.log('📅 Última fecha:', fechasUnicas[fechasUnicas.length - 1])
+    
+    // Ver si hay datos de diciembre
+    const diciembreData = allPagos.filter(p => p.fecha_vencimiento.startsWith('2025-12'))
+    console.log('🎄 Pagos de diciembre 2025:', diciembreData.length)
+    if (diciembreData.length > 0) {
+      const fechasDic = [...new Set(diciembreData.map(p => p.fecha_vencimiento))].sort()
+      console.log('🎄 Fechas de diciembre:', fechasDic)
     }
 
-    // Obtener IDs únicos de transacciones
-    const transaccionIds = [...new Set(data
+    // Ver distribución por mes
+    const porMes = allPagos.reduce((acc, p) => {
+      const mes = p.fecha_vencimiento.substring(0, 7)
+      acc[mes] = (acc[mes] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+    console.log('📊 Distribución por mes:', porMes)
+
+    // 🔥 CRÍTICO: Obtener IDs únicos de transacciones
+    const transaccionIds = [...new Set(allPagos
       .map(p => p.transaccion?.id)
       .filter(Boolean))]
 
-    // IMPORTANTE: Cargar TODOS los pagos de esas transacciones (no solo pendientes)
-    const { data: todosPagosCompletos } = await supabase
-      .from('pagos')
-      .select('*')
-      .in('transaccion_id', transaccionIds)
+    console.log('🔍 Cargando TODOS los pagos de', transaccionIds.length, 'transacciones para calcular saldos...')
+
+    // 🔥 CARGAR TODOS LOS PAGOS (de todas las transacciones) PAGINADOS
+    let todosPagosCompletos: any[] = []
+    let startPagos = 0
+    let hasMorePagos = true
+
+    while (hasMorePagos) {
+      const { data: batchPagos } = await supabase
+        .from('pagos')
+        .select('*')
+        .in('transaccion_id', transaccionIds)
+        .range(startPagos, startPagos + BATCH_SIZE - 1)
+
+      if (!batchPagos || batchPagos.length === 0) {
+        hasMorePagos = false
+      } else {
+        todosPagosCompletos = todosPagosCompletos.concat(batchPagos)
+        startPagos += BATCH_SIZE
+        hasMorePagos = batchPagos.length === BATCH_SIZE
+      }
+    }
+
+    console.log('✅ Total de pagos cargados para calcular saldos:', todosPagosCompletos.length)
 
     // Calcular saldo total REAL por transacción
     const saldosPorTransaccion = new Map<string, number>()
     
-    if (todosPagosCompletos) {
-      // Agrupar pagos por transacción
+    if (todosPagosCompletos.length > 0) {
       const pagosAgrupados = todosPagosCompletos.reduce<{[key: string]: any[]}>((acc, pago) => {
         const tid = pago.transaccion_id
         if (!acc[tid]) acc[tid] = []
@@ -241,13 +339,9 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
         return acc
       }, {})
 
-      // Calcular el saldo real de cada transacción
       Object.entries(pagosAgrupados).forEach(([transaccionId, pagos]) => {
         let saldoTotalTransaccion = 0
         
-        console.log(`📊 Calculando saldo para transacción ${transaccionId}:`)
-        
-        // Sumar TODAS las cuotas que no estén completamente pagadas
         pagos.forEach((pago: any) => {
           if (pago.estado !== 'pagado') {
             const montoCuota = pago.monto_cuota || 0
@@ -256,21 +350,17 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
             const pagado = pago.monto_pagado || 0
             const restante = totalCuota - pagado
             
-            console.log(`  - Cuota ${pago.numero_cuota}: ${totalCuota} - ${pagado} = ${restante} (estado: ${pago.estado})`)
-            
             saldoTotalTransaccion += restante
           }
         })
         
-        console.log(`  ✅ Saldo total transacción ${transaccionId}: ${saldoTotalTransaccion}`)
-        
         saldosPorTransaccion.set(transaccionId, saldoTotalTransaccion)
       })
       
-      console.log(`💾 Mapa de saldos calculado:`, Object.fromEntries(saldosPorTransaccion))
+      console.log('💰 Saldos calculados para', saldosPorTransaccion.size, 'transacciones')
     }
 
-    const notificacionesMapeadas: NotificacionVencimiento[] = data
+    const notificacionesMapeadas: NotificacionVencimiento[] = allPagos
       .filter(pago => pago.transaccion && pago.transaccion.cliente)
       .map(pago => {
         const diferenciaDias = calcularDiasVencimiento(pago.fecha_vencimiento)
@@ -299,10 +389,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
           numero_cuota: pago.numero_cuota,
           producto_nombre: obtenerNombreTransaccion(pago.transaccion),
           transaccion_id: pago.transaccion.id,
-          
-          // SALDO TOTAL DE TODAS LAS CUOTAS PENDIENTES DE ESTA TRANSACCIÓN
           saldo_total_cliente: saldosPorTransaccion.get(pago.transaccion.id) || 0,
-          
           tipo_transaccion: pago.transaccion.tipo_transaccion,
           fecha_inicio: pago.transaccion.fecha_inicio,
           fecha_reprogramacion: pago.fecha_reprogramacion || undefined,
@@ -311,14 +398,150 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
         }
       })
 
-    console.log(`Notificaciones cargadas: ${notificacionesMapeadas.length}`)
-    setNotificacionesDetalladas(notificacionesMapeadas)
+    console.log(`✅ Notificaciones del calendario procesadas: ${notificacionesMapeadas.length}`)
+    
+    const porMesFinal = notificacionesMapeadas.reduce((acc, n) => {
+      const mes = n.fecha_vencimiento.substring(0, 7)
+      acc[mes] = (acc[mes] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+    console.log('📊 Notificaciones finales por mes:', porMesFinal)
+    
+    setNotificacionesCalendario(notificacionesMapeadas)
   } catch (error) {
-    console.error('Error cargando notificaciones detalladas:', error)
+    console.error('❌ Error cargando notificaciones para calendario:', error)
   } finally {
     setLoading(false)
   }
 }
+
+  const cargarNotificacionesDetalladas = async () => {
+    setLoading(true)
+    try {
+      // Cargar todos los pagos pendientes sin límite de fecha
+      const { data, error } = await supabase
+        .from('pagos')
+        .select(`
+          *,
+          transaccion:transacciones(
+            id,
+            cliente_id,
+            monto_total,
+            monto_cuota,
+            numero_factura,
+            tipo_transaccion,
+            fecha_inicio,
+            cliente:clientes(id, nombre, apellido, email, telefono),
+            producto:productos(nombre)
+          )
+        `)
+        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+        .order('fecha_vencimiento')
+
+      if (error) {
+        console.error('Error en la consulta:', error)
+        return
+      }
+
+      if (!data || data.length === 0) {
+        console.log('No se encontraron pagos pendientes')
+        setNotificacionesDetalladas([])
+        return
+      }
+
+      // Obtener IDs únicos de transacciones
+      const transaccionIds = [...new Set(data
+        .map(p => p.transaccion?.id)
+        .filter(Boolean))]
+
+      // IMPORTANTE: Cargar TODOS los pagos de esas transacciones (no solo pendientes)
+      const { data: todosPagosCompletos } = await supabase
+        .from('pagos')
+        .select('*')
+        .in('transaccion_id', transaccionIds)
+
+      // Calcular saldo total REAL por transacción
+      const saldosPorTransaccion = new Map<string, number>()
+      
+      if (todosPagosCompletos) {
+        // Agrupar pagos por transacción
+        const pagosAgrupados = todosPagosCompletos.reduce<{[key: string]: any[]}>((acc, pago) => {
+          const tid = pago.transaccion_id
+          if (!acc[tid]) acc[tid] = []
+          acc[tid].push(pago)
+          return acc
+        }, {})
+
+        // Calcular el saldo real de cada transacción
+        Object.entries(pagosAgrupados).forEach(([transaccionId, pagos]) => {
+          let saldoTotalTransaccion = 0
+          
+          // Sumar TODAS las cuotas que no estén completamente pagadas
+          pagos.forEach((pago: any) => {
+            if (pago.estado !== 'pagado') {
+              const montoCuota = pago.monto_cuota || 0
+              const intereses = pago.intereses_mora || 0
+              const totalCuota = montoCuota + intereses
+              const pagado = pago.monto_pagado || 0
+              const restante = totalCuota - pagado
+              
+              saldoTotalTransaccion += restante
+            }
+          })
+          
+          saldosPorTransaccion.set(transaccionId, saldoTotalTransaccion)
+        })
+      }
+
+      const notificacionesMapeadas: NotificacionVencimiento[] = data
+        .filter(pago => pago.transaccion && pago.transaccion.cliente)
+        .map(pago => {
+          const diferenciaDias = calcularDiasVencimiento(pago.fecha_vencimiento)
+          
+          let tipo: 'vencido' | 'por_vencer' | 'hoy'
+          if (diferenciaDias < 0) tipo = 'vencido'
+          else if (diferenciaDias === 0) tipo = 'hoy'
+          else tipo = 'por_vencer'
+
+          const montoCuota = obtenerMontoCuota(pago)
+          const montoRestante = montoCuota - (pago.monto_pagado || 0)
+
+          return {
+            id: pago.id,
+            cliente_id: pago.transaccion.cliente_id,
+            cliente_nombre: pago.transaccion.cliente.nombre,
+            cliente_apellido: pago.transaccion.cliente.apellido || '',
+            cliente_telefono: pago.transaccion.cliente.telefono || '',
+            cliente_email: pago.transaccion.cliente.email || '',
+            monto: montoRestante,
+            monto_cuota_total: montoCuota,
+            monto_pagado: pago.monto_pagado || 0,
+            fecha_vencimiento: pago.fecha_vencimiento,
+            dias_vencimiento: diferenciaDias,
+            tipo,
+            numero_cuota: pago.numero_cuota,
+            producto_nombre: obtenerNombreTransaccion(pago.transaccion),
+            transaccion_id: pago.transaccion.id,
+            
+            // SALDO TOTAL DE TODAS LAS CUOTAS PENDIENTES DE ESTA TRANSACCIÓN
+            saldo_total_cliente: saldosPorTransaccion.get(pago.transaccion.id) || 0,
+            
+            tipo_transaccion: pago.transaccion.tipo_transaccion,
+            fecha_inicio: pago.transaccion.fecha_inicio,
+            fecha_reprogramacion: pago.fecha_reprogramacion || undefined,
+            intereses_mora: pago.intereses_mora || undefined,
+            motivo_reprogramacion: pago.motivo_reprogramacion || undefined
+          }
+        })
+
+      console.log(`Notificaciones cargadas: ${notificacionesMapeadas.length}`)
+      setNotificacionesDetalladas(notificacionesMapeadas)
+    } catch (error) {
+      console.error('Error cargando notificaciones detalladas:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const formatearMoneda = (monto: number) => {
     return new Intl.NumberFormat('es-AR', {
@@ -377,8 +600,12 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     if (filtroTipo === 'calendario' && fechaSeleccionada) {
       return obtenerNotificacionesPorFecha(fechaSeleccionada)
     }
-    return notificacionesDetalladas.filter(notif => {
+    
+    const fuente = filtroTipo === 'calendario' ? notificacionesCalendario : notificacionesDetalladas
+    
+    return fuente.filter(notif => {
       if (filtroTipo === 'todos') return true
+      if (filtroTipo === 'calendario') return true // Ya filtrado por fecha
       return notif.tipo === filtroTipo
     })
   })()
@@ -393,7 +620,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
     const nombreCompleto = `${notificacion.cliente_nombre} ${notificacion.cliente_apellido || ''}`.trim()
     
     if (metodo === 'whatsapp' && notificacion.cliente_telefono) {
-      const mensaje = ``
+      const mensaje = `Hola ${nombreCompleto}, te recordamos que tienes una cuota pendiente de ${formatearMoneda(notificacion.monto)} que venció el ${formatearFecha(notificacion.fecha_vencimiento)}. Por favor, acercate a regularizar tu situación.`
       const url = `https://wa.me/${notificacion.cliente_telefono.replace(/[^\d]/g, '')}?text=${encodeURIComponent(mensaje)}`
       window.open(url, '_blank')
     } else if (metodo === 'email' && notificacion.cliente_email) {
@@ -470,8 +697,10 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
       setMostrarModalPago(false)
       setNotifSeleccionada(null)
       
-      // Solo recargar localmente si NO hay notificaciones del padre
-      if (!notificaciones || notificaciones.length === 0) {
+      // Recargar notificaciones según el modo actual
+      if (filtroTipo === 'calendario') {
+        await cargarTodasLasNotificaciones()
+      } else if (!notificaciones || notificaciones.length === 0) {
         await cargarNotificacionesDetalladas()
       }
       
@@ -516,8 +745,10 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
       // Cerrar modal antes de recargar
       cerrarModalReprogramacion()
       
-      // Solo recargar localmente si NO hay notificaciones del padre
-      if (!notificaciones || notificaciones.length === 0) {
+      // Recargar notificaciones según el modo actual
+      if (filtroTipo === 'calendario') {
+        await cargarTodasLasNotificaciones()
+      } else if (!notificaciones || notificaciones.length === 0) {
         await cargarNotificacionesDetalladas()
       }
       
@@ -552,8 +783,10 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
           </h2>
           <button
             onClick={async () => {
-              // Solo recargar si no estamos usando notificaciones del padre
-              if (!notificaciones || notificaciones.length === 0) {
+              // Recargar según el modo actual
+              if (filtroTipo === 'calendario') {
+                await cargarTodasLasNotificaciones()
+              } else if (!notificaciones || notificaciones.length === 0) {
                 await cargarNotificacionesDetalladas()
               }
               
@@ -906,7 +1139,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                     </p>
                   </div>
 
-                  {/* NUEVA SECCIÓN: Información de Reprogramación */}
+                  {/* Información de Reprogramación */}
                   {notif.fecha_reprogramacion && (
                     <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
                       <div className="flex items-center space-x-2 mb-2">
