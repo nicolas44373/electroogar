@@ -25,6 +25,7 @@ export default function FormularioVenta({
     monto_total: '',
     tipo_pago: 'semanal' as const,
     numero_cuotas: '',
+    descripcion: '',
     fecha_inicio: (() => {
       const now = new Date();
       const year = now.getFullYear();
@@ -107,6 +108,7 @@ export default function FormularioVenta({
           tipo_pago: formVenta.tipo_pago,
           numero_cuotas: parseInt(formVenta.numero_cuotas),
           monto_cuota: montoCuotaCalculado,
+          descripcion: formVenta.descripcion || null,
           fecha_inicio: formVenta.fecha_inicio,
           estado: 'activo'
         })
@@ -243,6 +245,28 @@ if (transData) {
               </div>
             )}
             
+            {/* Campo de descripción para ambos tipos */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium mb-1">
+                Descripción 
+                <span className="text-gray-500 font-normal ml-1">- Opcional</span>
+              </label>
+              <textarea
+                value={formVenta.descripcion}
+                onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                placeholder={tipoTransaccion === 'venta' 
+                  ? 'Ej: Venta de celular Samsung con funda incluida'
+                  : 'Ej: Préstamo para pago de alquiler'
+                }
+                className="border p-2 rounded w-full resize-none"
+                rows={2}
+                disabled={guardando}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Agrega notas o detalles adicionales sobre esta transacción
+              </p>
+            </div>
+            
             <div>
               <label className="block text-sm font-medium mb-1">
                 {tipoTransaccion === 'venta' ? 'Monto Total de Venta' : 'Monto del Préstamo'}
@@ -337,6 +361,15 @@ if (transData) {
                   <p><strong>Frecuencia:</strong> {formVenta.tipo_pago}</p>
                   <p><strong>Total de cuotas:</strong> {formVenta.numero_cuotas || '0'}</p>
                 </div>
+                
+                {/* Mostrar descripción si existe */}
+                {formVenta.descripcion && (
+                  <div className="mt-2 pt-2 border-t border-gray-300">
+                    <p className="text-xs text-gray-700">
+                      <strong>Descripción:</strong> {formVenta.descripcion}
+                    </p>
+                  </div>
+                )}
                 
                 {/* Información adicional según el tipo */}
                 {tipoTransaccion === 'venta' && interes && (

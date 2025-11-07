@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
-import { Users, DollarSign, TrendingUp, AlertTriangle, Calendar, CreditCard } from 'lucide-react'
+import { Users, DollarSign, TrendingUp, AlertTriangle, Calendar, CreditCard, Receipt } from 'lucide-react'
 
 interface NotificacionVencimiento {
   id: string
@@ -37,6 +37,21 @@ interface DashboardProps {
   onNuevaVenta: () => void
 }
 
+interface ClienteConPrestamo {
+  id: string
+  nombre: string
+  apellido: string
+  telefono?: string
+  transaccion_id: string
+  monto_total: number
+  monto_pendiente: number
+  fecha_inicio: string
+  numero_cuotas: number
+  cuotas_pagadas: number
+  descripcion?: string
+  estado: string
+}
+
 export default function Dashboard({ 
   estadisticas, 
   onVerNotificaciones,
@@ -45,10 +60,13 @@ export default function Dashboard({
 }: DashboardProps) {
   
   const [notificaciones, setNotificaciones] = useState<NotificacionVencimiento[]>([])
+  const [clientesConPrestamos, setClientesConPrestamos] = useState<ClienteConPrestamo[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingPrestamos, setLoadingPrestamos] = useState(true)
 
   useEffect(() => {
     cargarNotificaciones()
+    cargarClientesConPrestamos()
   }, [])
 
   // Función centralizada para calcular diferencia de días (misma que PanelNotificaciones)
@@ -78,6 +96,73 @@ export default function Dashboard({
       return transaccion.producto.nombre
     }
     return transaccion?.tipo_transaccion === 'prestamo' ? 'Préstamo de Dinero' : 'Venta'
+  }
+
+  const cargarClientesConPrestamos = async () => {
+    setLoadingPrestamos(true)
+    try {
+      // Obtener todas las transacciones de tipo préstamo activas
+      const { data: transacciones } = await supabase
+        .from('transacciones')
+        .select(`
+          id,
+          monto_total,
+          numero_cuotas,
+          fecha_inicio,
+          descripcion,
+          estado,
+          cliente_id,
+          clientes!inner (
+            id,
+            nombre,
+            apellido,
+            telefono
+          )
+        `)
+        .eq('tipo_transaccion', 'prestamo')
+        .in('estado', ['activo', 'completado'])
+        .order('fecha_inicio', { ascending: false })
+
+      if (transacciones) {
+        // Para cada transacción, obtener los pagos para calcular cuánto se pagó
+        const prestamosConDetalle = await Promise.all(
+          transacciones.map(async (trans: any) => {
+            const { data: pagos } = await supabase
+              .from('pagos')
+              .select('monto_pagado, estado')
+              .eq('transaccion_id', trans.id)
+
+            const cuotasPagadas = pagos?.filter(p => p.estado === 'pagado').length || 0
+            const montoPagado = pagos?.reduce((sum, p) => sum + (p.monto_pagado || 0), 0) || 0
+            const montoPendiente = trans.monto_total - montoPagado
+
+            // Acceder al objeto cliente correctamente
+            const cliente = trans.clientes
+
+            return {
+              id: cliente.id,
+              nombre: cliente.nombre,
+              apellido: cliente.apellido || '',
+              telefono: cliente.telefono,
+              transaccion_id: trans.id,
+              monto_total: trans.monto_total,
+              monto_pendiente: montoPendiente,
+              fecha_inicio: trans.fecha_inicio,
+              numero_cuotas: trans.numero_cuotas,
+              cuotas_pagadas: cuotasPagadas,
+              descripcion: trans.descripcion,
+              estado: trans.estado
+            }
+          })
+        )
+
+        setClientesConPrestamos(prestamosConDetalle)
+      }
+    } catch (error) {
+      console.error('Error cargando clientes con préstamos:', error)
+    } finally {
+      setLoadingPrestamos(false)
+    }
   }
 
   const cargarNotificaciones = async () => {
@@ -160,6 +245,20 @@ export default function Dashboard({
       style: 'currency',
       currency: 'ARS'
     }).format(monto || 0)
+  }
+
+  const formatearFecha = (fecha: string) => {
+    try {
+      const [year, month, day] = fecha.split('-').map(Number)
+      const fechaObj = new Date(year, month - 1, day)
+      return fechaObj.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+    } catch {
+      return fecha
+    }
   }
 
   const notificacionesVencidas = notificaciones.filter(n => n.tipo === 'vencido')
@@ -392,6 +491,106 @@ export default function Dashboard({
               </p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* NUEVA SECCIÓN: Clientes con Préstamos */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="p-4 border-b">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-purple-600 flex items-center">
+              <Receipt className="w-5 h-5 mr-2" />
+              Clientes con Préstamos Activos
+            </h3>
+            <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+              {clientesConPrestamos.length}
+            </span>
+          </div>
+        </div>
+        <div className="p-4">
+          {loadingPrestamos ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+            </div>
+          ) : clientesConPrestamos.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="text-left p-3 font-medium text-gray-600">Cliente</th>
+                    <th className="text-left p-3 font-medium text-gray-600">Descripción</th>
+                    <th className="text-right p-3 font-medium text-gray-600">Monto Total</th>
+                    <th className="text-right p-3 font-medium text-gray-600">Pendiente</th>
+                    <th className="text-center p-3 font-medium text-gray-600">Cuotas</th>
+                    <th className="text-left p-3 font-medium text-gray-600">Fecha Inicio</th>
+                    <th className="text-center p-3 font-medium text-gray-600">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clientesConPrestamos.map((cliente, index) => (
+                    <tr key={index} className="border-b hover:bg-gray-50">
+                      <td className="p-3">
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {cliente.nombre} {cliente.apellido}
+                          </p>
+                          {cliente.telefono && (
+                            <p className="text-xs text-gray-500">{cliente.telefono}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        {cliente.descripcion ? (
+                          <p className="text-xs text-gray-600 max-w-xs truncate" title={cliente.descripcion}>
+                            {cliente.descripcion}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-400 italic">Sin descripción</p>
+                        )}
+                      </td>
+                      <td className="p-3 text-right">
+                        <p className="font-bold text-gray-900">
+                          {formatearMoneda(cliente.monto_total)}
+                        </p>
+                      </td>
+                      <td className="p-3 text-right">
+                        <p className={`font-bold ${
+                          cliente.monto_pendiente > 0 ? 'text-red-600' : 'text-green-600'
+                        }`}>
+                          {formatearMoneda(cliente.monto_pendiente)}
+                        </p>
+                      </td>
+                      <td className="p-3 text-center">
+                        <p className="text-sm">
+                          <span className="font-medium text-green-600">{cliente.cuotas_pagadas}</span>
+                          <span className="text-gray-400"> / </span>
+                          <span className="font-medium text-gray-900">{cliente.numero_cuotas}</span>
+                        </p>
+                      </td>
+                      <td className="p-3">
+                        <p className="text-sm text-gray-600">
+                          {formatearFecha(cliente.fecha_inicio)}
+                        </p>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          cliente.estado === 'activo' 
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {cliente.estado === 'activo' ? 'Activo' : 'Completado'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm text-center py-4">
+              No hay préstamos activos registrados
+            </p>
+          )}
         </div>
       </div>
 

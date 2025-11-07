@@ -274,6 +274,14 @@ export default function TablaPagos({
               const diasAtraso = pago ? calcularDiasVencimiento(pago.fecha_vencimiento) : 0
               return (
                 <div className="space-y-4">
+                  {/* Información de la transacción */}
+                  {transaccion.descripcion && (
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
+                      <p className="text-xs text-gray-600 font-medium mb-1">Transacción:</p>
+                      <p className="text-sm text-gray-800">{transaccion.descripcion}</p>
+                    </div>
+                  )}
+                  
                   <div>
                     <label className="block text-sm font-medium mb-1">
                       Cuota #{pago?.numero_cuota}

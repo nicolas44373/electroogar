@@ -48,6 +48,7 @@ export interface Transaccion {
   vendedor_id?: string
   estado?: string
   created_at: string
+  descripcion?: string | null  // ✅ NUEVA PROPIEDAD AGREGADA
   
   // Nuevas propiedades para préstamos
   monto_original?: number      // Monto antes de aplicar intereses
@@ -239,7 +240,7 @@ export interface EstadisticasDashboard {
   promedioTicket: number
 }
 
-// ✅ ACTUALIZADO: NotificacionVencimiento con fecha_inicio
+// ✅ ACTUALIZADO: NotificacionVencimiento con todos los campos necesarios
 export interface NotificacionVencimiento {
   id: string
   cliente_id: string
@@ -261,8 +262,13 @@ export interface NotificacionVencimiento {
   saldo_total_cliente: number
   tipo_transaccion: string
   numero_factura?: string
-  fecha_inicio: string  // ✅ NUEVO CAMPO AGREGADO
-  transaccion?: Transaccion  // ✅ NUEVO CAMPO AGREGADO
+  fecha_inicio: string
+  transaccion?: Transaccion
+  
+  // ✅ CAMPOS ADICIONALES PARA REPROGRAMACIÓN
+  fecha_reprogramacion?: string
+  intereses_mora?: number
+  motivo_reprogramacion?: string
 }
 
 // Interfaces para formularios

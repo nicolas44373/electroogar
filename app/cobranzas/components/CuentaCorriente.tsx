@@ -24,6 +24,7 @@ interface MovimientoCuentaCorriente {
   estado?: string
   transaccionId?: string
   pagoId?: string
+  descripcionTransaccion?: string // Nueva propiedad para la descripción de la transacción
 }
 
 interface CuentaCorrienteProps {
@@ -65,67 +66,77 @@ export default function CuentaCorriente({
 
   const formatearFecha = (fecha: string) => {
     try {
-      return new Date(fecha).toLocaleDateString('es-AR')
+      // Separar la fecha en componentes para evitar problemas de zona horaria
+      const [year, month, day] = fecha.split('T')[0].split('-').map(Number)
+      const fechaObj = new Date(year, month - 1, day)
+      return fechaObj.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
     } catch {
       return fecha
     }
   }
 
   const generarMovimientos = () => {
-  const movimientosTemp: MovimientoCuentaCorriente[] = []
+    const movimientosTemp: MovimientoCuentaCorriente[] = []
 
-  transacciones.forEach((transaccion) => {
-    // Agregar la venta/transacción
-    movimientosTemp.push({
-      id: `venta-${transaccion.id}`,
-      transaccionId: transaccion.id,
-      fecha: transaccion.created_at,
-      tipo: 'venta',
-      descripcion: transaccion.tipo_transaccion === 'prestamo' 
-        ? 'Préstamo de Dinero'
-        : `Venta - ${transaccion.producto?.nombre || 'Producto'}`,
-      debe: transaccion.monto_total || 0,
-      haber: 0,
-      saldo: 0,
-      referencia: `Fact. ${transaccion.numero_factura || transaccion.id.slice(0, 8)}`,
-      estado: transaccion.estado,
+    transacciones.forEach((transaccion) => {
+      // Agregar la venta/transacción
+      movimientosTemp.push({
+        id: `venta-${transaccion.id}`,
+        transaccionId: transaccion.id,
+        fecha: transaccion.fecha_inicio, // ✅ CORREGIDO: Usar fecha_inicio en lugar de created_at
+        tipo: 'venta',
+        descripcion: transaccion.tipo_transaccion === 'prestamo' 
+          ? 'Préstamo de Dinero'
+          : `Venta - ${transaccion.producto?.nombre || 'Producto'}`,
+        debe: transaccion.monto_total || 0,
+        haber: 0,
+        saldo: 0,
+        referencia: `Fact. ${transaccion.numero_factura || transaccion.id.slice(0, 8)}`,
+        estado: transaccion.estado,
+        descripcionTransaccion: transaccion.descripcion || undefined,
+      })
+
+      // Agregar los pagos (solo los que están realmente pagados)
+      const pagosTransaccion = pagos[transaccion.id] || []
+      pagosTransaccion
+        .filter((p) => p.estado === 'pagado' && p.fecha_pago)
+        .forEach((pago) => {
+          movimientosTemp.push({
+            id: `pago-${pago.id}`,
+            pagoId: pago.id,
+            transaccionId: transaccion.id,
+            fecha: pago.fecha_pago!,
+            tipo: 'pago',
+            descripcion: transaccion.tipo_transaccion === 'prestamo'
+              ? `Pago cuota ${pago.numero_cuota} - Préstamo de Dinero`
+              : `Pago cuota ${pago.numero_cuota} - ${transaccion.producto?.nombre || 'Producto'}`,
+            debe: 0,
+            haber: pago.monto_pagado || 0,
+            saldo: 0,
+            referencia: `Recibo ${pago.numero_recibo || pago.id.slice(0, 8)}`,
+            estado: pago.estado,
+            descripcionTransaccion: transaccion.descripcion || undefined,
+          })
+        })
     })
 
-    // Agregar los pagos (solo los que están realmente pagados)
-    const pagosTransaccion = pagos[transaccion.id] || []
-    pagosTransaccion
-      .filter((p) => p.estado === 'pagado' && p.fecha_pago)
-      .forEach((pago) => {
-        movimientosTemp.push({
-          id: `pago-${pago.id}`,
-          pagoId: pago.id,
-          transaccionId: transaccion.id,
-          fecha: pago.fecha_pago!,
-          tipo: 'pago',
-          descripcion: transaccion.tipo_transaccion === 'prestamo'
-            ? `Pago cuota ${pago.numero_cuota} - Préstamo de Dinero`
-            : `Pago cuota ${pago.numero_cuota} - ${transaccion.producto?.nombre || 'Producto'}`,
-          debe: 0,
-          haber: pago.monto_pagado || 0,
-          saldo: 0,
-          referencia: `Recibo ${pago.numero_recibo || pago.id.slice(0, 8)}`,
-          estado: pago.estado,
-        })
-      })
-  })
+    // Ordenar por fecha
+    movimientosTemp.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
 
-  // Ordenar por fecha
-  movimientosTemp.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+    // Calcular saldos acumulados
+    let saldoAcumulado = 0
+    movimientosTemp.forEach((mov) => {
+      saldoAcumulado += (mov.debe || 0) - (mov.haber || 0)
+      mov.saldo = saldoAcumulado
+    })
 
-  // Calcular saldos acumulados
-  let saldoAcumulado = 0
-  movimientosTemp.forEach((mov) => {
-    saldoAcumulado += (mov.debe || 0) - (mov.haber || 0)
-    mov.saldo = saldoAcumulado
-  })
-
-  setMovimientos(movimientosTemp)
-}
+    setMovimientos(movimientosTemp)
+  }
+  
   const movimientosFiltrados = movimientos.filter((mov) => {
     if (filtroTipo !== 'todos') {
       if (filtroTipo === 'ventas' && mov.tipo !== 'venta') return false
@@ -399,6 +410,16 @@ export default function CuentaCorriente({
 
                       <div className="mt-2">
                         <div className="text-sm font-medium">{mov.descripcion}</div>
+                        
+                        {/* Mostrar descripción de la transacción si existe */}
+                        {mov.descripcionTransaccion && (
+                          <div className="mt-1 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded">
+                            <p className="text-xs text-gray-700">
+                              <span className="font-medium">📝</span> {mov.descripcionTransaccion}
+                            </p>
+                          </div>
+                        )}
+                        
                         <div className="flex items-center gap-2 mt-1 text-xs">
                           {mov.tipo === 'venta' ? (
                             <div className="text-blue-600 flex items-center gap-1">
@@ -473,6 +494,14 @@ export default function CuentaCorriente({
                         </td>
                         <td className="px-4 py-3">
                           <div className="font-medium">{mov.descripcion}</div>
+                          
+                          {/* Mostrar descripción de la transacción si existe */}
+                          {mov.descripcionTransaccion && (
+                            <div className="mt-1 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded text-xs text-gray-700">
+                              📝 {mov.descripcionTransaccion}
+                            </div>
+                          )}
+                          
                           <div className="text-xs text-gray-500 mt-1">
                             {mov.tipo === 'venta' ? (
                               <span className="text-blue-600 inline-flex items-center gap-1"><TrendingUp className="w-3 h-3" />Venta</span>
@@ -560,6 +589,15 @@ export default function CuentaCorriente({
                 <label className="block text-xs text-gray-600 mb-1">Venta</label>
                 <div className="text-sm font-medium text-gray-800">{ventaSeleccionada.descripcion}</div>
                 <div className="text-xs text-gray-500 mt-1">{ventaSeleccionada.referencia}</div>
+                
+                {/* Mostrar descripción de la transacción si existe */}
+                {ventaSeleccionada.descripcionTransaccion && (
+                  <div className="mt-2 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded">
+                    <p className="text-xs text-gray-700">
+                      <span className="font-medium">📝</span> {ventaSeleccionada.descripcionTransaccion}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -608,6 +646,16 @@ export default function CuentaCorriente({
 
             <div className="mt-4 bg-gray-50 rounded p-3">
               <div className="text-sm font-medium text-gray-700">{movimientoAEliminar.descripcion}</div>
+              
+              {/* Mostrar descripción de la transacción si existe */}
+              {movimientoAEliminar.descripcionTransaccion && (
+                <div className="mt-2 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded">
+                  <p className="text-xs text-gray-700">
+                    📝 {movimientoAEliminar.descripcionTransaccion}
+                  </p>
+                </div>
+              )}
+              
               <div className="text-xs text-gray-500 mt-1">Fecha: {formatearFecha(movimientoAEliminar.fecha)}</div>
               <div className="text-xs text-gray-500 mt-1">Monto: {formatearMoneda(movimientoAEliminar.debe || movimientoAEliminar.haber)}</div>
             </div>

@@ -153,7 +153,17 @@ export default function HistorialTransacciones({
                   {transaccion.tipo_transaccion === 'venta' ? '🛒' : '💰'}
                   {obtenerTituloTransaccion(transaccion)}
                 </h3>
-                <div className="mt-1 sm:mt-2 space-y-1 text-sm sm:text-base">
+                
+                {/* Descripción de la transacción */}
+                {transaccion.descripcion && (
+                  <div className="mt-2 bg-blue-50 border-l-4 border-blue-400 p-2 rounded">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium text-blue-700">📝 Descripción:</span> {transaccion.descripcion}
+                    </p>
+                  </div>
+                )}
+                
+                <div className="mt-2 space-y-1 text-sm sm:text-base">
                   <p className="text-gray-600">
                     Tipo: <span className="font-medium">{transaccion.tipo_transaccion === 'venta' ? 'Venta' : 'Préstamo'}</span>
                   </p>
