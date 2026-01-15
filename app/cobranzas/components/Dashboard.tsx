@@ -52,13 +52,12 @@ interface ClienteConPrestamo {
   estado: string
 }
 
-export default function Dashboard({ 
-  estadisticas, 
+export default function Dashboard({
+  estadisticas,
   onVerNotificaciones,
   onRegistrarPago,
   onNuevaVenta
 }: DashboardProps) {
-  
   const [notificaciones, setNotificaciones] = useState<NotificacionVencimiento[]>([])
   const [clientesConPrestamos, setClientesConPrestamos] = useState<ClienteConPrestamo[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,20 +68,20 @@ export default function Dashboard({
     cargarClientesConPrestamos()
   }, [])
 
-  // Funci├│n centralizada para calcular diferencia de d├¡as (misma que PanelNotificaciones)
+  // Función centralizada para calcular diferencia de días (misma que PanelNotificaciones)
   const calcularDiasVencimiento = (fechaVencimiento: string) => {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
-    
+
     const [year, month, day] = fechaVencimiento.split('-').map(Number)
     const vencimiento = new Date(year, month - 1, day)
     vencimiento.setHours(0, 0, 0, 0)
-    
+
     const diferencia = Math.floor((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
     return diferencia
   }
 
-  // Funci├│n para obtener el monto de cuota correcto
+  // Función para obtener el monto de cuota correcto
   const obtenerMontoCuota = (pago: any) => {
     if (pago.monto_cuota && pago.monto_cuota > 0) {
       return pago.monto_cuota
@@ -90,18 +89,18 @@ export default function Dashboard({
     return pago.transaccion?.monto_cuota || 0
   }
 
-  // Funci├│n para obtener el nombre del producto o tipo de transacci├│n
+  // Función para obtener el nombre del producto o tipo de transacción
   const obtenerNombreTransaccion = (transaccion: any) => {
     if (transaccion?.producto?.nombre) {
       return transaccion.producto.nombre
     }
-    return transaccion?.tipo_transaccion === 'prestamo' ? 'Pr├®stamo de Dinero' : 'Venta'
+    return transaccion?.tipo_transaccion === 'prestamo' ? 'Préstamo de Dinero' : 'Venta'
   }
 
   const cargarClientesConPrestamos = async () => {
     setLoadingPrestamos(true)
     try {
-      // Obtener todas las transacciones de tipo pr├®stamo activas
+      // Obtener todas las transacciones de tipo préstamo activas
       const { data: transacciones } = await supabase
         .from('transacciones')
         .select(`
@@ -124,7 +123,7 @@ export default function Dashboard({
         .order('fecha_inicio', { ascending: false })
 
       if (transacciones) {
-        // Para cada transacci├│n, obtener los pagos para calcular cu├ínto se pag├│
+        // Para cada transacción, obtener los pagos para calcular cuánto se pagó
         const prestamosConDetalle = await Promise.all(
           transacciones.map(async (trans: any) => {
             const { data: pagos } = await supabase
@@ -159,7 +158,7 @@ export default function Dashboard({
         setClientesConPrestamos(prestamosConDetalle)
       }
     } catch (error) {
-      console.error('Error cargando clientes con pr├®stamos:', error)
+      console.error('Error cargando clientes con préstamos:', error)
     } finally {
       setLoadingPrestamos(false)
     }
@@ -168,7 +167,7 @@ export default function Dashboard({
   const cargarNotificaciones = async () => {
     setLoading(true)
     try {
-      // Cargar todos los pagos pendientes (misma l├│gica que PanelNotificaciones)
+      // Cargar todos los pagos pendientes (misma lógica que PanelNotificaciones)
       const { data } = await supabase
         .from('pagos')
         .select(`
@@ -190,7 +189,7 @@ export default function Dashboard({
       if (data) {
         // Calcular saldo total por cliente
         const saldosPorCliente = new Map<string, number>()
-        
+
         data.forEach(pago => {
           const clienteId = pago.transaccion.cliente_id
           const montoCuota = obtenerMontoCuota(pago)
@@ -201,7 +200,7 @@ export default function Dashboard({
 
         const notificacionesMapeadas: NotificacionVencimiento[] = data.map(pago => {
           const diferenciaDias = calcularDiasVencimiento(pago.fecha_vencimiento)
-          
+
           let tipo: 'vencido' | 'por_vencer' | 'hoy'
           if (diferenciaDias < 0) tipo = 'vencido'
           else if (diferenciaDias === 0) tipo = 'hoy'
@@ -239,7 +238,7 @@ export default function Dashboard({
       setLoading(false)
     }
   }
-  
+
   const formatearMoneda = (monto: number) => {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -278,7 +277,7 @@ export default function Dashboard({
       valor: formatearMoneda(estadisticas?.ventasDelMes || 0),
       icon: TrendingUp,
       color: 'bg-green-500',
-      descripcion: 'Facturaci├│n mensual'
+      descripcion: 'Facturación mensual'
     },
     {
       titulo: 'Cobros del Mes',
@@ -292,7 +291,7 @@ export default function Dashboard({
       valor: (estadisticas?.clientesVencidos || 0).toString(),
       icon: AlertTriangle,
       color: 'bg-red-500',
-      descripcion: 'Requieren atenci├│n'
+      descripcion: 'Requieren atención'
     },
     {
       titulo: 'Monto Pendiente',
@@ -303,22 +302,22 @@ export default function Dashboard({
     }
   ]
 
-  // C├ílculos para el resumen con validaci├│n
-  const efectividadCobros = estadisticas?.ventasDelMes > 0 
+  // Cálculos para el resumen con validación
+  const efectividadCobros = estadisticas?.ventasDelMes > 0
     ? ((estadisticas.cobrosDelMes / estadisticas.ventasDelMes) * 100).toFixed(1)
     : '0.0'
-  
+
   const promedioPorCliente = estadisticas?.totalClientes > 0
     ? formatearMoneda(estadisticas.montoTotalPendiente / estadisticas.totalClientes)
     : formatearMoneda(0)
-  
+
   const porcentajeClientesMora = estadisticas?.totalClientes > 0
     ? ((estadisticas.clientesVencidos / estadisticas.totalClientes) * 100).toFixed(1)
     : '0.0'
 
   return (
     <div className="space-y-6">
-      {/* Tarjetas de estad├¡sticas */}
+      {/* Tarjetas de estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {tarjetasEstadisticas.map((tarjeta, index) => (
           <div key={index} className="bg-white rounded-lg shadow-sm p-6 border">
@@ -365,7 +364,7 @@ export default function Dashboard({
                         {notif.cliente_nombre} {notif.cliente_apellido || ''}
                       </p>
                       <p className="text-xs text-red-600">
-                        Vencido hace {Math.abs(notif.dias_vencimiento)} d├¡as
+                        Vencido hace {Math.abs(notif.dias_vencimiento)} días
                       </p>
                       {notif.numero_cuota > 0 && (
                         <p className="text-xs text-gray-500">Cuota #{notif.numero_cuota}</p>
@@ -438,13 +437,13 @@ export default function Dashboard({
           </div>
         </div>
 
-        {/* Pr├│ximos vencimientos */}
+        {/* Próximos vencimientos */}
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-4 border-b">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-blue-600 flex items-center">
                 <Calendar className="w-5 h-5 mr-2" />
-                Pr├│ximos 7 D├¡as
+                Próximos 7 Días
               </h3>
               <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
                 {notificacionesProximas.length}
@@ -465,7 +464,7 @@ export default function Dashboard({
                         {notif.cliente_nombre} {notif.cliente_apellido || ''}
                       </p>
                       <p className="text-xs text-blue-600">
-                        En {notif.dias_vencimiento} d├¡as
+                        En {notif.dias_vencimiento} días
                       </p>
                       {notif.numero_cuota > 0 && (
                         <p className="text-xs text-gray-500">Cuota #{notif.numero_cuota}</p>
@@ -487,20 +486,20 @@ export default function Dashboard({
               </div>
             ) : (
               <p className="text-gray-500 text-sm text-center py-4">
-                No hay vencimientos pr├│ximos
+                No hay vencimientos próximos
               </p>
             )}
           </div>
         </div>
       </div>
 
-      {/* NUEVA SECCI├ôN: Clientes con Pr├®stamos */}
+      {/* NUEVA SECCIÓN: Clientes con Préstamos */}
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-4 border-b">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-purple-600 flex items-center">
               <Receipt className="w-5 h-5 mr-2" />
-              Clientes con Pr├®stamos Activos
+              Clientes con Préstamos Activos
             </h3>
             <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
               {clientesConPrestamos.length}
@@ -518,7 +517,7 @@ export default function Dashboard({
                 <thead className="bg-gray-50 border-b">
                   <tr>
                     <th className="text-left p-3 font-medium text-gray-600">Cliente</th>
-                    <th className="text-left p-3 font-medium text-gray-600">Descripci├│n</th>
+                    <th className="text-left p-3 font-medium text-gray-600">Descripción</th>
                     <th className="text-right p-3 font-medium text-gray-600">Monto Total</th>
                     <th className="text-right p-3 font-medium text-gray-600">Pendiente</th>
                     <th className="text-center p-3 font-medium text-gray-600">Cuotas</th>
@@ -545,7 +544,7 @@ export default function Dashboard({
                             {cliente.descripcion}
                           </p>
                         ) : (
-                          <p className="text-xs text-gray-400 italic">Sin descripci├│n</p>
+                          <p className="text-xs text-gray-400 italic">Sin descripción</p>
                         )}
                       </td>
                       <td className="p-3 text-right">
@@ -554,9 +553,7 @@ export default function Dashboard({
                         </p>
                       </td>
                       <td className="p-3 text-right">
-                        <p className={`font-bold ${
-                          cliente.monto_pendiente > 0 ? 'text-red-600' : 'text-green-600'
-                        }`}>
+                        <p className={`font-bold ${cliente.monto_pendiente > 0 ? 'text-red-600' : 'text-green-600'}`}>
                           {formatearMoneda(cliente.monto_pendiente)}
                         </p>
                       </td>
@@ -574,7 +571,7 @@ export default function Dashboard({
                       </td>
                       <td className="p-3 text-center">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          cliente.estado === 'activo' 
+                          cliente.estado === 'activo'
                             ? 'bg-green-100 text-green-800'
                             : 'bg-blue-100 text-blue-800'
                         }`}>
@@ -588,7 +585,7 @@ export default function Dashboard({
             </div>
           ) : (
             <p className="text-gray-500 text-sm text-center py-4">
-              No hay pr├®stamos activos registrados
+              No hay préstamos activos registrados
             </p>
           )}
         </div>
@@ -619,25 +616,25 @@ export default function Dashboard({
         </div>
       </div>
 
-      {/* Acciones r├ípidas */}
+      {/* Acciones rápidas */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones R├ípidas</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
         <div className="flex flex-wrap gap-3">
-          <button 
+          <button
             onClick={onVerNotificaciones}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
           >
             <AlertTriangle className="w-4 h-4" />
             <span>Ver Todos los Vencimientos</span>
           </button>
-          <button 
+          <button
             onClick={onRegistrarPago}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
           >
             <CreditCard className="w-4 h-4" />
             <span>Registrar Pago</span>
           </button>
-          <button 
+          <button
             onClick={onNuevaVenta}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
           >
