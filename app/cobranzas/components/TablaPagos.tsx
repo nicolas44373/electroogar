@@ -15,17 +15,13 @@ interface ReprogramacionState {
   motivoReprogramacion: string
 }
 
-export default function TablaPagos({ 
-  transaccion, 
-  pagos, 
-  onPagoRegistrado 
-}: TablaPagosProps) {
+export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: TablaPagosProps) {
   const [procesando, setProcesando] = useState<string | null>(null)
   const [reprogramacion, setReprogramacion] = useState<ReprogramacionState>({
     pagoId: null,
     nuevaFecha: '',
     interesesMora: 0,
-    motivoReprogramacion: ''
+    motivoReprogramacion: '',
   })
 
   const registrarPago = async (pagoId: string, montoPago: number) => {
@@ -36,22 +32,19 @@ export default function TablaPagos({
         .update({
           monto_pagado: montoPago,
           fecha_pago: new Date().toISOString().split('T')[0],
-          estado: 'pagado'
+          estado: 'pagado',
         })
         .eq('id', pagoId)
-      
+
       if (error) throw error
-      
-      // Verificar si todas las cuotas est├ín pagadas
-      const cuotasPagadas = pagos.filter(p => p.estado === 'pagado').length + 1
+
+      // Verificar si todas las cuotas están pagadas
+      const cuotasPagadas = pagos.filter((p) => p.estado === 'pagado').length + 1
       if (cuotasPagadas === transaccion.numero_cuotas) {
-        await supabase
-          .from('transacciones')
-          .update({ estado: 'completado' })
-          .eq('id', transaccion.id)
+        await supabase.from('transacciones').update({ estado: 'completado' }).eq('id', transaccion.id)
       }
-      
-      alert('Ô£à Pago registrado exitosamente')
+
+      alert('✅ Pago registrado exitosamente')
       onPagoRegistrado()
     } catch (error: any) {
       alert('Error al registrar el pago: ' + error.message)
@@ -68,7 +61,7 @@ export default function TablaPagos({
 
     setProcesando(reprogramacion.pagoId)
     try {
-      const pagoActual = pagos.find(p => p.id === reprogramacion.pagoId)
+      const pagoActual = pagos.find((p) => p.id === reprogramacion.pagoId)
       if (!pagoActual) throw new Error('Pago no encontrado')
 
       const nuevoMonto = transaccion.monto_cuota + reprogramacion.interesesMora
@@ -81,18 +74,18 @@ export default function TablaPagos({
           intereses_mora: reprogramacion.interesesMora,
           fecha_reprogramacion: new Date().toISOString().split('T')[0],
           motivo_reprogramacion: reprogramacion.motivoReprogramacion || null,
-          estado: 'reprogramado'
+          estado: 'reprogramado',
         })
         .eq('id', reprogramacion.pagoId)
-      
+
       if (error) throw error
-      
-      alert('Ô£à Pago reprogramado exitosamente')
+
+      alert('✅ Pago reprogramado exitosamente')
       setReprogramacion({
         pagoId: null,
         nuevaFecha: '',
         interesesMora: 0,
-        motivoReprogramacion: ''
+        motivoReprogramacion: '',
       })
       onPagoRegistrado()
     } catch (error: any) {
@@ -105,11 +98,11 @@ export default function TablaPagos({
   const calcularDiasVencimiento = (fechaVencimiento: string) => {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
-    
+
     const [year, month, day] = fechaVencimiento.split('-').map(Number)
     const vencimiento = new Date(year, month - 1, day)
     vencimiento.setHours(0, 0, 0, 0)
-    
+
     const diferencia = Math.floor((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
     return diferencia
   }
@@ -120,29 +113,29 @@ export default function TablaPagos({
     return fechaObj.toLocaleDateString('es-AR', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
     })
   }
 
   const calcularInteresesSugeridos = (diasAtraso: number, montoBase: number) => {
-    // Ejemplo: 1% por cada 30 d├¡as de atraso
+    // Ejemplo: 1% por cada 30 días de atraso
     const tasaMensual = 0.01
     const mesesAtraso = Math.ceil(Math.abs(diasAtraso) / 30)
     return montoBase * tasaMensual * mesesAtraso
   }
 
   const abrirReprogramacion = (pagoId: string) => {
-    const pago = pagos.find(p => p.id === pagoId)
+    const pago = pagos.find((p) => p.id === pagoId)
     if (pago) {
       const diasAtraso = calcularDiasVencimiento(pago.fecha_vencimiento)
-      const interesesSugeridos = diasAtraso < 0 ? 
-        calcularInteresesSugeridos(diasAtraso, transaccion.monto_cuota) : 0
-      
+      const interesesSugeridos =
+        diasAtraso < 0 ? calcularInteresesSugeridos(diasAtraso, transaccion.monto_cuota) : 0
+
       setReprogramacion({
         pagoId,
         nuevaFecha: '',
         interesesMora: interesesSugeridos,
-        motivoReprogramacion: ''
+        motivoReprogramacion: '',
       })
     }
   }
@@ -152,14 +145,14 @@ export default function TablaPagos({
       pagoId: null,
       nuevaFecha: '',
       interesesMora: 0,
-      motivoReprogramacion: ''
+      motivoReprogramacion: '',
     })
   }
 
   return (
     <div className="border-t">
       <div className="p-4">
-        <h4 className="font-semibold mb-3">­ƒôè Detalle de Pagos</h4>
+        <h4 className="font-semibold mb-3">🧾 Detalle de Pagos</h4>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -176,9 +169,11 @@ export default function TablaPagos({
               {pagos.map((pago) => {
                 const diasVencimiento = calcularDiasVencimiento(pago.fecha_vencimiento)
                 const estaVencido = diasVencimiento < 0 && pago.estado !== 'pagado'
-                const proximoAVencer = diasVencimiento >= 0 && diasVencimiento <= 7 && pago.estado !== 'pagado'
-                const montoTotal = (pago.monto_cuota || transaccion.monto_cuota) + (pago.intereses_mora || 0)
-                
+                const proximoAVencer =
+                  diasVencimiento >= 0 && diasVencimiento <= 7 && pago.estado !== 'pagado'
+                const montoTotal =
+                  (pago.monto_cuota || transaccion.monto_cuota) + (pago.intereses_mora || 0)
+
                 return (
                   <tr key={pago.id} className="border-b hover:bg-gray-50">
                     <td className="p-3">
@@ -193,14 +188,22 @@ export default function TablaPagos({
                           </p>
                         )}
                         {pago.estado !== 'pagado' && (
-                          <p className={`text-xs ${
-                            estaVencido ? 'text-red-600' : 
-                            proximoAVencer ? 'text-yellow-600' : 'text-gray-500'
-                          }`}>
-                            {estaVencido ? `Vencido hace ${Math.abs(diasVencimiento)} d├¡as` :
-                             diasVencimiento === 0 ? 'Vence hoy' :
-                             proximoAVencer ? `Vence en ${diasVencimiento} d├¡as` :
-                             `En ${diasVencimiento} d├¡as`}
+                          <p
+                            className={`text-xs ${
+                              estaVencido
+                                ? 'text-red-600'
+                                : proximoAVencer
+                                ? 'text-yellow-600'
+                                : 'text-gray-500'
+                            }`}
+                          >
+                            {estaVencido
+                              ? `Vencido hace ${Math.abs(diasVencimiento)} días`
+                              : diasVencimiento === 0
+                              ? 'Vence hoy'
+                              : proximoAVencer
+                              ? `Vence en ${diasVencimiento} días`
+                              : `En ${diasVencimiento} días`}
                           </p>
                         )}
                       </div>
@@ -219,17 +222,15 @@ export default function TablaPagos({
                       <div>
                         <p className="font-medium">${pago.monto_pagado.toFixed(2)}</p>
                         {pago.fecha_pago && (
-                          <p className="text-xs text-gray-500">
-                            {formatearFecha(pago.fecha_pago)}
-                          </p>
+                          <p className="text-xs text-gray-500">{formatearFecha(pago.fecha_pago)}</p>
                         )}
                       </div>
                     </td>
                     <td className="p-3">
-                      <EstadoPago 
-                        estado={pago.estado} 
+                      <EstadoPago
+                        estado={pago.estado}
                         vencido={estaVencido}
-                        reprogramado={pago.estado === 'reprogramado'} 
+                        reprogramado={pago.estado === 'reprogramado'}
                       />
                     </td>
                     <td className="p-3">
@@ -252,7 +253,7 @@ export default function TablaPagos({
                         </div>
                       )}
                       {pago.estado === 'pagado' && (
-                        <span className="text-green-600 text-xs">Ô£ô Pagado</span>
+                        <span className="text-green-600 text-xs">✅ Pagado</span>
                       )}
                     </td>
                   </tr>
@@ -263,25 +264,25 @@ export default function TablaPagos({
         </div>
       </div>
 
-      {/* Modal de Reprogramaci├│n */}
+      {/* Modal de Reprogramación */}
       {reprogramacion.pagoId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-96 max-w-full m-4">
-            <h3 className="text-lg font-semibold mb-4">­ƒöä Reprogramar Pago</h3>
-            
+            <h3 className="text-lg font-semibold mb-4">📅 Reprogramar Pago</h3>
+
             {(() => {
-              const pago = pagos.find(p => p.id === reprogramacion.pagoId)
+              const pago = pagos.find((p) => p.id === reprogramacion.pagoId)
               const diasAtraso = pago ? calcularDiasVencimiento(pago.fecha_vencimiento) : 0
               return (
                 <div className="space-y-4">
-                  {/* Informaci├│n de la transacci├│n */}
+                  {/* Información de la transacción */}
                   {transaccion.descripcion && (
                     <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
-                      <p className="text-xs text-gray-600 font-medium mb-1">Transacci├│n:</p>
+                      <p className="text-xs text-gray-600 font-medium mb-1">Transacción:</p>
                       <p className="text-sm text-gray-800">{transaccion.descripcion}</p>
                     </div>
                   )}
-                  
+
                   <div>
                     <label className="block text-sm font-medium mb-1">
                       Cuota #{pago?.numero_cuota}
@@ -291,7 +292,7 @@ export default function TablaPagos({
                     </p>
                     {diasAtraso < 0 && (
                       <p className="text-sm text-red-600">
-                        Vencido hace {Math.abs(diasAtraso)} d├¡as
+                        Vencido hace {Math.abs(diasAtraso)} días
                       </p>
                     )}
                   </div>
@@ -303,27 +304,29 @@ export default function TablaPagos({
                     <input
                       type="date"
                       value={reprogramacion.nuevaFecha}
-                      onChange={(e) => setReprogramacion(prev => ({
-                        ...prev,
-                        nuevaFecha: e.target.value
-                      }))}
+                      onChange={(e) =>
+                        setReprogramacion((prev) => ({
+                          ...prev,
+                          nuevaFecha: e.target.value,
+                        }))
+                      }
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
                       min={new Date().toISOString().split('T')[0]}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Intereses por mora ($)
-                    </label>
+                    <label className="block text-sm font-medium mb-1">Intereses por mora ($)</label>
                     <input
                       type="number"
                       step="0.01"
                       value={reprogramacion.interesesMora}
-                      onChange={(e) => setReprogramacion(prev => ({
-                        ...prev,
-                        interesesMora: parseFloat(e.target.value) || 0
-                      }))}
+                      onChange={(e) =>
+                        setReprogramacion((prev) => ({
+                          ...prev,
+                          interesesMora: parseFloat(e.target.value) || 0,
+                        }))
+                      }
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
                       placeholder="0.00"
                     />
@@ -338,16 +341,18 @@ export default function TablaPagos({
 
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Motivo de la reprogramaci├│n
+                      Motivo de la reprogramación
                     </label>
                     <textarea
                       value={reprogramacion.motivoReprogramacion}
-                      onChange={(e) => setReprogramacion(prev => ({
-                        ...prev,
-                        motivoReprogramacion: e.target.value
-                      }))}
+                      onChange={(e) =>
+                        setReprogramacion((prev) => ({
+                          ...prev,
+                          motivoReprogramacion: e.target.value,
+                        }))
+                      }
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                      placeholder="Ej: Problemas econ├│micos temporales, enfermedad, etc."
+                      placeholder="Ej: Problemas económicos temporales, enfermedad, etc."
                       rows={3}
                     />
                   </div>
@@ -358,7 +363,7 @@ export default function TablaPagos({
                       disabled={!reprogramacion.nuevaFecha || procesando !== null}
                       className="flex-1 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50"
                     >
-                      {procesando ? 'Procesando...' : 'Confirmar Reprogramaci├│n'}
+                      {procesando ? 'Procesando...' : 'Confirmar Reprogramación'}
                     </button>
                     <button
                       onClick={cerrarReprogramacion}
@@ -379,14 +384,14 @@ export default function TablaPagos({
 }
 
 // Componente auxiliar para el estado del pago
-function EstadoPago({ 
-  estado, 
-  vencido, 
-  reprogramado 
-}: { 
-  estado: string; 
-  vencido?: boolean;
-  reprogramado?: boolean;
+function EstadoPago({
+  estado,
+  vencido,
+  reprogramado,
+}: {
+  estado: string
+  vencido?: boolean
+  reprogramado?: boolean
 }) {
   const getEstilo = () => {
     if (estado === 'pagado') return 'bg-green-100 text-green-800'
@@ -394,17 +399,13 @@ function EstadoPago({
     if (vencido) return 'bg-red-100 text-red-800'
     return 'bg-yellow-100 text-yellow-800'
   }
-  
+
   const getTexto = () => {
     if (estado === 'pagado') return 'Pagado'
     if (reprogramado) return 'Reprogramado'
     if (vencido) return 'Vencido'
     return 'Pendiente'
   }
-  
-  return (
-    <span className={`px-2 py-1 rounded text-xs font-medium ${getEstilo()}`}>
-      {getTexto()}
-    </span>
-  )
+
+  return <span className={`px-2 py-1 rounded text-xs font-medium ${getEstilo()}`}>{getTexto()}</span>
 }

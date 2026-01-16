@@ -24,7 +24,7 @@ interface MovimientoCuentaCorriente {
   estado?: string
   transaccionId?: string
   pagoId?: string
-  descripcionTransaccion?: string // Nueva propiedad para la descripci├│n de la transacci├│n
+  descripcionTransaccion?: string // Nueva propiedad para la descripción de la transacción
 }
 
 interface CuentaCorrienteProps {
@@ -48,7 +48,7 @@ export default function CuentaCorriente({
   // Pago modal
   const [modalPagoAbierto, setModalPagoAbierto] = useState(false)
   const [ventaSeleccionada, setVentaSeleccionada] = useState<MovimientoCuentaCorriente | null>(null)
-  const [montoPago, setMontoPago] = useState<string>("");
+  const [montoPago, setMontoPago] = useState<string>('')
   const [fechaPago, setFechaPago] = useState<string>('')
 
   // Eliminar modal
@@ -72,7 +72,7 @@ export default function CuentaCorriente({
       return fechaObj.toLocaleDateString('es-AR', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric'
+        year: 'numeric',
       })
     } catch {
       return fecha
@@ -83,15 +83,16 @@ export default function CuentaCorriente({
     const movimientosTemp: MovimientoCuentaCorriente[] = []
 
     transacciones.forEach((transaccion) => {
-      // Agregar la venta/transacci├│n
+      // Agregar la venta/transacción
       movimientosTemp.push({
         id: `venta-${transaccion.id}`,
         transaccionId: transaccion.id,
-        fecha: transaccion.fecha_inicio, // Ô£à CORREGIDO: Usar fecha_inicio en lugar de created_at
+        fecha: transaccion.fecha_inicio, // ✅ CORREGIDO: Usar fecha_inicio en lugar de created_at
         tipo: 'venta',
-        descripcion: transaccion.tipo_transaccion === 'prestamo' 
-          ? 'Pr├®stamo de Dinero'
-          : `Venta - ${transaccion.producto?.nombre || 'Producto'}`,
+        descripcion:
+          transaccion.tipo_transaccion === 'prestamo'
+            ? 'Préstamo de Dinero'
+            : `Venta - ${transaccion.producto?.nombre || 'Producto'}`,
         debe: transaccion.monto_total || 0,
         haber: 0,
         saldo: 0,
@@ -100,7 +101,7 @@ export default function CuentaCorriente({
         descripcionTransaccion: transaccion.descripcion || undefined,
       })
 
-      // Agregar los pagos (solo los que est├ín realmente pagados)
+      // Agregar los pagos (solo los que están realmente pagados)
       const pagosTransaccion = pagos[transaccion.id] || []
       pagosTransaccion
         .filter((p) => p.estado === 'pagado' && p.fecha_pago)
@@ -111,9 +112,10 @@ export default function CuentaCorriente({
             transaccionId: transaccion.id,
             fecha: pago.fecha_pago!,
             tipo: 'pago',
-            descripcion: transaccion.tipo_transaccion === 'prestamo'
-              ? `Pago cuota ${pago.numero_cuota} - Pr├®stamo de Dinero`
-              : `Pago cuota ${pago.numero_cuota} - ${transaccion.producto?.nombre || 'Producto'}`,
+            descripcion:
+              transaccion.tipo_transaccion === 'prestamo'
+                ? `Pago cuota ${pago.numero_cuota} - Préstamo de Dinero`
+                : `Pago cuota ${pago.numero_cuota} - ${transaccion.producto?.nombre || 'Producto'}`,
             debe: 0,
             haber: pago.monto_pagado || 0,
             saldo: 0,
@@ -136,7 +138,7 @@ export default function CuentaCorriente({
 
     setMovimientos(movimientosTemp)
   }
-  
+
   const movimientosFiltrados = movimientos.filter((mov) => {
     if (filtroTipo !== 'todos') {
       if (filtroTipo === 'ventas' && mov.tipo !== 'venta') return false
@@ -154,7 +156,7 @@ export default function CuentaCorriente({
   // ---------- Modal Pago ----------
   const abrirModalPago = (mov: MovimientoCuentaCorriente) => {
     setVentaSeleccionada(mov)
-    setMontoPago('') // vac├¡o para que el usuario lo escriba
+    setMontoPago('') // vacío para que el usuario lo escriba
     setFechaPago(new Date().toISOString().split('T')[0])
     setModalPagoAbierto(true)
   }
@@ -166,9 +168,9 @@ export default function CuentaCorriente({
   }
 
   const registrarPago = async () => {
-    if (!ventaSeleccionada || !ventaSeleccionada.transaccionId) return alert('Venta inv├ílida')
-    const monto = typeof montoPago === 'string' ? parseFloat(montoPago || '0') : montoPago
-    if (!monto || monto <= 0) return alert('Ingrese un monto v├ílido')
+    if (!ventaSeleccionada || !ventaSeleccionada.transaccionId) return alert('Venta inválida')
+    const monto = typeof montoPago === 'string' ? parseFloat(montoPago || '0') : (montoPago as any)
+    if (!monto || monto <= 0) return alert('Ingrese un monto válido')
 
     const { error } = await supabase.from('pagos').insert({
       transaccion_id: ventaSeleccionada.transaccionId,
@@ -249,11 +251,15 @@ export default function CuentaCorriente({
 
       if (error) {
         console.error(error)
-        alert(`Error al procesar ${movimientoAEliminar.tipo}: ${error.message || JSON.stringify(error)}`)
+        alert(
+          `Error al procesar ${movimientoAEliminar.tipo}: ${
+            error.message || JSON.stringify(error)
+          }`
+        )
       } else {
         alert(
           movimientoAEliminar.tipo === 'venta'
-            ? 'Transacci├│n eliminada y pagos revertidos correctamente'
+            ? 'Transacción eliminada y pagos revertidos correctamente'
             : 'Pago revertido a estado pendiente correctamente'
         )
         cerrarModalEliminar()
@@ -279,7 +285,7 @@ export default function CuentaCorriente({
       }
     } catch (err) {
       console.error('Error inesperado:', err)
-      alert('Ocurri├│ un error inesperado al procesar la operaci├│n')
+      alert('Ocurrió un error inesperado al procesar la operación')
     } finally {
       setEliminando(false)
     }
@@ -287,7 +293,7 @@ export default function CuentaCorriente({
 
   // ---------- Helpers UI ----------
   const montoInputOnChange = (v: string) => {
-    // permite n├║meros y comas/puntos; guardo como string para evitar NaN moment├íneo
+    // permite números y comas/puntos; guardo como string para evitar NaN momentáneo
     setMontoPago(v === '' ? '' : v)
   }
 
@@ -299,7 +305,9 @@ export default function CuentaCorriente({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-gray-700" />
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Cuenta Corriente</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                Cuenta Corriente
+              </h3>
             </div>
             {/* resumen rapido (oculto en xs para dar espacio) */}
             <div className="hidden sm:flex items-center gap-3">
@@ -317,7 +325,9 @@ export default function CuentaCorriente({
                 </div>
                 <div>
                   <div className="text-xs text-blue-600 font-medium">Total Ventas</div>
-                  <div className="text-sm font-bold text-blue-700">{formatearMoneda(totalVentas)}</div>
+                  <div className="text-sm font-bold text-blue-700">
+                    {formatearMoneda(totalVentas)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -329,7 +339,9 @@ export default function CuentaCorriente({
                 </div>
                 <div>
                   <div className="text-xs text-green-600 font-medium">Total Pagos</div>
-                  <div className="text-sm font-bold text-green-700">{formatearMoneda(totalPagos)}</div>
+                  <div className="text-sm font-bold text-green-700">
+                    {formatearMoneda(totalPagos)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -342,7 +354,13 @@ export default function CuentaCorriente({
                 <div>
                   <div className="text-xs text-gray-600 font-medium">Saldo Actual</div>
                   <div
-                    className={`text-sm font-bold ${saldoActual > 0 ? 'text-red-600' : saldoActual < 0 ? 'text-green-600' : 'text-gray-700'}`}
+                    className={`text-sm font-bold ${
+                      saldoActual > 0
+                        ? 'text-red-600'
+                        : saldoActual < 0
+                        ? 'text-green-600'
+                        : 'text-gray-700'
+                    }`}
                   >
                     {formatearMoneda(Math.abs(saldoActual))}
                     <span className="text-xs ml-1">
@@ -371,12 +389,22 @@ export default function CuentaCorriente({
 
             <div>
               <label className="block text-xs text-gray-600 mb-1">Desde</label>
-              <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm" />
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={(e) => setFechaDesde(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
             </div>
 
             <div>
               <label className="block text-xs text-gray-600 mb-1">Hasta</label>
-              <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm" />
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={(e) => setFechaHasta(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
             </div>
 
             <div className="flex items-end gap-2">
@@ -394,7 +422,7 @@ export default function CuentaCorriente({
           </div>
         </div>
 
-        {/* Contenido principal: Lista m├│vil (xs) y Tabla en sm+ */}
+        {/* Contenido principal: Lista móvil (xs) y Tabla en sm+ */}
         <div className="p-3 sm:p-4">
           {/* MOBILE: tarjetas lista (visible en xs, oculto en sm+) */}
           <div className="space-y-3 sm:hidden">
@@ -405,21 +433,24 @@ export default function CuentaCorriente({
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-gray-400" />
-                        <div className="text-sm font-medium text-gray-800">{formatearFecha(mov.fecha)}</div>
+                        <div className="text-sm font-medium text-gray-800">
+                          {formatearFecha(mov.fecha)}
+                        </div>
                       </div>
 
                       <div className="mt-2">
                         <div className="text-sm font-medium">{mov.descripcion}</div>
-                        
-                        {/* Mostrar descripci├│n de la transacci├│n si existe */}
+
+                        {/* Mostrar descripción de la transacción si existe */}
                         {mov.descripcionTransaccion && (
                           <div className="mt-1 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded">
                             <p className="text-xs text-gray-700">
-                              <span className="font-medium">­ƒôØ</span> {mov.descripcionTransaccion}
+                              <span className="font-medium">📝</span>{' '}
+                              {mov.descripcionTransaccion}
                             </p>
                           </div>
                         )}
-                        
+
                         <div className="flex items-center gap-2 mt-1 text-xs">
                           {mov.tipo === 'venta' ? (
                             <div className="text-blue-600 flex items-center gap-1">
@@ -430,17 +461,23 @@ export default function CuentaCorriente({
                               <TrendingDown className="w-3 h-3" /> Pago
                             </div>
                           )}
-                          <div className="text-gray-500">ÔÇó {mov.referencia}</div>
+                          <div className="text-gray-500">• {mov.referencia}</div>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end justify-between">
                       <div className="text-sm font-semibold">
-                        {mov.debe > 0 ? <span className="text-red-600">{formatearMoneda(mov.debe)}</span> : null}
-                        {mov.haber > 0 ? <span className="text-green-600">{formatearMoneda(mov.haber)}</span> : null}
+                        {mov.debe > 0 ? (
+                          <span className="text-red-600">{formatearMoneda(mov.debe)}</span>
+                        ) : null}
+                        {mov.haber > 0 ? (
+                          <span className="text-green-600">{formatearMoneda(mov.haber)}</span>
+                        ) : null}
                       </div>
-                      <div className="text-xs mt-2 text-gray-600">Saldo {formatearMoneda(mov.saldo)}</div>
+                      <div className="text-xs mt-2 text-gray-600">
+                        Saldo {formatearMoneda(mov.saldo)}
+                      </div>
 
                       <div className="flex gap-2 mt-3">
                         {mov.tipo === 'venta' && (
@@ -474,12 +511,22 @@ export default function CuentaCorriente({
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Fecha</th>
-                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Descripci├│n</th>
-                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Referencia</th>
+                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">
+                      Descripción
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">
+                      Referencia
+                    </th>
                     <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase">Debe</th>
-                    <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase">Haber</th>
-                    <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase">Saldo</th>
-                    <th className="px-4 py-3 text-center text-xs text-gray-500 uppercase">Acciones</th>
+                    <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase">
+                      Haber
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase">
+                      Saldo
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs text-gray-500 uppercase">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -494,38 +541,64 @@ export default function CuentaCorriente({
                         </td>
                         <td className="px-4 py-3">
                           <div className="font-medium">{mov.descripcion}</div>
-                          
-                          {/* Mostrar descripci├│n de la transacci├│n si existe */}
+
+                          {/* Mostrar descripción de la transacción si existe */}
                           {mov.descripcionTransaccion && (
                             <div className="mt-1 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded text-xs text-gray-700">
-                              ­ƒôØ {mov.descripcionTransaccion}
+                              📝 {mov.descripcionTransaccion}
                             </div>
                           )}
-                          
+
                           <div className="text-xs text-gray-500 mt-1">
                             {mov.tipo === 'venta' ? (
-                              <span className="text-blue-600 inline-flex items-center gap-1"><TrendingUp className="w-3 h-3" />Venta</span>
+                              <span className="text-blue-600 inline-flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" />
+                                Venta
+                              </span>
                             ) : (
-                              <span className="text-green-600 inline-flex items-center gap-1"><TrendingDown className="w-3 h-3" />Pago</span>
+                              <span className="text-green-600 inline-flex items-center gap-1">
+                                <TrendingDown className="w-3 h-3" />
+                                Pago
+                              </span>
                             )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-gray-500">{mov.referencia}</td>
                         <td className="px-4 py-3 text-right">
-                          {mov.debe > 0 ? <span className="text-red-600 font-medium">{formatearMoneda(mov.debe)}</span> : '-'}
+                          {mov.debe > 0 ? (
+                            <span className="text-red-600 font-medium">
+                              {formatearMoneda(mov.debe)}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          {mov.haber > 0 ? <span className="text-green-600 font-medium">{formatearMoneda(mov.haber)}</span> : '-'}
+                          {mov.haber > 0 ? (
+                            <span className="text-green-600 font-medium">
+                              {formatearMoneda(mov.haber)}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
                         </td>
-                        <td className="px-4 py-3 text-right font-medium">{formatearMoneda(mov.saldo)}</td>
+                        <td className="px-4 py-3 text-right font-medium">
+                          {formatearMoneda(mov.saldo)}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <div className="inline-flex items-center gap-2">
                             {mov.tipo === 'venta' && (
-                              <button onClick={() => abrirModalPago(mov)} className="px-2 py-1 rounded bg-green-600 text-white text-xs">
+                              <button
+                                onClick={() => abrirModalPago(mov)}
+                                className="px-2 py-1 rounded bg-green-600 text-white text-xs"
+                              >
                                 <DollarSign className="w-3 h-3 inline" /> Pagar
                               </button>
                             )}
-                            <button onClick={() => abrirModalEliminar(mov)} className="px-2 py-1 rounded bg-red-600 text-white text-xs">
+                            <button
+                              onClick={() => abrirModalEliminar(mov)}
+                              className="px-2 py-1 rounded bg-red-600 text-white text-xs"
+                            >
                               <Trash2 className="w-3 h-3 inline" />
                             </button>
                           </div>
@@ -534,7 +607,9 @@ export default function CuentaCorriente({
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} className="text-center py-6 text-gray-500">No hay movimientos para mostrar</td>
+                      <td colSpan={7} className="text-center py-6 text-gray-500">
+                        No hay movimientos para mostrar
+                      </td>
                     </tr>
                   )}
                 </tbody>
@@ -546,13 +621,27 @@ export default function CuentaCorriente({
         {/* Footer resumen */}
         <div className="p-3 sm:p-4 border-t bg-gray-50">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="text-sm text-gray-600">Total de movimientos: {movimientosFiltrados.length}</div>
+            <div className="text-sm text-gray-600">
+              Total de movimientos: {movimientosFiltrados.length}
+            </div>
             <div className="text-right">
               <div className="text-xs text-gray-600">Saldo Final</div>
-              <div className={`text-base font-bold ${saldoActual > 0 ? 'text-red-600' : saldoActual < 0 ? 'text-green-600' : 'text-gray-700'}`}>
+              <div
+                className={`text-base font-bold ${
+                  saldoActual > 0
+                    ? 'text-red-600'
+                    : saldoActual < 0
+                    ? 'text-green-600'
+                    : 'text-gray-700'
+                }`}
+              >
                 {formatearMoneda(Math.abs(saldoActual))}
                 <span className="text-xs ml-1">
-                  {saldoActual > 0 ? '(A favor del comercio)' : saldoActual < 0 ? '(A favor del cliente)' : '(Cuenta saldada)'}
+                  {saldoActual > 0
+                    ? '(A favor del comercio)'
+                    : saldoActual < 0
+                    ? '(A favor del cliente)'
+                    : '(Cuenta saldada)'}
                 </span>
               </div>
             </div>
@@ -564,13 +653,9 @@ export default function CuentaCorriente({
           Modales
           -------------------- */}
 
-      {/* Modal Pago - bottom sheet en m├│viles, modal centrado en sm+ */}
+      {/* Modal Pago - bottom sheet en móviles, modal centrado en sm+ */}
       {modalPagoAbierto && ventaSeleccionada && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-          aria-modal="true"
-          role="dialog"
-        >
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" aria-modal="true" role="dialog">
           {/* overlay */}
           <div className="absolute inset-0 bg-black opacity-40" onClick={cerrarModalPago}></div>
 
@@ -589,12 +674,12 @@ export default function CuentaCorriente({
                 <label className="block text-xs text-gray-600 mb-1">Venta</label>
                 <div className="text-sm font-medium text-gray-800">{ventaSeleccionada.descripcion}</div>
                 <div className="text-xs text-gray-500 mt-1">{ventaSeleccionada.referencia}</div>
-                
-                {/* Mostrar descripci├│n de la transacci├│n si existe */}
+
+                {/* Mostrar descripción de la transacción si existe */}
                 {ventaSeleccionada.descripcionTransaccion && (
                   <div className="mt-2 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded">
                     <p className="text-xs text-gray-700">
-                      <span className="font-medium">­ƒôØ</span> {ventaSeleccionada.descripcionTransaccion}
+                      <span className="font-medium">📝</span> {ventaSeleccionada.descripcionTransaccion}
                     </p>
                   </div>
                 )}
@@ -613,12 +698,21 @@ export default function CuentaCorriente({
 
               <div>
                 <label className="block text-xs text-gray-600 mb-1">Fecha</label>
-                <input type="date" value={fechaPago} onChange={(e) => setFechaPago(e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm" />
+                <input
+                  type="date"
+                  value={fechaPago}
+                  onChange={(e) => setFechaPago(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md text-sm"
+                />
               </div>
 
               <div className="flex justify-end gap-2 mt-1">
-                <button onClick={cerrarModalPago} className="px-3 py-2 rounded bg-gray-200 text-sm">Cancelar</button>
-                <button onClick={registrarPago} className="px-3 py-2 rounded bg-green-600 text-white text-sm">Registrar</button>
+                <button onClick={cerrarModalPago} className="px-3 py-2 rounded bg-gray-200 text-sm">
+                  Cancelar
+                </button>
+                <button onClick={registrarPago} className="px-3 py-2 rounded bg-green-600 text-white text-sm">
+                  Registrar
+                </button>
               </div>
             </div>
           </div>
@@ -634,9 +728,9 @@ export default function CuentaCorriente({
             <div className="flex items-start gap-3">
               <AlertCircle className="w-6 h-6 text-orange-600" />
               <div className="flex-1">
-                <h4 className="text-base font-semibold">Confirmar reversi├│n</h4>
+                <h4 className="text-base font-semibold">Confirmar reversión</h4>
                 <p className="text-sm text-gray-600 mt-1">
-                  ┬┐Est├ís seguro de que deseas {movimientoAEliminar.tipo === 'venta' ? 'eliminar esta venta' : 'revertir este pago'}?
+                  ¿Estás seguro de que deseas {movimientoAEliminar.tipo === 'venta' ? 'eliminar esta venta' : 'revertir este pago'}?
                 </p>
               </div>
               <button onClick={cerrarModalEliminar} className="p-1 rounded-md">
@@ -646,41 +740,52 @@ export default function CuentaCorriente({
 
             <div className="mt-4 bg-gray-50 rounded p-3">
               <div className="text-sm font-medium text-gray-700">{movimientoAEliminar.descripcion}</div>
-              
-              {/* Mostrar descripci├│n de la transacci├│n si existe */}
+
+              {/* Mostrar descripción de la transacción si existe */}
               {movimientoAEliminar.descripcionTransaccion && (
                 <div className="mt-2 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded">
-                  <p className="text-xs text-gray-700">
-                    ­ƒôØ {movimientoAEliminar.descripcionTransaccion}
-                  </p>
+                  <p className="text-xs text-gray-700">📝 {movimientoAEliminar.descripcionTransaccion}</p>
                 </div>
               )}
-              
+
               <div className="text-xs text-gray-500 mt-1">Fecha: {formatearFecha(movimientoAEliminar.fecha)}</div>
-              <div className="text-xs text-gray-500 mt-1">Monto: {formatearMoneda(movimientoAEliminar.debe || movimientoAEliminar.haber)}</div>
+              <div className="text-xs text-gray-500 mt-1">
+                Monto: {formatearMoneda(movimientoAEliminar.debe || movimientoAEliminar.haber)}
+              </div>
             </div>
 
             {movimientoAEliminar.tipo === 'venta' ? (
               <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-                <strong>ÔÜá´©Å Advertencia:</strong> Al eliminar la venta, todos los pagos asociados volver├ín a estado "pendiente" y la venta se eliminar├í permanentemente.
+                <strong>Advertencia:</strong> Al eliminar la venta, todos los pagos asociados volverán a estado "pendiente" y la venta se eliminará permanentemente.
               </div>
             ) : (
               <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
-                <strong>Ôä╣´©Å Informaci├│n:</strong> Este pago volver├í a estado "pendiente". La cuota seguir├í existiendo y podr├ís registrar el pago m├ís adelante.
+                <strong>Información:</strong> Este pago volverá a estado "pendiente". La cuota seguirá existiendo y podrás registrar el pago más adelante.
               </div>
             )}
 
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={cerrarModalEliminar} className="px-4 py-2 bg-gray-200 rounded text-sm" disabled={eliminando}>Cancelar</button>
+              <button onClick={cerrarModalEliminar} className="px-4 py-2 bg-gray-200 rounded text-sm" disabled={eliminando}>
+                Cancelar
+              </button>
               <button
                 onClick={eliminarMovimiento}
                 className="px-4 py-2 bg-orange-600 text-white rounded text-sm flex items-center gap-2"
                 disabled={eliminando}
               >
                 {eliminando ? (
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    ></path>
                   </svg>
                 ) : null}
                 {movimientoAEliminar.tipo === 'pago' ? 'Revertir Pago' : 'Eliminar Venta'}
