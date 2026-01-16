@@ -199,9 +199,6 @@ export default function CobranzasPage() {
           })
           
           saldosPorTransaccion.set(transaccionId, saldoTotalTransaccion)
-          
-          // Debug para verificar el cálculo
-          console.log(`Transacción ${transaccionId}: ${pagos.length} pagos totales, saldo pendiente: $${saldoTotalTransaccion}`)
         })
       }
       
@@ -230,12 +227,7 @@ export default function CobranzasPage() {
         
         // Si el saldo calculado es 0 pero hay monto_total en la transacción, usar ese valor
         if (saldoTotal === 0 && pago.transaccion?.monto_total) {
-          // Esto puede ocurrir si todos los pagos están pendientes pero no se calculó correctamente
           const montoTotal = pago.transaccion.monto_total
-          const numeroCuotas = pago.transaccion.numero_cuotas || 1
-          const montoCuotaBase = pago.transaccion.monto_cuota || (montoTotal / numeroCuotas)
-          
-          // Si todas las cuotas están pendientes, el saldo debería ser el monto total
           saldoTotal = montoTotal
         }
         
@@ -287,29 +279,59 @@ export default function CobranzasPage() {
 
   const cargarEstadisticas = async () => {
     const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
     const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+    const hoyStr = hoy.toISOString().split('T')[0]
+    
     try {
-      const { count: totalClientes } = await supabase.from('clientes').select('*', { count: 'exact', head: true })
-      const { data: ventasMes } = await supabase.from('transacciones').select('monto_total').gte('created_at', inicioMes.toISOString())
-      const { data: cobrosMes } = await supabase.from('pagos').select('monto_pagado').eq('estado', 'pagado').gte('fecha_pago', inicioMes.toISOString().split('T')[0])
-      const { count: clientesVencidos } = await supabase.from('pagos').select('transaccion_id', { count: 'exact', head: true }).eq('estado', 'pendiente').lt('fecha_vencimiento', hoy.toISOString().split('T')[0])
-      const { data: montosPendientes } = await supabase.from('pagos').select('monto_cuota, monto_pagado, intereses_mora').in('estado', ['pendiente', 'parcial', 'reprogramado'])
+      // Total de clientes
+      const { count: totalClientes } = await supabase
+        .from('clientes')
+        .select('*', { count: 'exact', head: true })
       
-      // Calcular el monto total pendiente correctamente
-      const montoTotalPendiente = montosPendientes?.reduce((sum, pago) => {
-        const montoCuotaTotal = (pago.monto_cuota || 0) + (pago.intereses_mora || 0)
-        const montoPagado = pago.monto_pagado || 0
-        const montoRestante = montoCuotaTotal - montoPagado
-        return sum + montoRestante
-      }, 0) || 0
+      // Ventas del mes
+      const { data: ventasMes } = await supabase
+        .from('transacciones')
+        .select('monto_total')
+        .gte('created_at', inicioMes.toISOString())
       
+      // Cobros del mes
+      const { data: cobrosMes } = await supabase
+        .from('pagos')
+        .select('monto_pagado')
+        .eq('estado', 'pagado')
+        .gte('fecha_pago', inicioMes.toISOString().split('T')[0])
+      
+      // Clientes vencidos (únicos)
+      const { data: pagosVencidos } = await supabase
+        .from('pagos')
+        .select('transaccion_id, transaccion:transacciones!inner(cliente_id)')
+        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+        .lt('fecha_vencimiento', hoyStr)
+      
+      // Obtener IDs únicos de clientes vencidos
+      const clientesVencidosUnicos = new Set<string>()
+      pagosVencidos?.forEach(p => {
+        if (p.transaccion && 'cliente_id' in p.transaccion) {
+          const clienteId = (p.transaccion as any).cliente_id
+          if (clienteId) clientesVencidosUnicos.add(clienteId)
+        }
+      })
+      
+      // IMPORTANTE: montoTotalPendiente se calculará en el Dashboard
+      // Aquí solo guardamos un valor temporal que será reemplazado
       setEstadisticas({
         totalClientes: totalClientes || 0,
         ventasDelMes: ventasMes?.reduce((s, v) => s + v.monto_total, 0) || 0,
         cobrosDelMes: cobrosMes?.reduce((s, v) => s + v.monto_pagado, 0) || 0,
-        clientesVencidos: clientesVencidos || 0,
-        montoTotalPendiente
+        clientesVencidos: clientesVencidosUnicos.size,
+        montoTotalPendiente: 0 // Se actualizará desde el Dashboard
       })
+      
+      console.log('=== ESTADÍSTICAS BÁSICAS CARGADAS ===')
+      console.log('Clientes en mora:', clientesVencidosUnicos.size)
+      console.log('======================================')
+      
     } catch (err) {
       console.error('Error cargando estadísticas:', err)
     }
@@ -325,10 +347,17 @@ export default function CobranzasPage() {
     setMostrarNuevaVenta(false)
   }
 
+  const actualizarMontoUrgente = (monto: number) => {
+    setEstadisticas(prev => ({
+      ...prev,
+      montoTotalPendiente: monto
+    }))
+  }
+
   const renderVistaActiva = () => {
     switch (vistaActiva) {
       case 'dashboard':
-        return <Dashboard estadisticas={estadisticas} onVerNotificaciones={() => setVistaActiva('notificaciones')} onRegistrarPago={() => setVistaActiva('pagos')} onNuevaVenta={() => { setVistaActiva('clientes'); setMostrarNuevaVenta(true) }} />
+        return <Dashboard estadisticas={estadisticas} onVerNotificaciones={() => setVistaActiva('notificaciones')} onRegistrarPago={() => setVistaActiva('pagos')} onNuevaVenta={() => { setVistaActiva('clientes'); setMostrarNuevaVenta(true) }} onActualizarMontoUrgente={actualizarMontoUrgente} />
       case 'clientes':
         return (
           <div className="space-y-6">

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { Producto } from '@/app/lib/types/cobranzas'
+import ComprobanteTransaccion from './Comprobantetransaccion'
 
 interface FormularioVentaProps {
   clienteId: string
@@ -16,6 +17,8 @@ export default function FormularioVenta({
   onCancelar,
 }: FormularioVentaProps) {
   const [guardando, setGuardando] = useState(false)
+  const [mostrarComprobante, setMostrarComprobante] = useState(false)
+  const [datosComprobante, setDatosComprobante] = useState<any>(null)
 
   // Estado separado para controlar el tipo de transacción
   const [tipoTransaccion, setTipoTransaccion] = useState<'venta' | 'prestamo' | null>(null)
@@ -90,12 +93,34 @@ export default function FormularioVenta({
     try {
       // Calcular monto total con intereses
       let montoTotalFinal = parseFloat(formVenta.monto_total)
+      const porcentajeInteres = interes ? parseFloat(interes) : 0
+      
       if (interes) {
-        const porcentajeInteres = parseFloat(interes) / 100
-        montoTotalFinal = montoTotalFinal + montoTotalFinal * porcentajeInteres
+        montoTotalFinal = montoTotalFinal + montoTotalFinal * (porcentajeInteres / 100)
       }
 
       const montoCuotaCalculado = montoTotalFinal / parseInt(formVenta.numero_cuotas)
+
+      // Obtener datos del cliente
+      const { data: clienteData } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('id', clienteId)
+        .single()
+
+      if (!clienteData) throw new Error('Cliente no encontrado')
+
+      // Obtener datos del producto si es venta
+      let productoNombre = null
+      if (tipoTransaccion === 'venta' && formVenta.producto_id) {
+        const { data: productoData } = await supabase
+          .from('productos')
+          .select('nombre')
+          .eq('id', formVenta.producto_id)
+          .single()
+        
+        productoNombre = productoData?.nombre
+      }
 
       // Crear transacción
       const { data: transData, error: transError } = await supabase
@@ -120,6 +145,7 @@ export default function FormularioVenta({
       // Crear pagos programados
       if (transData) {
         const pagosACrear: any[] = []
+        const cuotasParaComprobante: any[] = []
         const fechaInicio = new Date(formVenta.fecha_inicio)
 
         for (let i = 1; i <= parseInt(formVenta.numero_cuotas); i++) {
@@ -137,27 +163,79 @@ export default function FormularioVenta({
             }
           }
 
+          const fechaVencimientoStr = fechaVencimiento.toISOString().split('T')[0]
+
           pagosACrear.push({
             transaccion_id: transData.id,
             numero_cuota: i,
+            monto_cuota: montoCuotaCalculado,
             monto_pagado: 0,
             fecha_pago: null,
-            fecha_vencimiento: fechaVencimiento.toISOString().split('T')[0],
+            fecha_vencimiento: fechaVencimientoStr,
             estado: 'pendiente',
+          })
+
+          cuotasParaComprobante.push({
+            numero: i,
+            monto: montoCuotaCalculado,
+            fechaVencimiento: fechaVencimientoStr
           })
         }
 
         const { error: pagosError } = await supabase.from('pagos').insert(pagosACrear)
         if (pagosError) throw pagosError
 
-        alert(`✅ ${tipoTransaccion === 'venta' ? 'Venta' : 'Préstamo'} creado exitosamente`)
-        onVentaCreada()
+        // Preparar datos para el comprobante
+        setDatosComprobante({
+          tipo: tipoTransaccion,
+          cliente: {
+            nombre: clienteData.nombre,
+            apellido: clienteData.apellido || '',
+            telefono: clienteData.telefono,
+            email: clienteData.email
+          },
+          transaccion: {
+            numeroFactura: transData.numero_factura,
+            fecha: formVenta.fecha_inicio,
+            montoOriginal: parseFloat(formVenta.monto_total),
+            interes: porcentajeInteres,
+            montoTotal: montoTotalFinal,
+            numeroCuotas: parseInt(formVenta.numero_cuotas),
+            montoCuota: montoCuotaCalculado,
+            tipoPago: formVenta.tipo_pago,
+            descripcion: formVenta.descripcion,
+            productoNombre: productoNombre
+          },
+          cuotas: cuotasParaComprobante
+        })
+
+        // Mostrar comprobante
+        setMostrarComprobante(true)
       }
     } catch (error: any) {
       alert('Error al crear la transacción: ' + error.message)
-    } finally {
       setGuardando(false)
     }
+  }
+
+  const handleCerrarComprobante = () => {
+    setMostrarComprobante(false)
+    setDatosComprobante(null)
+    setGuardando(false)
+    onVentaCreada()
+  }
+
+  // Si se está mostrando el comprobante, renderizarlo
+  if (mostrarComprobante && datosComprobante) {
+    return (
+      <ComprobanteTransaccion
+        tipo={datosComprobante.tipo}
+        cliente={datosComprobante.cliente}
+        transaccion={datosComprobante.transaccion}
+        cuotas={datosComprobante.cuotas}
+        onCerrar={handleCerrarComprobante}
+      />
+    )
   }
 
   return (
