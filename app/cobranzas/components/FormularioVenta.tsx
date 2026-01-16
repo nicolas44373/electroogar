@@ -64,21 +64,21 @@ export default function FormularioVenta({
 
   const validarFormulario = (): boolean => {
     if (!tipoTransaccion) {
-      alert('Seleccione si es venta o préstamo')
+      alert('⚠️ Seleccione si es venta o préstamo')
       return false
     }
 
     if (tipoTransaccion === 'venta' && !formVenta.producto_id) {
-      alert('Seleccione un producto')
+      alert('⚠️ Seleccione un producto')
       return false
     }
 
     if (!formVenta.monto_total || parseFloat(formVenta.monto_total) <= 0) {
-      alert('Ingrese un monto válido')
+      alert('⚠️ Ingrese un monto válido')
       return false
     }
     if (!formVenta.numero_cuotas || parseInt(formVenta.numero_cuotas) <= 0) {
-      alert('Ingrese un número de cuotas válido')
+      alert('⚠️ Ingrese un número de cuotas válido')
       return false
     }
     return true
@@ -213,7 +213,7 @@ export default function FormularioVenta({
         setMostrarComprobante(true)
       }
     } catch (error: any) {
-      alert('Error al crear la transacción: ' + error.message)
+      alert('❌ Error al crear la transacción: ' + error.message)
       setGuardando(false)
     }
   }
@@ -239,260 +239,312 @@ export default function FormularioVenta({
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow mb-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">
-          {!tipoTransaccion
-            ? 'Crear Nueva Transacción'
-            : tipoTransaccion === 'venta'
-            ? 'Crear Nueva Venta'
-            : 'Crear Nuevo Préstamo'}
+    <div className="bg-white p-6 rounded-xl shadow-lg mb-6 border border-gray-100">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          {!tipoTransaccion && '💼 Crear Nueva Transacción'}
+          {tipoTransaccion === 'venta' && '🛒 Crear Nueva Venta'}
+          {tipoTransaccion === 'prestamo' && '💰 Crear Nuevo Préstamo'}
         </h3>
-        <button onClick={onCancelar} className="text-gray-500 hover:text-gray-700" aria-label="Cerrar">
+        <button 
+          onClick={onCancelar} 
+          className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-all" 
+          aria-label="Cerrar"
+        >
           ✖
         </button>
       </div>
 
-      <form onSubmit={crearNuevaVenta} className="space-y-4">
+      <form onSubmit={crearNuevaVenta} className="space-y-5">
         {/* Primer paso: Seleccionar tipo de transacción */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <label className="block text-sm font-medium mb-2">¿Qué tipo de transacción es?</label>
-          <div className="grid grid-cols-2 gap-3">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-xl border border-gray-200">
+          <label className="block text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
+            ❓ ¿Qué tipo de transacción es?
+          </label>
+          <div className="grid grid-cols-2 gap-4">
             <button
               type="button"
               onClick={() => setTipoTransaccion('venta')}
-              className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+              className={`p-4 rounded-xl border-2 text-sm font-semibold transition-all transform hover:scale-105 ${
                 tipoTransaccion === 'venta'
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 bg-white hover:border-gray-400'
+                  ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-lg shadow-blue-200'
+                  : 'border-gray-300 bg-white hover:border-blue-300 hover:bg-blue-50'
               }`}
               disabled={guardando}
             >
-              Venta de Producto
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-2xl">🛒</span>
+                <span>Venta de Producto</span>
+              </div>
             </button>
             <button
               type="button"
               onClick={() => setTipoTransaccion('prestamo')}
-              className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+              className={`p-4 rounded-xl border-2 text-sm font-semibold transition-all transform hover:scale-105 ${
                 tipoTransaccion === 'prestamo'
-                  ? 'border-green-500 bg-green-50 text-green-700'
-                  : 'border-gray-300 bg-white hover:border-gray-400'
+                  ? 'border-green-500 bg-green-50 text-green-700 shadow-lg shadow-green-200'
+                  : 'border-gray-300 bg-white hover:border-green-300 hover:bg-green-50'
               }`}
               disabled={guardando}
             >
-              Préstamo de Dinero
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-2xl">💰</span>
+                <span>Préstamo de Dinero</span>
+              </div>
             </button>
           </div>
         </div>
 
         {/* Formulario unificado para ambos tipos */}
         {tipoTransaccion && (
-          <div className="grid grid-cols-2 gap-4">
-            {/* Campo de producto (solo para ventas) */}
-            {tipoTransaccion === 'venta' && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-1">Producto</label>
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Campo de producto (solo para ventas) */}
+              {tipoTransaccion === 'venta' && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                    📦 Producto
+                  </label>
+                  <select
+                    value={formVenta.producto_id}
+                    onChange={(e) => handleInputChange('producto_id', e.target.value)}
+                    className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                    required
+                    disabled={guardando}
+                  >
+                    <option value="">🔍 Seleccionar producto...</option>
+                    {productos.map((prod) => (
+                      <option key={prod.id} value={prod.id}>
+                        {prod.nombre} - ${prod.precio}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Campo de descripción para ambos tipos */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                  📝 Descripción 
+                  <span className="text-gray-400 font-normal text-xs">- Opcional</span>
+                </label>
+                <textarea
+                  value={formVenta.descripcion}
+                  onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                  placeholder={
+                    tipoTransaccion === 'venta'
+                      ? '💡 Ej: Venta de celular Samsung con funda incluida'
+                      : '💡 Ej: Préstamo para pago de alquiler'
+                  }
+                  className="border-2 border-gray-300 p-3 rounded-lg w-full resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  rows={3}
+                  disabled={guardando}
+                />
+                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                  💬 Agrega notas o detalles adicionales sobre esta transacción
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                  💵 {tipoTransaccion === 'venta' ? 'Monto Total de Venta' : 'Monto del Préstamo'}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-bold">$</span>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={formVenta.monto_total}
+                    onChange={(e) => handleInputChange('monto_total', e.target.value)}
+                    className="border-2 border-gray-300 p-3 pl-8 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                    step="0.01"
+                    required
+                    disabled={guardando}
+                  />
+                </div>
+              </div>
+
+              {/* Campo de interés (disponible para ambos tipos) */}
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                  📈 Interés (%) 
+                  <span className="text-gray-400 font-normal text-xs">- Opcional</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={interes}
+                    onChange={(e) => setInteres(e.target.value)}
+                    className="border-2 border-gray-300 p-3 pr-8 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                    step="0.1"
+                    min="0"
+                    disabled={guardando}
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-bold">%</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {tipoTransaccion === 'venta'
+                    ? '💡 Ej: 10 para 10% adicional al precio'
+                    : '💡 Ej: 10 para 10% de interés'}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                  🔄 Método de Pago
+                </label>
                 <select
-                  value={formVenta.producto_id}
-                  onChange={(e) => handleInputChange('producto_id', e.target.value)}
-                  className="border p-2 rounded w-full"
-                  required
+                  value={formVenta.tipo_pago}
+                  onChange={(e) => handleInputChange('tipo_pago', e.target.value)}
+                  className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                   disabled={guardando}
                 >
-                  <option value="">Seleccionar producto...</option>
-                  {productos.map((prod) => (
-                    <option key={prod.id} value={prod.id}>
-                      {prod.nombre} - ${prod.precio}
-                    </option>
-                  ))}
+                  <option value="semanal">📅 Semanal</option>
+                  <option value="quincenal">📅 Quincenal</option>
+                  <option value="mensual">📅 Mensual</option>
                 </select>
               </div>
-            )}
 
-            {/* Campo de descripción para ambos tipos */}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium mb-1">
-                Descripción <span className="text-gray-500 font-normal ml-1">- Opcional</span>
-              </label>
-              <textarea
-                value={formVenta.descripcion}
-                onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                placeholder={
-                  tipoTransaccion === 'venta'
-                    ? 'Ej: Venta de celular Samsung con funda incluida'
-                    : 'Ej: Préstamo para pago de alquiler'
-                }
-                className="border p-2 rounded w-full resize-none"
-                rows={2}
-                disabled={guardando}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Agrega notas o detalles adicionales sobre esta transacción
-              </p>
-            </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                  🔢 Número de Cuotas
+                </label>
+                <input
+                  type="number"
+                  placeholder="1"
+                  value={formVenta.numero_cuotas}
+                  onChange={(e) => handleInputChange('numero_cuotas', e.target.value)}
+                  className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  min="1"
+                  required
+                  disabled={guardando}
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                {tipoTransaccion === 'venta' ? 'Monto Total de Venta' : 'Monto del Préstamo'}
-              </label>
-              <input
-                type="number"
-                placeholder="0.00"
-                value={formVenta.monto_total}
-                onChange={(e) => handleInputChange('monto_total', e.target.value)}
-                className="border p-2 rounded w-full"
-                step="0.01"
-                required
-                disabled={guardando}
-              />
-            </div>
-
-            {/* Campo de interés (disponible para ambos tipos) */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Interés (%) <span className="text-gray-500 font-normal">- Opcional</span>
-              </label>
-              <input
-                type="number"
-                placeholder="0"
-                value={interes}
-                onChange={(e) => setInteres(e.target.value)}
-                className="border p-2 rounded w-full"
-                step="0.1"
-                min="0"
-                disabled={guardando}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {tipoTransaccion === 'venta'
-                  ? 'Ej: 10 para 10% adicional al precio'
-                  : 'Ej: 10 para 10% de interés'}
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Método de Pago</label>
-              <select
-                value={formVenta.tipo_pago}
-                onChange={(e) => handleInputChange('tipo_pago', e.target.value)}
-                className="border p-2 rounded w-full"
-                disabled={guardando}
-              >
-                <option value="semanal">Semanal</option>
-                <option value="quincenal">Quincenal</option>
-                <option value="mensual">Mensual</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Número de Cuotas</label>
-              <input
-                type="number"
-                placeholder="1"
-                value={formVenta.numero_cuotas}
-                onChange={(e) => handleInputChange('numero_cuotas', e.target.value)}
-                className="border p-2 rounded w-full"
-                min="1"
-                required
-                disabled={guardando}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Fecha de Inicio</label>
-              <input
-                type="date"
-                value={formVenta.fecha_inicio}
-                onChange={(e) => handleInputChange('fecha_inicio', e.target.value)}
-                className="border p-2 rounded w-full"
-                required
-                disabled={guardando}
-              />
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                  📆 Fecha de Inicio
+                </label>
+                <input
+                  type="date"
+                  value={formVenta.fecha_inicio}
+                  onChange={(e) => handleInputChange('fecha_inicio', e.target.value)}
+                  className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  required
+                  disabled={guardando}
+                />
+              </div>
             </div>
 
             {/* Vista previa unificada con detalles */}
-            <div className="col-span-2">
-              <div
-                className={`${
-                  tipoTransaccion === 'venta'
-                    ? 'bg-blue-50 border-blue-200'
-                    : 'bg-green-50 border-green-200'
-                } p-4 rounded-lg border`}
+            <div
+              className={`${
+                tipoTransaccion === 'venta'
+                  ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-300'
+                  : 'bg-gradient-to-br from-green-50 to-green-100 border-green-300'
+              } p-5 rounded-xl border-2 shadow-md`}
+            >
+              <h4
+                className={`font-bold mb-4 text-lg flex items-center gap-2 ${
+                  tipoTransaccion === 'venta' ? 'text-blue-800' : 'text-green-800'
+                }`}
               >
-                <h4
-                  className={`font-medium mb-2 ${
-                    tipoTransaccion === 'venta' ? 'text-blue-800' : 'text-green-800'
-                  }`}
-                >
-                  {tipoTransaccion === 'venta' ? 'Resumen de la Venta:' : 'Resumen del Préstamo:'}
-                </h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <p>
-                    <strong>Monto original:</strong> ${formVenta.monto_total || '0'}
-                  </p>
-                  <p>
-                    <strong>Interés ({interes || '0'}%):</strong> $
-                    {formVenta.monto_total && interes
+                {tipoTransaccion === 'venta' ? '🛒 Resumen de la Venta' : '💰 Resumen del Préstamo'}
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="bg-white bg-opacity-50 p-3 rounded-lg">
+                  <p className="text-gray-600 text-xs mb-1">💵 Monto original</p>
+                  <p className="font-bold text-lg">${formVenta.monto_total || '0.00'}</p>
+                </div>
+                <div className="bg-white bg-opacity-50 p-3 rounded-lg">
+                  <p className="text-gray-600 text-xs mb-1">📈 Interés ({interes || '0'}%)</p>
+                  <p className="font-bold text-lg text-orange-600">
+                    +${formVenta.monto_total && interes
                       ? (parseFloat(formVenta.monto_total) * parseFloat(interes) / 100).toFixed(2)
                       : '0.00'}
                   </p>
-                  <p>
-                    <strong>Monto total a cobrar:</strong> $
-                    {formVenta.monto_total && interes
+                </div>
+                <div className={`${
+                  tipoTransaccion === 'venta' ? 'bg-blue-600' : 'bg-green-600'
+                } text-white p-3 rounded-lg md:col-span-2`}>
+                  <p className="text-xs mb-1 opacity-90">💎 Monto total a cobrar</p>
+                  <p className="font-bold text-2xl">
+                    ${formVenta.monto_total && interes
                       ? (
                           parseFloat(formVenta.monto_total) +
                           parseFloat(formVenta.monto_total) * (parseFloat(interes) / 100)
                         ).toFixed(2)
-                      : formVenta.monto_total || '0'}
-                  </p>
-                  <p>
-                    <strong>Cuotas de:</strong> ${montoCuota} cada una
-                  </p>
-                  <p>
-                    <strong>Frecuencia:</strong> {formVenta.tipo_pago}
-                  </p>
-                  <p>
-                    <strong>Total de cuotas:</strong> {formVenta.numero_cuotas || '0'}
+                      : formVenta.monto_total || '0.00'}
                   </p>
                 </div>
-
-                {/* Mostrar descripción si existe */}
-                {formVenta.descripcion && (
-                  <div className="mt-2 pt-2 border-t border-gray-300">
-                    <p className="text-xs text-gray-700">
-                      <strong>Descripción:</strong> {formVenta.descripcion}
-                    </p>
-                  </div>
-                )}
-
-                {/* Información adicional según el tipo */}
-                {tipoTransaccion === 'venta' && interes && (
-                  <div className="mt-2 pt-2 border-t border-blue-200">
-                    <p className="text-xs text-blue-600">
-                      Se está aplicando un {interes}% adicional al precio del producto
-                    </p>
-                  </div>
-                )}
-
-                {!interes && (
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <p className="text-xs text-gray-600">
-                      Sin intereses - Se cobrará el monto original dividido en cuotas
-                    </p>
-                  </div>
-                )}
+                <div className="bg-white bg-opacity-50 p-3 rounded-lg">
+                  <p className="text-gray-600 text-xs mb-1">💰 Cuotas de</p>
+                  <p className="font-bold text-lg">${montoCuota} c/u</p>
+                </div>
+                <div className="bg-white bg-opacity-50 p-3 rounded-lg">
+                  <p className="text-gray-600 text-xs mb-1">🔄 Frecuencia</p>
+                  <p className="font-bold text-lg capitalize">{formVenta.tipo_pago}</p>
+                </div>
+                <div className="bg-white bg-opacity-50 p-3 rounded-lg md:col-span-2">
+                  <p className="text-gray-600 text-xs mb-1">🔢 Total de cuotas</p>
+                  <p className="font-bold text-lg">{formVenta.numero_cuotas || '0'} cuotas</p>
+                </div>
               </div>
+
+              {/* Mostrar descripción si existe */}
+              {formVenta.descripcion && (
+                <div className="mt-4 pt-4 border-t border-gray-300">
+                  <p className="text-sm text-gray-700 bg-white bg-opacity-60 p-3 rounded-lg">
+                    <strong className="flex items-center gap-1 mb-1">
+                      📝 Descripción:
+                    </strong>
+                    {formVenta.descripcion}
+                  </p>
+                </div>
+              )}
+
+              {/* Información adicional según el tipo */}
+              {tipoTransaccion === 'venta' && interes && (
+                <div className="mt-4 pt-4 border-t border-blue-300">
+                  <p className="text-xs text-blue-700 bg-blue-200 bg-opacity-50 p-2 rounded-lg flex items-center gap-2">
+                    <span>ℹ️</span>
+                    <span>Se está aplicando un {interes}% adicional al precio del producto</span>
+                  </p>
+                </div>
+              )}
+
+              {!interes && (
+                <div className="mt-4 pt-4 border-t border-gray-300">
+                  <p className="text-xs text-gray-600 bg-white bg-opacity-60 p-2 rounded-lg flex items-center gap-2">
+                    <span>✅</span>
+                    <span>Sin intereses - Se cobrará el monto original dividido en cuotas</span>
+                  </p>
+                </div>
+              )}
             </div>
 
             <button
               type="submit"
               disabled={guardando}
-              className={`p-2 rounded hover:opacity-90 col-span-2 disabled:opacity-50 text-white font-medium ${
+              className={`p-4 rounded-xl hover:opacity-90 w-full disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-lg shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 ${
                 tipoTransaccion === 'venta'
-                  ? 'bg-blue-500 hover:bg-blue-600'
-                  : 'bg-green-500 hover:bg-green-600'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-300'
+                  : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-green-300'
               }`}
             >
-              {guardando ? 'Guardando...' : `Crear ${tipoTransaccion === 'venta' ? 'Venta' : 'Préstamo'}`}
+              {guardando ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  <span>Guardando...</span>
+                </>
+              ) : (
+                <>
+                  <span>{tipoTransaccion === 'venta' ? '🛒' : '💰'}</span>
+                  <span>Crear {tipoTransaccion === 'venta' ? 'Venta' : 'Préstamo'}</span>
+                  <span>✨</span>
+                </>
+              )}
             </button>
           </div>
         )}
