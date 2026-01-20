@@ -226,6 +226,7 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
 
       if (error) throw error
 
+      // 🎯 SIEMPRE generar recibo (tanto para pagos parciales como completos)
       const datosRecibo = {
         numero_recibo: numeroRecibo,
         fecha_pago: fechaPago,
@@ -233,18 +234,30 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
         transaccion: transaccionPago,
         pago: {
           ...pagoSeleccionado,
-          monto_pagado: montoNumerico,
+          monto_pagado: montoNumerico, // Monto de ESTE pago
+          monto_total_pagado: nuevoMontoPagado, // Monto total acumulado
           metodo_pago: metodoPago,
-          observaciones: observaciones
+          observaciones: observaciones,
+          estado: nuevoEstado
         },
-        monto_pagado: montoNumerico
+        monto_pagado: montoNumerico, // Monto de ESTE pago específico
+        es_pago_parcial: nuevoEstado === 'parcial',
+        monto_pendiente_cuota: montoTotal - nuevoMontoPagado
       }
 
       setReciboGenerado(datosRecibo)
       setMostrarRecibo(true)
       setModalPagoAbierto(false)
       
+      // Recargar deudas del cliente
       await cargarDeudasCliente(clienteSeleccionado.id)
+      
+      // Mostrar mensaje de éxito
+      const mensajeExito = nuevoEstado === 'pagado' 
+        ? '✅ Pago completo registrado exitosamente'
+        : `✅ Pago parcial de ${formatearMoneda(montoNumerico)} registrado. Pendiente: ${formatearMoneda(montoTotal - nuevoMontoPagado)}`
+      
+      console.log(mensajeExito)
     } catch (error) {
       console.error('Error registrando pago:', error)
       alert('Error al registrar el pago')
@@ -569,17 +582,28 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
                                     </button>
                                   </div>
                                 )}
-                                {pago.estado === 'pagado' && (
+                                {/* Mostrar botones de recibo para pagos COMPLETOS y PARCIALES */}
+                                {(pago.estado === 'pagado' || pago.estado === 'parcial') && pago.numero_recibo && (
                                   <div className="flex flex-wrap justify-center gap-1">
                                     <button
                                       onClick={() => {
+                                        const montoCuota = pago.monto_cuota || deuda.transaccion.monto_cuota
+                                        const intereses = pago.intereses_mora || 0
+                                        const montoTotal = montoCuota + intereses
+                                        const montoPagado = pago.monto_pagado || 0
+                                        
                                         const datosRecibo = {
                                           numero_recibo: pago.numero_recibo,
                                           fecha_pago: pago.fecha_pago,
                                           cliente: clienteSeleccionado,
                                           transaccion: deuda.transaccion,
-                                          pago: pago,
-                                          monto_pagado: pago.monto_pagado
+                                          pago: {
+                                            ...pago,
+                                            monto_total_pagado: montoPagado
+                                          },
+                                          monto_pagado: montoPagado,
+                                          es_pago_parcial: pago.estado === 'parcial',
+                                          monto_pendiente_cuota: montoTotal - montoPagado
                                         }
                                         setReciboGenerado(datosRecibo)
                                         setMostrarRecibo(true)
@@ -592,13 +616,23 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
                                     </button>
                                     <button
                                       onClick={() => {
+                                        const montoCuota = pago.monto_cuota || deuda.transaccion.monto_cuota
+                                        const intereses = pago.intereses_mora || 0
+                                        const montoTotal = montoCuota + intereses
+                                        const montoPagado = pago.monto_pagado || 0
+                                        
                                         const datosRecibo = {
                                           numero_recibo: pago.numero_recibo,
                                           fecha_pago: pago.fecha_pago,
                                           cliente: clienteSeleccionado,
                                           transaccion: deuda.transaccion,
-                                          pago: pago,
-                                          monto_pagado: pago.monto_pagado
+                                          pago: {
+                                            ...pago,
+                                            monto_total_pagado: montoPagado
+                                          },
+                                          monto_pagado: montoPagado,
+                                          es_pago_parcial: pago.estado === 'parcial',
+                                          monto_pendiente_cuota: montoTotal - montoPagado
                                         }
                                         setReciboGenerado(datosRecibo)
                                         setMostrarRecibo(true)
@@ -614,13 +648,23 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
                                     </button>
                                     <button
                                       onClick={() => {
+                                        const montoCuota = pago.monto_cuota || deuda.transaccion.monto_cuota
+                                        const intereses = pago.intereses_mora || 0
+                                        const montoTotal = montoCuota + intereses
+                                        const montoPagado = pago.monto_pagado || 0
+                                        
                                         const datosRecibo = {
                                           numero_recibo: pago.numero_recibo,
                                           fecha_pago: pago.fecha_pago,
                                           cliente: clienteSeleccionado,
                                           transaccion: deuda.transaccion,
-                                          pago: pago,
-                                          monto_pagado: pago.monto_pagado
+                                          pago: {
+                                            ...pago,
+                                            monto_total_pagado: montoPagado
+                                          },
+                                          monto_pagado: montoPagado,
+                                          es_pago_parcial: pago.estado === 'parcial',
+                                          monto_pendiente_cuota: montoTotal - montoPagado
                                         }
                                         setReciboGenerado(datosRecibo)
                                         setMostrarRecibo(true)
@@ -937,14 +981,49 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
                   </div>
                 </div>
 
+                {/* Estado del pago (parcial o completo) */}
+                {reciboGenerado.es_pago_parcial && (
+                  <div className="mb-4 sm:mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-yellow-800">Pago Parcial</h3>
+                        <div className="mt-2 text-sm text-yellow-700">
+                          <p>Este es un recibo de pago parcial.</p>
+                          <p className="mt-1">
+                            <strong>Monto de este pago:</strong> {formatearMoneda(reciboGenerado.monto_pagado)}
+                          </p>
+                          <p>
+                            <strong>Total pagado en esta cuota:</strong> {formatearMoneda(reciboGenerado.pago.monto_total_pagado || reciboGenerado.monto_pagado)}
+                          </p>
+                          <p>
+                            <strong>Pendiente de esta cuota:</strong> {formatearMoneda(reciboGenerado.monto_pendiente_cuota || 0)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Total */}
                 <div className="flex justify-end mb-4 sm:mb-6">
-                  <div className="bg-blue-50 p-3 sm:p-4 rounded">
+                  <div className={`p-3 sm:p-4 rounded ${reciboGenerado.es_pago_parcial ? 'bg-yellow-50' : 'bg-blue-50'}`}>
                     <div className="text-right">
-                      <div className="text-xs sm:text-sm text-gray-600">Total Pagado:</div>
-                      <div className="text-xl sm:text-2xl font-bold text-blue-700 break-all">
+                      <div className="text-xs sm:text-sm text-gray-600">
+                        {reciboGenerado.es_pago_parcial ? 'Monto de Este Pago:' : 'Total Pagado:'}
+                      </div>
+                      <div className={`text-xl sm:text-2xl font-bold break-all ${reciboGenerado.es_pago_parcial ? 'text-yellow-700' : 'text-blue-700'}`}>
                         {formatearMoneda(reciboGenerado.monto_pagado)}
                       </div>
+                      {reciboGenerado.es_pago_parcial && (
+                        <div className="text-xs text-gray-600 mt-1">
+                          Estado: <span className="font-semibold text-yellow-700">Pago Parcial</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
