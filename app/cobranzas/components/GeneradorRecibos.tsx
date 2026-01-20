@@ -7,16 +7,14 @@ import {
   Eye, 
   Printer, 
   Search, 
-  Calendar, 
-  Filter,
   DollarSign,
   CheckCircle,
-  AlertCircle,
   User,
   X,
   Phone,
   Mail,
-  CreditCard
+  ShoppingCart,
+  TrendingUp
 } from 'lucide-react'
 
 interface DeudaCliente {
@@ -32,7 +30,13 @@ interface BusquedaCliente extends Cliente {
   transacciones_activas: number
 }
 
-export default function SistemaRecibos() {
+interface GeneradorRecibosProps {
+  clientes?: Cliente[]
+  transacciones?: Transaccion[]
+  pagos?: { [key: string]: Pago[] }
+}
+
+export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pagos: _p }: GeneradorRecibosProps = {}) {
   const [busqueda, setBusqueda] = useState('')
   const [clientesEncontrados, setClientesEncontrados] = useState<BusquedaCliente[]>([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null)
@@ -63,7 +67,6 @@ export default function SistemaRecibos() {
   const buscarClientes = async () => {
     setLoading(true)
     try {
-      // Buscar clientes por nombre, apellido, documento o teléfono
       const { data: clientes, error } = await supabase
         .from('clientes')
         .select(`
@@ -85,7 +88,6 @@ export default function SistemaRecibos() {
 
       if (error) throw error
 
-      // Calcular deuda total por cliente
       const clientesConDeuda = clientes?.map(cliente => {
         let totalDeuda = 0
         let transaccionesActivas = 0
@@ -128,7 +130,6 @@ export default function SistemaRecibos() {
   const cargarDeudasCliente = async (clienteId: string) => {
     setLoading(true)
     try {
-      // Cargar todas las transacciones activas del cliente
       const { data: transacciones, error: transError } = await supabase
         .from('transacciones')
         .select(`
@@ -142,7 +143,6 @@ export default function SistemaRecibos() {
 
       if (transError) throw transError
 
-      // Procesar deudas
       const deudas: DeudaCliente[] = (transacciones || []).map(trans => {
         const pagos = (trans as any).pagos || []
         const cuotasPendientes = pagos.filter((p: Pago) => p.estado !== 'pagado').length
@@ -226,7 +226,6 @@ export default function SistemaRecibos() {
 
       if (error) throw error
 
-      // Generar datos del recibo
       const datosRecibo = {
         numero_recibo: numeroRecibo,
         fecha_pago: fechaPago,
@@ -245,7 +244,6 @@ export default function SistemaRecibos() {
       setMostrarRecibo(true)
       setModalPagoAbierto(false)
       
-      // Recargar deudas
       await cargarDeudasCliente(clienteSeleccionado.id)
     } catch (error) {
       console.error('Error registrando pago:', error)
@@ -348,12 +346,8 @@ export default function SistemaRecibos() {
                           </span>
                         </div>
                         <div className="space-y-0.5 text-xs sm:text-sm text-gray-600">
-                          {cliente.documento && (
-                            <p>📄 {cliente.documento}</p>
-                          )}
-                          {cliente.telefono && (
-                            <p>📞 {cliente.telefono}</p>
-                          )}
+                          {cliente.documento && <p>📄 {cliente.documento}</p>}
+                          {cliente.telefono && <p>📞 {cliente.telefono}</p>}
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
