@@ -3,6 +3,8 @@ import { Cliente, Transaccion, Pago } from '@/app/lib/types/cobranzas'
 import TablaPagos from './TablaPagos'
 import ResumenPagos from './ResumenPagos'
 import ExportadorPDFCliente from './Exportadorpdfcliente'
+import ComprobanteTransaccion from './Comprobantetransaccion'
+import { FileText } from 'lucide-react'
 
 interface HistorialTransaccionesProps {
   cliente: Cliente
@@ -23,6 +25,7 @@ export default function HistorialTransacciones({
 }: HistorialTransaccionesProps) {
   const [eliminando, setEliminando] = useState<string | null>(null)
   const [mostrarConfirmacion, setMostrarConfirmacion] = useState<string | null>(null)
+  const [comprobanteActivo, setComprobanteActivo] = useState<string | null>(null)
 
   if (loading) {
     return (
@@ -63,6 +66,20 @@ export default function HistorialTransacciones({
     }
   }
 
+  const formatearFechaLarga = (fecha: string) => {
+    try {
+      const [year, month, day] = fecha.split('-').map(Number)
+      const fechaObj = new Date(year, month - 1, day)
+      return fechaObj.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      })
+    } catch {
+      return fecha
+    }
+  }
+
   const handleEliminar = async (transaccionId: string) => {
     if (!onEliminarTransaccion) return
     setEliminando(transaccionId)
@@ -77,6 +94,67 @@ export default function HistorialTransacciones({
     }
   }
 
+  const generarDatosComprobante = (transaccion: Transaccion) => {
+    const pagosTransaccion = pagos[transaccion.id] || []
+    
+    // Preparar cuotas para el comprobante
+    const cuotas = pagosTransaccion.map(pago => ({
+      numero: pago.numero_cuota,
+      monto: pago.monto_cuota || 0, // ✅ Asegurar que siempre sea number
+      fechaVencimiento: pago.fecha_vencimiento
+    }))
+
+    // Calcular interés original
+    const montoOriginal = transaccion.monto_original || transaccion.monto_total
+    const interesAplicado = transaccion.interes_porcentaje || 0
+
+    return {
+      tipo: transaccion.tipo_transaccion,
+      cliente: {
+        nombre: cliente.nombre,
+        apellido: cliente.apellido || '',
+        telefono: cliente.telefono,
+        email: cliente.email
+      },
+      transaccion: {
+        numeroFactura: transaccion.numero_factura,
+        fecha: transaccion.fecha_inicio,
+        montoOriginal: montoOriginal,
+        interes: interesAplicado,
+        montoTotal: transaccion.monto_total,
+        numeroCuotas: transaccion.numero_cuotas,
+        montoCuota: transaccion.monto_cuota,
+        tipoPago: transaccion.tipo_pago,
+        descripcion: transaccion.descripcion || undefined, // ✅ Convertir null a undefined
+        productoNombre: transaccion.producto?.nombre
+      },
+      cuotas: cuotas
+    }
+  }
+
+  const abrirComprobante = (transaccionId: string) => {
+    setComprobanteActivo(transaccionId)
+  }
+
+  const cerrarComprobante = () => {
+    setComprobanteActivo(null)
+  }
+
+  // Renderizar comprobante si está activo
+  const transaccionConComprobante = transacciones.find(t => t.id === comprobanteActivo)
+  if (comprobanteActivo && transaccionConComprobante) {
+    const datosComprobante = generarDatosComprobante(transaccionConComprobante)
+    return (
+      <ComprobanteTransaccion
+        tipo={datosComprobante.tipo as 'venta' | 'prestamo'}
+        cliente={datosComprobante.cliente}
+        transaccion={datosComprobante.transaccion}
+        cuotas={datosComprobante.cuotas}
+        onCerrar={cerrarComprobante}
+      />
+    )
+  }
+
   return (
     <div className="space-y-6 px-2 sm:px-4">
       <h2 className="text-lg sm:text-xl font-semibold text-center sm:text-left">
@@ -88,7 +166,7 @@ export default function HistorialTransacciones({
 
       {transacciones.map((transaccion) => (
         <div key={transaccion.id} className="bg-white rounded-lg shadow overflow-hidden relative">
-          {/* Modal */}
+          {/* Modal de confirmación */}
           {mostrarConfirmacion === transaccion.id && (
             <div className="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-2 sm:p-4">
               <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-sm sm:max-w-md shadow-xl">
@@ -155,7 +233,7 @@ export default function HistorialTransacciones({
           {/* Header */}
           <div className="bg-gradient-to-r from-gray-50 to-white p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
-              <div>
+              <div className="flex-1">
                 <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2">
                   {transaccion.tipo_transaccion === 'venta' ? '🛒' : '💵'}
                   {obtenerTituloTransaccion(transaccion)}
@@ -191,32 +269,44 @@ export default function HistorialTransacciones({
                 </div>
               </div>
 
-              <div className="text-right">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:gap-2">
-                  <div>
-                    <p className="text-2xl sm:text-3xl font-bold text-gray-800">
-                      ${transaccion.monto_total.toLocaleString('es-AR')}
-                    </p>
-                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                      {transaccion.numero_cuotas} cuotas de ${transaccion.monto_cuota.toFixed(2)}
-                    </p>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                <div className="text-left sm:text-right">
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-800">
+                    ${transaccion.monto_total.toLocaleString('es-AR')}
+                  </p>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                    {transaccion.numero_cuotas} cuotas de ${transaccion.monto_cuota.toFixed(2)}
+                  </p>
 
-                    {transaccion.tipo_transaccion === 'prestamo' && (
-                      <div className="mt-2 text-xs text-gray-500">
-                        {transaccion.monto_original && (
-                          <p>Monto original: ${transaccion.monto_original.toFixed(2)}</p>
-                        )}
-                        {transaccion.interes_porcentaje && transaccion.interes_porcentaje > 0 && (
-                          <p>Interés aplicado: {transaccion.interes_porcentaje}%</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  {transaccion.tipo_transaccion === 'prestamo' && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      {transaccion.monto_original && (
+                        <p>Monto original: ${transaccion.monto_original.toFixed(2)}</p>
+                      )}
+                      {transaccion.interes_porcentaje && transaccion.interes_porcentaje > 0 && (
+                        <p>Interés aplicado: {transaccion.interes_porcentaje}%</p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
+                {/* Botones de acción */}
+                <div className="flex gap-2">
+                  {/* Botón de Comprobante */}
+                  <button
+                    onClick={() => abrirComprobante(transaccion.id)}
+                    className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm whitespace-nowrap"
+                    title="Ver comprobante"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span className="hidden sm:inline">Comprobante</span>
+                  </button>
+
+                  {/* Botón de Eliminar */}
                   {onEliminarTransaccion && (
                     <button
                       onClick={() => setMostrarConfirmacion(transaccion.id)}
-                      className="p-2 mt-2 sm:mt-0 text-gray-400 hover:text-red-600 transition-colors relative self-end sm:self-auto"
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Eliminar transacción"
                     >
                       <svg

@@ -411,7 +411,6 @@ export default function CobranzasPage() {
             {[
               { id: 'dashboard', label: 'Dashboard', icon: DollarSign },
               { id: 'clientes', label: 'Clientes', icon: Users },
-              { id: 'pagos', label: 'Pagos', icon: CreditCard },
               { id: 'recibos', label: 'Recibos', icon: FileText },
               { id: 'notificaciones', label: 'Notificaciones', icon: AlertTriangle }
             ].map(({ id, label, icon: Icon }) => (

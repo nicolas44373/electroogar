@@ -91,12 +91,14 @@ export default function FormularioVenta({
 
     setGuardando(true)
     try {
-      // Calcular monto total con intereses
-      let montoTotalFinal = parseFloat(formVenta.monto_total)
+      // Guardar monto original
+      const montoOriginal = parseFloat(formVenta.monto_total)
       const porcentajeInteres = interes ? parseFloat(interes) : 0
       
+      // Calcular monto total con intereses
+      let montoTotalFinal = montoOriginal
       if (interes) {
-        montoTotalFinal = montoTotalFinal + montoTotalFinal * (porcentajeInteres / 100)
+        montoTotalFinal = montoOriginal + montoOriginal * (porcentajeInteres / 100)
       }
 
       const montoCuotaCalculado = montoTotalFinal / parseInt(formVenta.numero_cuotas)
@@ -122,14 +124,16 @@ export default function FormularioVenta({
         productoNombre = productoData?.nombre
       }
 
-      // Crear transacción
+      // Crear transacción - IMPORTANTE: guardar monto_original e interes_porcentaje
       const { data: transData, error: transError } = await supabase
         .from('transacciones')
         .insert({
           cliente_id: clienteId,
           producto_id: tipoTransaccion === 'venta' ? formVenta.producto_id : null,
           tipo_transaccion: tipoTransaccion,
+          monto_original: montoOriginal, // ✅ Guardar monto original
           monto_total: montoTotalFinal,
+          interes_porcentaje: porcentajeInteres, // ✅ Guardar porcentaje de interés
           tipo_pago: formVenta.tipo_pago,
           numero_cuotas: parseInt(formVenta.numero_cuotas),
           monto_cuota: montoCuotaCalculado,
@@ -197,7 +201,7 @@ export default function FormularioVenta({
           transaccion: {
             numeroFactura: transData.numero_factura,
             fecha: formVenta.fecha_inicio,
-            montoOriginal: parseFloat(formVenta.monto_total),
+            montoOriginal: montoOriginal,
             interes: porcentajeInteres,
             montoTotal: montoTotalFinal,
             numeroCuotas: parseInt(formVenta.numero_cuotas),
@@ -239,9 +243,9 @@ export default function FormularioVenta({
   }
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-lg mb-6 border border-gray-100">
+    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-6 border border-gray-100">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+        <h3 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2">
           {!tipoTransaccion && '💼 Crear Nueva Transacción'}
           {tipoTransaccion === 'venta' && '🛒 Crear Nueva Venta'}
           {tipoTransaccion === 'prestamo' && '💰 Crear Nuevo Préstamo'}
@@ -257,15 +261,15 @@ export default function FormularioVenta({
 
       <form onSubmit={crearNuevaVenta} className="space-y-5">
         {/* Primer paso: Seleccionar tipo de transacción */}
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-xl border border-gray-200">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-5 rounded-xl border border-gray-200">
           <label className="block text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
             ❓ ¿Qué tipo de transacción es?
           </label>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <button
               type="button"
               onClick={() => setTipoTransaccion('venta')}
-              className={`p-4 rounded-xl border-2 text-sm font-semibold transition-all transform hover:scale-105 ${
+              className={`p-3 sm:p-4 rounded-xl border-2 text-sm font-semibold transition-all transform hover:scale-105 ${
                 tipoTransaccion === 'venta'
                   ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-lg shadow-blue-200'
                   : 'border-gray-300 bg-white hover:border-blue-300 hover:bg-blue-50'
@@ -273,14 +277,14 @@ export default function FormularioVenta({
               disabled={guardando}
             >
               <div className="flex items-center justify-center gap-2">
-                <span className="text-2xl">🛒</span>
+                <span className="text-xl sm:text-2xl">🛒</span>
                 <span>Venta de Producto</span>
               </div>
             </button>
             <button
               type="button"
               onClick={() => setTipoTransaccion('prestamo')}
-              className={`p-4 rounded-xl border-2 text-sm font-semibold transition-all transform hover:scale-105 ${
+              className={`p-3 sm:p-4 rounded-xl border-2 text-sm font-semibold transition-all transform hover:scale-105 ${
                 tipoTransaccion === 'prestamo'
                   ? 'border-green-500 bg-green-50 text-green-700 shadow-lg shadow-green-200'
                   : 'border-gray-300 bg-white hover:border-green-300 hover:bg-green-50'
@@ -288,7 +292,7 @@ export default function FormularioVenta({
               disabled={guardando}
             >
               <div className="flex items-center justify-center gap-2">
-                <span className="text-2xl">💰</span>
+                <span className="text-xl sm:text-2xl">💰</span>
                 <span>Préstamo de Dinero</span>
               </div>
             </button>
@@ -298,7 +302,7 @@ export default function FormularioVenta({
         {/* Formulario unificado para ambos tipos */}
         {tipoTransaccion && (
           <div className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
               {/* Campo de producto (solo para ventas) */}
               {tipoTransaccion === 'venta' && (
                 <div className="md:col-span-2">
@@ -308,7 +312,7 @@ export default function FormularioVenta({
                   <select
                     value={formVenta.producto_id}
                     onChange={(e) => handleInputChange('producto_id', e.target.value)}
-                    className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                    className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm sm:text-base"
                     required
                     disabled={guardando}
                   >
@@ -336,7 +340,7 @@ export default function FormularioVenta({
                       ? '💡 Ej: Venta de celular Samsung con funda incluida'
                       : '💡 Ej: Préstamo para pago de alquiler'
                   }
-                  className="border-2 border-gray-300 p-3 rounded-lg w-full resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  className="border-2 border-gray-300 p-3 rounded-lg w-full resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm sm:text-base"
                   rows={3}
                   disabled={guardando}
                 />
@@ -356,7 +360,7 @@ export default function FormularioVenta({
                     placeholder="0.00"
                     value={formVenta.monto_total}
                     onChange={(e) => handleInputChange('monto_total', e.target.value)}
-                    className="border-2 border-gray-300 p-3 pl-8 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                    className="border-2 border-gray-300 p-3 pl-8 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm sm:text-base"
                     step="0.01"
                     required
                     disabled={guardando}
@@ -376,7 +380,7 @@ export default function FormularioVenta({
                     placeholder="0"
                     value={interes}
                     onChange={(e) => setInteres(e.target.value)}
-                    className="border-2 border-gray-300 p-3 pr-8 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                    className="border-2 border-gray-300 p-3 pr-8 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm sm:text-base"
                     step="0.1"
                     min="0"
                     disabled={guardando}
@@ -397,7 +401,7 @@ export default function FormularioVenta({
                 <select
                   value={formVenta.tipo_pago}
                   onChange={(e) => handleInputChange('tipo_pago', e.target.value)}
-                  className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm sm:text-base"
                   disabled={guardando}
                 >
                   <option value="semanal">📅 Semanal</option>
@@ -415,7 +419,7 @@ export default function FormularioVenta({
                   placeholder="1"
                   value={formVenta.numero_cuotas}
                   onChange={(e) => handleInputChange('numero_cuotas', e.target.value)}
-                  className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm sm:text-base"
                   min="1"
                   required
                   disabled={guardando}
@@ -430,7 +434,7 @@ export default function FormularioVenta({
                   type="date"
                   value={formVenta.fecha_inicio}
                   onChange={(e) => handleInputChange('fecha_inicio', e.target.value)}
-                  className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  className="border-2 border-gray-300 p-3 rounded-lg w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm sm:text-base"
                   required
                   disabled={guardando}
                 />
@@ -443,10 +447,10 @@ export default function FormularioVenta({
                 tipoTransaccion === 'venta'
                   ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-300'
                   : 'bg-gradient-to-br from-green-50 to-green-100 border-green-300'
-              } p-5 rounded-xl border-2 shadow-md`}
+              } p-4 sm:p-5 rounded-xl border-2 shadow-md`}
             >
               <h4
-                className={`font-bold mb-4 text-lg flex items-center gap-2 ${
+                className={`font-bold mb-4 text-base sm:text-lg flex items-center gap-2 ${
                   tipoTransaccion === 'venta' ? 'text-blue-800' : 'text-green-800'
                 }`}
               >
@@ -455,11 +459,11 @@ export default function FormularioVenta({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                 <div className="bg-white bg-opacity-50 p-3 rounded-lg">
                   <p className="text-gray-600 text-xs mb-1">💵 Monto original</p>
-                  <p className="font-bold text-lg">${formVenta.monto_total || '0.00'}</p>
+                  <p className="font-bold text-base sm:text-lg">${formVenta.monto_total || '0.00'}</p>
                 </div>
                 <div className="bg-white bg-opacity-50 p-3 rounded-lg">
                   <p className="text-gray-600 text-xs mb-1">📈 Interés ({interes || '0'}%)</p>
-                  <p className="font-bold text-lg text-orange-600">
+                  <p className="font-bold text-base sm:text-lg text-orange-600">
                     +${formVenta.monto_total && interes
                       ? (parseFloat(formVenta.monto_total) * parseFloat(interes) / 100).toFixed(2)
                       : '0.00'}
@@ -469,7 +473,7 @@ export default function FormularioVenta({
                   tipoTransaccion === 'venta' ? 'bg-blue-600' : 'bg-green-600'
                 } text-white p-3 rounded-lg md:col-span-2`}>
                   <p className="text-xs mb-1 opacity-90">💎 Monto total a cobrar</p>
-                  <p className="font-bold text-2xl">
+                  <p className="font-bold text-xl sm:text-2xl">
                     ${formVenta.monto_total && interes
                       ? (
                           parseFloat(formVenta.monto_total) +
@@ -480,22 +484,22 @@ export default function FormularioVenta({
                 </div>
                 <div className="bg-white bg-opacity-50 p-3 rounded-lg">
                   <p className="text-gray-600 text-xs mb-1">💰 Cuotas de</p>
-                  <p className="font-bold text-lg">${montoCuota} c/u</p>
+                  <p className="font-bold text-base sm:text-lg">${montoCuota} c/u</p>
                 </div>
                 <div className="bg-white bg-opacity-50 p-3 rounded-lg">
                   <p className="text-gray-600 text-xs mb-1">🔄 Frecuencia</p>
-                  <p className="font-bold text-lg capitalize">{formVenta.tipo_pago}</p>
+                  <p className="font-bold text-base sm:text-lg capitalize">{formVenta.tipo_pago}</p>
                 </div>
                 <div className="bg-white bg-opacity-50 p-3 rounded-lg md:col-span-2">
                   <p className="text-gray-600 text-xs mb-1">🔢 Total de cuotas</p>
-                  <p className="font-bold text-lg">{formVenta.numero_cuotas || '0'} cuotas</p>
+                  <p className="font-bold text-base sm:text-lg">{formVenta.numero_cuotas || '0'} cuotas</p>
                 </div>
               </div>
 
               {/* Mostrar descripción si existe */}
               {formVenta.descripcion && (
                 <div className="mt-4 pt-4 border-t border-gray-300">
-                  <p className="text-sm text-gray-700 bg-white bg-opacity-60 p-3 rounded-lg">
+                  <p className="text-xs sm:text-sm text-gray-700 bg-white bg-opacity-60 p-3 rounded-lg">
                     <strong className="flex items-center gap-1 mb-1">
                       📝 Descripción:
                     </strong>
@@ -527,7 +531,7 @@ export default function FormularioVenta({
             <button
               type="submit"
               disabled={guardando}
-              className={`p-4 rounded-xl hover:opacity-90 w-full disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-lg shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 ${
+              className={`p-3 sm:p-4 rounded-xl hover:opacity-90 w-full disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-base sm:text-lg shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 ${
                 tipoTransaccion === 'venta'
                   ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-300'
                   : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-green-300'

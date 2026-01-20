@@ -551,28 +551,25 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
   const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 p-2 md:p-0">
       {/* Header y estadísticas */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-            <Bell className="w-6 h-6 mr-2" />
+      <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <h2 className="text-lg md:text-xl font-semibold text-gray-900 flex items-center">
+            <Bell className="w-5 h-5 md:w-6 md:h-6 mr-2" />
             Centro de Notificaciones
           </h2>
           <button
             onClick={async () => {
-              // Solo recargar si no estamos usando notificaciones del padre
               if (!notificaciones || notificaciones.length === 0) {
                 await cargarNotificacionesDetalladas()
               }
-              
-              // Siempre llamar al callback del padre para que actualice
               if (onActualizar) {
                 onActualizar()
               }
             }}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm md:text-base"
           >
             {loading ? (
               <>
@@ -589,46 +586,46 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
         </div>
 
         {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+          <div className="bg-red-50 rounded-lg p-3 md:p-4 border border-red-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-red-600 font-medium">Pagos Vencidos</div>
-                <div className="text-2xl font-bold text-red-700">{estadisticas.vencidos}</div>
+                <div className="text-xs md:text-sm text-red-600 font-medium">Pagos Vencidos</div>
+                <div className="text-xl md:text-2xl font-bold text-red-700">{estadisticas.vencidos}</div>
               </div>
-              <AlertTriangle className="w-8 h-8 text-red-500" />
+              <AlertTriangle className="w-6 h-6 md:w-8 md:h-8 text-red-500" />
             </div>
           </div>
           
-          <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+          <div className="bg-orange-50 rounded-lg p-3 md:p-4 border border-orange-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-orange-600 font-medium">Vencen Hoy</div>
-                <div className="text-2xl font-bold text-orange-700">{estadisticas.hoy}</div>
+                <div className="text-xs md:text-sm text-orange-600 font-medium">Vencen Hoy</div>
+                <div className="text-xl md:text-2xl font-bold text-orange-700">{estadisticas.hoy}</div>
               </div>
-              <Clock className="w-8 h-8 text-orange-500" />
+              <Clock className="w-6 h-6 md:w-8 md:h-8 text-orange-500" />
             </div>
           </div>
           
-          <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+          <div className="bg-purple-50 rounded-lg p-3 md:p-4 border border-purple-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-purple-600 font-medium">Ver Calendario</div>
-                <div className="text-sm text-purple-700">Seleccionar fecha</div>
+                <div className="text-xs md:text-sm text-purple-600 font-medium">Ver Calendario</div>
+                <div className="text-xs md:text-sm text-purple-700">Seleccionar fecha</div>
               </div>
-              <Calendar className="w-8 h-8 text-purple-500" />
+              <Calendar className="w-6 h-6 md:w-8 md:h-8 text-purple-500" />
             </div>
           </div>
           
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+          <div className="bg-gray-50 rounded-lg p-3 md:p-4 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-gray-600 font-medium">Monto Total</div>
-                <div className="text-lg font-bold text-gray-700">
+                <div className="text-xs md:text-sm text-gray-600 font-medium">Monto Total</div>
+                <div className="text-sm md:text-lg font-bold text-gray-700 break-all">
                   {formatearMoneda(estadisticas.montoTotal)}
                 </div>
               </div>
-              <DollarSign className="w-8 h-8 text-gray-500" />
+              <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-gray-500" />
             </div>
           </div>
         </div>
@@ -649,7 +646,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                   setFechaSeleccionada(null)
                 }
               }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors ${
                 filtroTipo === filtro.key
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -663,39 +660,39 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
 
       {/* Calendario */}
       {filtroTipo === 'calendario' && (
-        <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={() => cambiarMes('anterior')}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
             </button>
-            <h3 className="text-lg font-semibold">
+            <h3 className="text-base md:text-lg font-semibold">
               {nombresMeses[mesActual.getMonth()]} {mesActual.getFullYear()}
             </h3>
             <button
               onClick={() => cambiarMes('siguiente')}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </div>
 
           {/* Días de la semana */}
-          <div className="grid grid-cols-7 gap-2 mb-2">
+          <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2">
             {diasSemana.map(dia => (
-              <div key={dia} className="text-center text-sm font-medium text-gray-600 py-2">
+              <div key={dia} className="text-center text-xs md:text-sm font-medium text-gray-600 py-1 md:py-2">
                 {dia}
               </div>
             ))}
           </div>
 
           {/* Días del mes */}
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-1 md:gap-2">
             {generarDiasCalendario().map((dia, index) => {
               if (!dia) {
-                return <div key={`empty-${index}`} className="h-20"></div>
+                return <div key={`empty-${index}`} className="h-14 md:h-20"></div>
               }
 
               const vencimientosDelDia = contarVencimientosPorFecha(dia)
@@ -707,7 +704,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                 <button
                   key={index}
                   onClick={() => setFechaSeleccionada(dia)}
-                  className={`h-20 p-2 rounded-lg border transition-all relative ${
+                  className={`h-14 md:h-20 p-1 md:p-2 rounded-lg border transition-all relative ${
                     seleccionado
                       ? 'bg-blue-100 border-blue-500'
                       : hoy
@@ -717,18 +714,18 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                       : 'bg-white border-gray-200 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="text-sm font-medium">
+                  <div className="text-xs md:text-sm font-medium">
                     {dia.getDate()}
                   </div>
                   {tieneVencimientos && (
-                    <div className="mt-1">
-                      <span className="inline-block px-2 py-1 text-xs bg-red-500 text-white rounded-full">
+                    <div className="mt-0.5 md:mt-1">
+                      <span className="inline-block px-1 md:px-2 py-0.5 md:py-1 text-[10px] md:text-xs bg-red-500 text-white rounded-full">
                         {vencimientosDelDia}
                       </span>
                     </div>
                   )}
                   {hoy && (
-                    <div className="absolute bottom-1 right-1 text-xs text-yellow-600 font-medium">
+                    <div className="absolute bottom-0.5 right-0.5 md:bottom-1 md:right-1 text-[10px] md:text-xs text-yellow-600 font-medium">
                       Hoy
                     </div>
                   )}
@@ -738,26 +735,26 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
           </div>
 
           {/* Leyenda */}
-          <div className="mt-4 flex items-center justify-center space-x-6 text-sm">
+          <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-center gap-3 sm:gap-6 text-xs md:text-sm">
             <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-yellow-50 border border-yellow-400 rounded"></div>
+              <div className="w-3 h-3 md:w-4 md:h-4 bg-yellow-50 border border-yellow-400 rounded"></div>
               <span>Hoy</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-red-50 border border-red-200 rounded"></div>
+              <div className="w-3 h-3 md:w-4 md:h-4 bg-red-50 border border-red-200 rounded"></div>
               <span>Con vencimientos</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-blue-100 border border-blue-500 rounded"></div>
+              <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-100 border border-blue-500 rounded"></div>
               <span>Seleccionado</span>
             </div>
           </div>
 
           {/* Mostrar fecha seleccionada */}
           {fechaSeleccionada && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Fecha seleccionada:</p>
-              <p className="font-semibold">
+            <div className="mt-4 p-3 md:p-4 bg-gray-50 rounded-lg">
+              <p className="text-xs md:text-sm text-gray-600 mb-1">Fecha seleccionada:</p>
+              <p className="text-sm md:text-base font-semibold">
                 {fechaSeleccionada.toLocaleDateString('es-AR', {
                   weekday: 'long',
                   day: 'numeric',
@@ -765,7 +762,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                   year: 'numeric'
                 })}
               </p>
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-xs md:text-sm text-gray-600 mt-2">
                 {notificacionesFiltradas.length > 0
                   ? `${notificacionesFiltradas.length} vencimiento(s) en esta fecha`
                   : 'No hay vencimientos en esta fecha'}
@@ -776,61 +773,61 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
       )}
 
       {/* Lista de notificaciones */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {loading ? (
           <div className="flex items-center justify-center py-8 bg-white rounded-lg shadow-sm border">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600">Actualizando notificaciones...</span>
+            <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-sm md:text-base text-gray-600">Actualizando notificaciones...</span>
           </div>
         ) : notificacionesFiltradas.length > 0 ? (
           notificacionesFiltradas.map((notif) => (
             <div
               key={notif.id}
-              className={`bg-white rounded-lg shadow-sm border p-4 ${obtenerColorFondo(notif.tipo)}`}
+              className={`bg-white rounded-lg shadow-sm border p-3 md:p-4 ${obtenerColorFondo(notif.tipo)}`}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex-shrink-0">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4">
+                <div className="flex items-start space-x-3 md:space-x-4 flex-1 min-w-0">
+                  <div className="flex-shrink-0 mt-1">
                     {obtenerIconoTipo(notif.tipo)}
                   </div>
                   
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-semibold text-gray-900">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1 md:gap-2 mb-1">
+                      <h3 className="font-semibold text-sm md:text-base text-gray-900 break-words">
                         {notif.cliente_nombre} {notif.cliente_apellido || ''}
                       </h3>
-                      <span className="text-sm text-gray-500">•</span>
-                      <span className="text-sm text-gray-600">{notif.producto_nombre}</span>
-                      <span className="text-sm text-gray-500">•</span>
-                      <span className="text-sm text-gray-600">Cuota {notif.numero_cuota}</span>
+                      <span className="hidden sm:inline text-xs md:text-sm text-gray-500">•</span>
+                      <span className="text-xs md:text-sm text-gray-600 break-words">{notif.producto_nombre}</span>
+                      <span className="hidden sm:inline text-xs md:text-sm text-gray-500">•</span>
+                      <span className="text-xs md:text-sm text-gray-600">Cuota {notif.numero_cuota}</span>
                     </div>
                     
-                    <div className="flex items-center space-x-4 mt-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1">
                       <div>
-                        <span className="text-sm text-gray-500">Esta cuota: </span>
-                        <span className="text-lg font-bold text-gray-900">
+                        <span className="text-xs md:text-sm text-gray-500">Esta cuota: </span>
+                        <span className="text-base md:text-lg font-bold text-gray-900 break-all">
                           {formatearMoneda(notif.monto)}
                         </span>
                         {notif.monto_pagado > 0 && (
-                          <span className="text-xs text-green-600 ml-2">
+                          <span className="block sm:inline text-[10px] md:text-xs text-green-600 sm:ml-2 mt-1 sm:mt-0">
                             (Pagado: {formatearMoneda(notif.monto_pagado)})
                           </span>
                         )}
                       </div>
-                      <span className="text-gray-300">|</span>
+                      <span className="hidden sm:inline text-gray-300">|</span>
                       <div>
-                        <span className="text-sm text-gray-500">Saldo de esta deuda: </span>
-                        <span className="text-lg font-bold text-red-600">
+                        <span className="text-xs md:text-sm text-gray-500">Saldo de esta deuda: </span>
+                        <span className="text-base md:text-lg font-bold text-red-600 break-all">
                           {formatearMoneda(notif.saldo_total_cliente)}
                         </span>
                       </div>
                     </div>
                     
-                    <div className="flex items-center space-x-4 mt-1">
-                      <span className="text-sm text-gray-600">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1">
+                      <span className="text-xs md:text-sm text-gray-600">
                         Vencimiento: {formatearFecha(notif.fecha_vencimiento)}
                       </span>
-                      <span className={`text-sm font-medium ${
+                      <span className={`text-xs md:text-sm font-medium ${
                         notif.tipo === 'vencido' ? 'text-red-600' :
                         notif.tipo === 'hoy' ? 'text-orange-600' :
                         'text-blue-600'
@@ -841,115 +838,117 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 lg:flex-shrink-0">
                   <button
                     onClick={() => abrirModalPago(notif)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center space-x-2"
+                    className="flex-1 sm:flex-none px-3 md:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center justify-center space-x-1 md:space-x-2 text-xs md:text-sm"
                     title="Registrar pago"
                   >
-                    <DollarSign className="w-4 h-4" />
-                    <span>Registrar Pago</span>
+                    <DollarSign className="w-3 h-3 md:w-4 md:h-4" />
+                    <span className="whitespace-nowrap">Registrar Pago</span>
                   </button>
 
                   <button
                     onClick={() => abrirModalReprogramacion(notif)}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center space-x-2"
+                    className="flex-1 sm:flex-none px-3 md:px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center justify-center space-x-1 md:space-x-2 text-xs md:text-sm"
                     title="Reprogramar pago"
                   >
-                    <RefreshCw className="w-4 h-4" />
-                    <span>Reprogramar</span>
+                    <RefreshCw className="w-3 h-3 md:w-4 md:h-4" />
+                    <span className="whitespace-nowrap">Reprogramar</span>
                   </button>
                   
                   {onVerCuentaCliente && (
                     <button
                       onClick={() => onVerCuentaCliente(notif.cliente_id)}
-                      className="px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
+                      className="flex-1 sm:flex-none px-2 md:px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs md:text-sm font-medium whitespace-nowrap"
                       title="Ver cuenta corriente"
                     >
                       Ver Cuenta
                     </button>
                   )}
                   
-                  {notif.cliente_telefono && (
-                    <button
-                      onClick={() => enviarRecordatorio(notif, 'whatsapp')}
-                      className="p-2 text-green-600 hover:bg-green-100 rounded-full transition-colors"
-                      title="Enviar WhatsApp"
-                    >
-                      <Phone className="w-4 h-4" />
-                    </button>
-                  )}
-                  
-                  {notif.cliente_email && (
-                    <button
-                      onClick={() => enviarRecordatorio(notif, 'email')}
-                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
-                      title="Enviar Email"
-                    >
-                      <Mail className="w-4 h-4" />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {notif.cliente_telefono && (
+                      <button
+                        onClick={() => enviarRecordatorio(notif, 'whatsapp')}
+                        className="p-2 text-green-600 hover:bg-green-100 rounded-full transition-colors"
+                        title="Enviar WhatsApp"
+                      >
+                        <Phone className="w-3 h-3 md:w-4 md:h-4" />
+                      </button>
+                    )}
+                    
+                    {notif.cliente_email && (
+                      <button
+                        onClick={() => enviarRecordatorio(notif, 'email')}
+                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
+                        title="Enviar Email"
+                      >
+                        <Mail className="w-3 h-3 md:w-4 md:h-4" />
+                      </button>
+                    )}
 
-                  <button
-                    onClick={() => setMostrarContacto(mostrarContacto === notif.id ? null : notif.id)}
-                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                  >
-                    {mostrarContacto === notif.id ? 'Ocultar' : 'Más Info'}
-                  </button>
+                    <button
+                      onClick={() => setMostrarContacto(mostrarContacto === notif.id ? null : notif.id)}
+                      className="px-2 md:px-3 py-1 text-xs md:text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
+                    >
+                      {mostrarContacto === notif.id ? 'Ocultar' : 'Más Info'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {mostrarContacto === notif.id && (
-                <div className="mt-4 p-4 bg-white rounded-lg border-2 border-blue-200">
-                  <h4 className="font-medium text-gray-900 mb-3">Información de Contacto y Transacción</h4>
+                <div className="mt-4 p-3 md:p-4 bg-white rounded-lg border-2 border-blue-200">
+                  <h4 className="font-medium text-sm md:text-base text-gray-900 mb-3">Información de Contacto y Transacción</h4>
                   
                   {/* Fecha de Inicio de la Transacción */}
                   <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-900">Fecha de Inicio:</span>
-                      <span className="font-bold text-blue-800">{formatearFecha(notif.fecha_inicio)}</span>
+                      <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <span className="text-xs md:text-sm font-medium text-blue-900">Fecha de Inicio:</span>
+                      <span className="text-xs md:text-sm font-bold text-blue-800">{formatearFecha(notif.fecha_inicio)}</span>
                     </div>
-                    <p className="text-xs text-blue-600 mt-1 ml-6">
+                    <p className="text-[10px] md:text-xs text-blue-600 mt-1 ml-6">
                       Esta {notif.tipo_transaccion === 'prestamo' ? 'préstamo' : 'venta'} comenzó el {formatearFecha(notif.fecha_inicio)}
                     </p>
                   </div>
 
-                  {/* NUEVA SECCIÓN: Información de Reprogramación */}
+                  {/* Información de Reprogramación */}
                   {notif.fecha_reprogramacion && (
                     <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
                       <div className="flex items-center space-x-2 mb-2">
-                        <RefreshCw className="w-4 h-4 text-orange-600" />
-                        <span className="text-sm font-medium text-orange-900">Pago Reprogramado</span>
+                        <RefreshCw className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                        <span className="text-xs md:text-sm font-medium text-orange-900">Pago Reprogramado</span>
                       </div>
-                      <div className="space-y-1 ml-6 text-sm">
+                      <div className="space-y-1 ml-0 md:ml-6 text-xs md:text-sm">
                         <p className="text-gray-700">
                           <span className="font-medium">Fecha de reprogramación:</span> {formatearFecha(notif.fecha_reprogramacion)}
                         </p>
                         {notif.intereses_mora && notif.intereses_mora > 0 && (
-                          <p className="text-gray-700">
+                          <p className="text-gray-700 break-all">
                             <span className="font-medium">Intereses por mora:</span> {formatearMoneda(notif.intereses_mora)}
                           </p>
                         )}
                         {notif.motivo_reprogramacion && (
                           <div className="mt-2 p-2 bg-white rounded border border-orange-200">
-                            <p className="font-medium text-orange-800 text-xs mb-1">Motivo:</p>
-                            <p className="text-gray-700 text-xs">{notif.motivo_reprogramacion}</p>
+                            <p className="font-medium text-orange-800 text-[10px] md:text-xs mb-1">Motivo:</p>
+                            <p className="text-gray-700 text-[10px] md:text-xs break-words">{notif.motivo_reprogramacion}</p>
                           </div>
                         )}
                       </div>
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4">
                     {notif.cliente_telefono && (
-                      <div className="flex items-center space-x-2">
-                        <Phone className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">Teléfono:</span>
-                        <span className="font-medium">{notif.cliente_telefono}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Phone className="w-3 h-3 md:w-4 md:h-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-xs md:text-sm text-gray-600">Teléfono:</span>
+                        <span className="text-xs md:text-sm font-medium break-all">{notif.cliente_telefono}</span>
                         <button
                           onClick={() => enviarRecordatorio(notif, 'whatsapp')}
-                          className="ml-2 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                          className="px-2 py-1 text-[10px] md:text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors whitespace-nowrap"
                         >
                           WhatsApp
                         </button>
@@ -957,13 +956,13 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                     )}
                     
                     {notif.cliente_email && (
-                      <div className="flex items-center space-x-2">
-                        <Mail className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">Email:</span>
-                        <span className="font-medium">{notif.cliente_email}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Mail className="w-3 h-3 md:w-4 md:h-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-xs md:text-sm text-gray-600">Email:</span>
+                        <span className="text-xs md:text-sm font-medium break-all">{notif.cliente_email}</span>
                         <button
                           onClick={() => enviarRecordatorio(notif, 'email')}
-                          className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                          className="px-2 py-1 text-[10px] md:text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
                         >
                           Enviar
                         </button>
@@ -971,24 +970,24 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                     )}
                   </div>
 
-                  <div className="mb-3 p-3 bg-gray-50 rounded">
-                    <div className="text-sm font-medium text-gray-700 mb-2">Resumen de Deuda:</div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="p-3 bg-gray-50 rounded">
+                    <div className="text-xs md:text-sm font-medium text-gray-700 mb-2">Resumen de Deuda:</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs md:text-sm">
                       <div>
                         <span className="text-gray-600">Monto cuota total:</span>
-                        <div className="font-semibold">{formatearMoneda(notif.monto_cuota_total)}</div>
+                        <div className="font-semibold break-all">{formatearMoneda(notif.monto_cuota_total)}</div>
                       </div>
                       <div>
                         <span className="text-gray-600">Monto pagado:</span>
-                        <div className="font-semibold text-green-600">{formatearMoneda(notif.monto_pagado)}</div>
+                        <div className="font-semibold text-green-600 break-all">{formatearMoneda(notif.monto_pagado)}</div>
                       </div>
                       <div>
                         <span className="text-gray-600">Monto restante:</span>
-                        <div className="font-semibold text-orange-600">{formatearMoneda(notif.monto)}</div>
+                        <div className="font-semibold text-orange-600 break-all">{formatearMoneda(notif.monto)}</div>
                       </div>
                       <div>
                         <span className="text-gray-600">Saldo de esta deuda:</span>
-                        <div className="font-semibold text-red-600">{formatearMoneda(notif.saldo_total_cliente)}</div>
+                        <div className="font-semibold text-red-600 break-all">{formatearMoneda(notif.saldo_total_cliente)}</div>
                       </div>
                     </div>
                   </div>
@@ -997,12 +996,12 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
             </div>
           ))
         ) : (
-          <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+          <div className="bg-white rounded-lg shadow-sm border p-6 md:p-8 text-center">
             <div className="text-gray-400 mb-4">
-              <Bell className="w-12 h-12 mx-auto" />
+              <Bell className="w-10 h-10 md:w-12 md:h-12 mx-auto" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No hay notificaciones</h3>
-            <p className="text-gray-600">
+            <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">No hay notificaciones</h3>
+            <p className="text-sm md:text-base text-gray-600">
               {filtroTipo === 'calendario' && fechaSeleccionada
                 ? `No hay vencimientos para el ${fechaSeleccionada.toLocaleDateString('es-AR', {
                     day: 'numeric',
@@ -1023,46 +1022,46 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
       {/* Modal de registro de pago */}
       {mostrarModalPago && notifSeleccionada && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-lg max-w-md w-full p-4 md:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Registrar Pago</h3>
+              <h3 className="text-base md:text-lg font-semibold text-gray-900">Registrar Pago</h3>
               <button
                 onClick={() => setMostrarModalPago(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 text-xl"
               >
                 ✕
               </button>
             </div>
 
             <div className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-2">Cliente:</div>
-                <div className="font-medium">
+              <div className="bg-gray-50 rounded-lg p-3 md:p-4">
+                <div className="text-xs md:text-sm text-gray-600 mb-2">Cliente:</div>
+                <div className="text-sm md:text-base font-medium break-words">
                   {notifSeleccionada.cliente_nombre} {notifSeleccionada.cliente_apellido || ''}
                 </div>
                 
-                <div className="text-sm text-gray-600 mb-2 mt-3">Concepto:</div>
-                <div className="font-medium">{notifSeleccionada.producto_nombre}</div>
+                <div className="text-xs md:text-sm text-gray-600 mb-2 mt-3">Concepto:</div>
+                <div className="text-sm md:text-base font-medium break-words">{notifSeleccionada.producto_nombre}</div>
                 
                 <div className="flex justify-between mt-3">
                   <div>
-                    <div className="text-sm text-gray-600">Cuota:</div>
-                    <div className="font-medium">{notifSeleccionada.numero_cuota}</div>
+                    <div className="text-xs md:text-sm text-gray-600">Cuota:</div>
+                    <div className="text-sm md:text-base font-medium">{notifSeleccionada.numero_cuota}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-gray-600">Monto total:</div>
-                    <div className="font-bold">{formatearMoneda(notifSeleccionada.monto_cuota_total)}</div>
+                    <div className="text-xs md:text-sm text-gray-600">Monto total:</div>
+                    <div className="text-sm md:text-base font-bold break-all">{formatearMoneda(notifSeleccionada.monto_cuota_total)}</div>
                   </div>
                 </div>
                 
                 {notifSeleccionada.monto_pagado > 0 && (
                   <div className="mt-2 text-right">
-                    <div className="text-sm text-gray-600">Pagado anteriormente:</div>
-                    <div className="text-green-600 font-medium">
+                    <div className="text-xs md:text-sm text-gray-600">Pagado anteriormente:</div>
+                    <div className="text-sm md:text-base text-green-600 font-medium break-all">
                       {formatearMoneda(notifSeleccionada.monto_pagado)}
                     </div>
-                    <div className="text-sm text-gray-600">Restante:</div>
-                    <div className="font-bold text-red-600">
+                    <div className="text-xs md:text-sm text-gray-600">Restante:</div>
+                    <div className="text-sm md:text-base font-bold text-red-600 break-all">
                       {formatearMoneda(notifSeleccionada.monto)}
                     </div>
                   </div>
@@ -1070,7 +1069,7 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
                   Monto a pagar
                 </label>
                 <input
@@ -1079,30 +1078,30 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                   value={montoPago}
                   onChange={(e) => setMontoPago(e.target.value)}
                   max={notifSeleccionada.monto}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
                   Fecha de pago
                 </label>
                 <input
                   type="date"
                   value={fechaPago}
                   onChange={(e) => setFechaPago(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
                   Método de pago
                 </label>
                 <select
                   value={metodoPago}
                   onChange={(e) => setMetodoPago(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="efectivo">Efectivo</option>
                   <option value="transferencia">Transferencia</option>
@@ -1112,30 +1111,30 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
                   Observaciones (opcional)
                 </label>
                 <textarea
                   value={observaciones}
                   onChange={(e) => setObservaciones(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   placeholder="Observaciones adicionales..."
                 />
               </div>
             </div>
 
-            <div className="flex space-x-3 mt-6">
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
               <button
                 onClick={() => setMostrarModalPago(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 text-sm md:text-base border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={registrarPago}
                 disabled={loading || !montoPago || parseFloat(montoPago) <= 0}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                className="flex-1 px-4 py-2 text-sm md:text-base bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
                 {loading ? (
                   <>
@@ -1157,58 +1156,58 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
       {/* Modal de Reprogramación */}
       {mostrarModalReprogramacion && notifReprogramar && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-lg max-w-md w-full p-4 md:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <RefreshCw className="w-5 h-5 mr-2" />
+              <h3 className="text-base md:text-lg font-semibold text-gray-900 flex items-center">
+                <RefreshCw className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                 Reprogramar Pago
               </h3>
               <button
                 onClick={cerrarModalReprogramacion}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 text-xl"
               >
                 ✕
               </button>
             </div>
 
             <div className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-2">Cliente:</div>
-                <div className="font-medium">
+              <div className="bg-gray-50 rounded-lg p-3 md:p-4">
+                <div className="text-xs md:text-sm text-gray-600 mb-2">Cliente:</div>
+                <div className="text-sm md:text-base font-medium break-words">
                   {notifReprogramar.cliente_nombre} {notifReprogramar.cliente_apellido || ''}
                 </div>
                 
-                <div className="text-sm text-gray-600 mb-2 mt-3">Concepto:</div>
-                <div className="font-medium">{notifReprogramar.producto_nombre}</div>
+                <div className="text-xs md:text-sm text-gray-600 mb-2 mt-3">Concepto:</div>
+                <div className="text-sm md:text-base font-medium break-words">{notifReprogramar.producto_nombre}</div>
                 
-                <div className="text-sm text-gray-600 mb-2 mt-3">Cuota:</div>
-                <div className="font-medium">#{notifReprogramar.numero_cuota}</div>
+                <div className="text-xs md:text-sm text-gray-600 mb-2 mt-3">Cuota:</div>
+                <div className="text-sm md:text-base font-medium">#{notifReprogramar.numero_cuota}</div>
                 
-                <div className="text-sm text-gray-600 mb-2 mt-3">Vencimiento original:</div>
-                <div className="font-medium">{formatearFecha(notifReprogramar.fecha_vencimiento)}</div>
+                <div className="text-xs md:text-sm text-gray-600 mb-2 mt-3">Vencimiento original:</div>
+                <div className="text-sm md:text-base font-medium">{formatearFecha(notifReprogramar.fecha_vencimiento)}</div>
                 
                 {notifReprogramar.dias_vencimiento < 0 && (
-                  <p className="text-sm text-red-600 mt-2">
+                  <p className="text-xs md:text-sm text-red-600 mt-2">
                     Vencido hace {Math.abs(notifReprogramar.dias_vencimiento)} días
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
                   Nueva fecha de vencimiento *
                 </label>
                 <input
                   type="date"
                   value={nuevaFechaVencimiento}
                   onChange={(e) => setNuevaFechaVencimiento(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min={new Date().toISOString().split('T')[0]}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
                   Intereses por mora ($)
                 </label>
                 <input
@@ -1216,51 +1215,51 @@ export default function PanelNotificaciones({ notificaciones, onActualizar, onVe
                   step="0.01"
                   value={interesesMora}
                   onChange={(e) => setInteresesMora(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
                 />
-                <div className="mt-2 p-3 bg-gray-50 rounded text-sm">
+                <div className="mt-2 p-3 bg-gray-50 rounded text-xs md:text-sm">
                   <p className="flex justify-between">
                     <span className="text-gray-600">Monto original:</span>
-                    <span className="font-medium">{formatearMoneda(notifReprogramar.monto_cuota_total)}</span>
+                    <span className="font-medium break-all">{formatearMoneda(notifReprogramar.monto_cuota_total)}</span>
                   </p>
                   <p className="flex justify-between">
                     <span className="text-gray-600">Intereses mora:</span>
-                    <span className="font-medium">{formatearMoneda(interesesMora)}</span>
+                    <span className="font-medium break-all">{formatearMoneda(interesesMora)}</span>
                   </p>
                   <p className="flex justify-between border-t pt-1 mt-1">
                     <span className="text-gray-600 font-semibold">Total nuevo:</span>
-                    <span className="font-bold">{formatearMoneda(notifReprogramar.monto_cuota_total + interesesMora)}</span>
+                    <span className="font-bold break-all">{formatearMoneda(notifReprogramar.monto_cuota_total + interesesMora)}</span>
                   </p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
                   Motivo de la reprogramación
                 </label>
                 <textarea
                   value={motivoReprogramacion}
                   onChange={(e) => setMotivoReprogramacion(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   placeholder="Ej: Problemas económicos temporales, enfermedad, etc."
                   rows={3}
                 />
               </div>
             </div>
 
-            <div className="flex space-x-3 mt-6">
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
               <button
                 onClick={cerrarModalReprogramacion}
                 disabled={loading}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2 text-sm md:text-base border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={reprogramarPago}
                 disabled={!nuevaFechaVencimiento || loading}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                className="flex-1 px-4 py-2 text-sm md:text-base bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
                 {loading ? (
                   <>
