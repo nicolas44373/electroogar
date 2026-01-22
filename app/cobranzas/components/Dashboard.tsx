@@ -51,7 +51,7 @@ interface DashboardProps {
   onVerNotificaciones: () => void
   onRegistrarPago: () => void
   onNuevaVenta: () => void
-  onActualizarMontoUrgente?: (monto: number) => void
+  // ✅ ELIMINADA: onActualizarMontoUrgente
 }
 
 interface ClienteConPrestamo {
@@ -73,8 +73,8 @@ export default function Dashboard({
   estadisticas,
   onVerNotificaciones,
   onRegistrarPago,
-  onNuevaVenta,
-  onActualizarMontoUrgente
+  onNuevaVenta
+  // ✅ ELIMINADA: onActualizarMontoUrgente
 }: DashboardProps) {
   const [notificaciones, setNotificaciones] = useState<NotificacionVencimiento[]>([])
   const [clientesConPrestamos, setClientesConPrestamos] = useState<ClienteConPrestamo[]>([])
@@ -86,6 +86,13 @@ export default function Dashboard({
     cargarNotificaciones()
     cargarClientesConPrestamos()
   }, [])
+
+  // ✅ ELIMINADO: useEffect que causaba el loop infinito
+  // useEffect(() => {
+  //   if (onActualizarMontoUrgente && montoUrgenteTotal > 0) {
+  //     onActualizarMontoUrgente(montoUrgenteTotal)
+  //   }
+  // }, [montoUrgenteTotal, onActualizarMontoUrgente])
 
   const calcularDiasVencimiento = (fechaVencimiento: string) => {
     const hoy = new Date()
@@ -183,7 +190,7 @@ export default function Dashboard({
       const hoy = new Date()
       hoy.setHours(0, 0, 0, 0)
       const fechaLimite = new Date()
-      fechaLimite.setDate(hoy.getDate() + 15) // Solo próximos 15 días
+      fechaLimite.setDate(hoy.getDate() + 15)
       
       const { data } = await supabase
         .from('pagos')
@@ -248,10 +255,6 @@ export default function Dashboard({
         })
 
         setNotificaciones(notificacionesMapeadas)
-        
-        console.log('=== NOTIFICACIONES CARGADAS ===')
-        console.log('Rango: Hoy hasta', fechaLimite.toLocaleDateString('es-AR'))
-        console.log('Total cargadas:', notificacionesMapeadas.length)
       }
     } catch (error) {
       console.error('Error cargando notificaciones:', error)
@@ -287,7 +290,6 @@ export default function Dashboard({
   const notificacionesHoy = notificaciones.filter(n => n.tipo === 'hoy')
   const notificacionesProximas = notificaciones.filter(n => n.tipo === 'por_vencer' && n.dias_vencimiento <= 7)
 
-  // Cálculos mejorados
   const efectividadCobros = estadisticas?.ventasDelMes > 0
     ? ((estadisticas.cobrosDelMes / estadisticas.ventasDelMes) * 100)
     : 0
@@ -300,40 +302,9 @@ export default function Dashboard({
     ? ((estadisticas.clientesVencidos / estadisticas.totalClientes) * 100)
     : 0
 
-  // Cálculo correcto de montos - usando n.monto que ya tiene el monto restante calculado
   const montoVencido = notificacionesVencidas.reduce((sum, n) => sum + n.monto, 0)
   const montoHoy = notificacionesHoy.reduce((sum, n) => sum + n.monto, 0)
   const montoProximo = notificacionesProximas.reduce((sum, n) => sum + n.monto, 0)
-
-  // Actualizar el monto urgente del padre con el cálculo correcto
-  const montoUrgenteTotal = montoVencido + montoHoy
-  useEffect(() => {
-    if (onActualizarMontoUrgente && montoUrgenteTotal > 0) {
-      onActualizarMontoUrgente(montoUrgenteTotal)
-    }
-  }, [montoUrgenteTotal, onActualizarMontoUrgente])
-
-  // Detectar cuotas con montos anormalmente altos
-  const cuotasAnormales = notificacionesProximas.filter(n => n.monto > 100000)
-  if (cuotasAnormales.length > 0) {
-    console.log('⚠️ ALERTA: Cuotas con montos muy altos detectadas:')
-    cuotasAnormales.slice(0, 5).forEach(c => {
-      console.log(`- ${c.cliente_nombre}: $${c.monto.toLocaleString('es-AR')} (Cuota #${c.numero_cuota})`)
-    })
-  }
-
-  // Debug - logs para verificar los cálculos
-  console.log('=== DEBUG MONTOS DASHBOARD ===')
-  console.log('Total notificaciones (15 días):', notificaciones.length)
-  console.log('Vencidas:', notificacionesVencidas.length, '→ $', montoVencido.toLocaleString('es-AR'))
-  console.log('Hoy:', notificacionesHoy.length, '→ $', montoHoy.toLocaleString('es-AR'))
-  console.log('Próximas (7 días):', notificacionesProximas.length, '→ $', montoProximo.toLocaleString('es-AR'))
-  console.log('---')
-  console.log('Suma (vencido + hoy):', '$', (montoVencido + montoHoy).toLocaleString('es-AR'))
-  console.log('Cartera urgente del padre:', '$', (estadisticas?.montoTotalPendiente || 0).toLocaleString('es-AR'))
-  console.log('---')
-  console.log('⚠️ DIFERENCIA:', '$', Math.abs((montoVencido + montoHoy) - (estadisticas?.montoTotalPendiente || 0)).toLocaleString('es-AR'))
-  console.log('===============================')
 
   const tarjetasEstadisticas = [
     {
@@ -448,7 +419,6 @@ export default function Dashboard({
               </div>
             </div>
             
-            {/* Barra de progreso decorativa */}
             <div className="h-1 bg-gray-100">
               <div className={`h-full bg-gradient-to-r ${tarjeta.color} transition-all duration-1000`} 
                    style={{ width: '75%' }}></div>
@@ -457,7 +427,7 @@ export default function Dashboard({
         ))}
       </div>
 
-      {/* Alertas de vencimientos en diseño mejorado */}
+      {/* Alertas de vencimientos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Pagos vencidos */}
         <div className="bg-white rounded-xl shadow-sm border border-red-100 overflow-hidden hover:shadow-md transition-shadow">
@@ -684,7 +654,7 @@ export default function Dashboard({
         </div>
       </div>
 
-      {/* Tabla de clientes con préstamos mejorada */}
+      {/* Tabla de clientes con préstamos */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-5 border-b border-purple-200">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -833,7 +803,6 @@ export default function Dashboard({
                 </table>
               </div>
               
-              {/* Botón para mostrar todos */}
               {clientesConPrestamos.length > 20 && (
                 <div className="p-4 bg-gray-50 border-t border-gray-200">
                   <button
@@ -865,7 +834,7 @@ export default function Dashboard({
         </div>
       </div>
 
-      {/* Resumen de actividad mejorado */}
+      {/* Indicadores clave */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 p-5 border-b border-indigo-200">
           <div className="flex items-center space-x-3">
@@ -950,7 +919,7 @@ export default function Dashboard({
         </div>
       </div>
 
-      {/* Acciones rápidas mejoradas */}
+      {/* Acciones rápidas */}
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
           <div className="w-1 h-6 bg-blue-600 rounded-full"></div>

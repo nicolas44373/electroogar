@@ -14,7 +14,10 @@ import {
   MapPin, 
   FileText,
   AlertTriangle,
-  Check
+  Check,
+  Users,
+  Calendar,
+  Filter
 } from 'lucide-react'
 
 interface Cliente {
@@ -37,11 +40,9 @@ export default function ClientesPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [loading, setLoading] = useState(false)
   
-  // Modal de confirmación
   const [mostrarModalEliminar, setMostrarModalEliminar] = useState(false)
   const [clienteAEliminar, setClienteAEliminar] = useState<Cliente | null>(null)
   
-  // Modal de éxito/error
   const [mensaje, setMensaje] = useState<{tipo: 'exito' | 'error', texto: string} | null>(null)
   
   const [formData, setFormData] = useState({
@@ -58,7 +59,6 @@ export default function ClientesPage() {
   }, [])
 
   useEffect(() => {
-    // Filtrar clientes según búsqueda
     if (busqueda) {
       const filtrados = clientes.filter(cliente => 
         cliente.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -74,9 +74,8 @@ export default function ClientesPage() {
   }, [busqueda, clientes])
 
   useEffect(() => {
-    // Auto-ocultar mensajes después de 3 segundos
     if (mensaje) {
-      const timer = setTimeout(() => setMensaje(null), 3000)
+      const timer = setTimeout(() => setMensaje(null), 4000)
       return () => clearTimeout(timer)
     }
   }, [mensaje])
@@ -151,7 +150,6 @@ export default function ClientesPage() {
     setLoading(true)
     try {
       if (modoEdicion && clienteEditando) {
-        // Actualizar cliente existente
         const { error } = await supabase
           .from('clientes')
           .update(formData)
@@ -160,7 +158,6 @@ export default function ClientesPage() {
         if (error) throw error
         setMensaje({ tipo: 'exito', texto: 'Cliente actualizado correctamente' })
       } else {
-        // Crear nuevo cliente
         const { error } = await supabase
           .from('clientes')
           .insert(formData)
@@ -194,7 +191,6 @@ export default function ClientesPage() {
     setModoEdicion(true)
     setClienteEditando(cliente.id)
     setMostrarFormulario(true)
-    // Scroll al formulario
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -208,7 +204,6 @@ export default function ClientesPage() {
     
     setLoading(true)
     try {
-      // Verificar si tiene transacciones
       const { data: transacciones } = await supabase
         .from('transacciones')
         .select('id')
@@ -252,375 +247,405 @@ export default function ClientesPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <User className="w-8 h-8 text-blue-600" />
-              Gestión de Clientes
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Total: {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          
-          <button
-            onClick={() => {
-              limpiarFormulario()
-              setMostrarFormulario(!mostrarFormulario)
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Nuevo Cliente
-          </button>
-        </div>
-
-        {/* Barra de búsqueda */}
-        <div className="mt-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Buscar por nombre, documento, teléfono o email..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 relative overflow-hidden">
+      {/* Animated background pattern */}
+      <div className="absolute inset-0 overflow-hidden opacity-10">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}></div>
       </div>
 
-      {/* Mensaje de éxito/error */}
-      {mensaje && (
-        <div className={`mb-4 p-4 rounded-lg flex items-center gap-2 animate-pulse ${
-          mensaje.tipo === 'exito' 
-            ? 'bg-green-50 border border-green-200 text-green-700'
-            : 'bg-red-50 border border-red-200 text-red-700'
-        }`}>
-          {mensaje.tipo === 'exito' ? (
-            <Check className="w-5 h-5" />
-          ) : (
-            <AlertTriangle className="w-5 h-5" />
-          )}
-          {mensaje.texto}
-        </div>
-      )}
+      {/* Floating shapes */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-20 left-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse animation-delay-2000"></div>
+        <div className="absolute top-1/2 right-1/3 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse animation-delay-4000"></div>
+      </div>
 
-      {/* Formulario */}
-      {mostrarFormulario && (
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {modoEdicion ? 'Editar Cliente' : 'Nuevo Cliente'}
-            </h2>
+      <div className="relative max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        {/* Header */}
+        <div className="backdrop-blur-xl bg-slate-800/40 rounded-xl border border-slate-700/50 shadow-2xl p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-50"></div>
+                <div className="relative bg-gradient-to-br from-blue-600 to-purple-600 p-4 rounded-xl">
+                  <Users className="w-8 h-8 text-white" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">Gestión de Clientes</h1>
+                <p className="text-slate-300 mt-1">
+                  Total: {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+            
             <button
-              onClick={limpiarFormulario}
-              className="text-gray-400 hover:text-gray-600"
+              onClick={() => {
+                limpiarFormulario()
+                setMostrarFormulario(!mostrarFormulario)
+              }}
+              className="group relative px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              <X className="w-5 h-5" />
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <div className="relative flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                Nuevo Cliente
+              </div>
             </button>
           </div>
-          
-          <form onSubmit={guardarCliente} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nombre *
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  name="nombre"
-                  placeholder="Ingrese el nombre"
-                  value={formData.nombre}
-                  onChange={handleInputChange}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Apellido *
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  name="apellido"
-                  placeholder="Ingrese el apellido"
-                  value={formData.apellido}
-                  onChange={handleInputChange}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Documento *
-              </label>
-              <div className="relative">
-                <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  name="documento"
-                  placeholder="DNI / CUIT / ID"
-                  value={formData.documento}
-                  onChange={handleInputChange}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  disabled={modoEdicion}
-                />
-              </div>
-              {modoEdicion && (
-                <p className="text-xs text-gray-500 mt-1">
-                  El documento no se puede modificar
-                </p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Teléfono
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="tel"
-                  name="telefono"
-                  placeholder="Ej: 11-1234-5678"
-                  value={formData.telefono}
-                  onChange={handleInputChange}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="correo@ejemplo.com"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Dirección
-              </label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 text-gray-400 w-4 h-4" />
-                <textarea
-                  name="direccion"
-                  placeholder="Calle, número, ciudad..."
-                  value={formData.direccion}
-                  onChange={handleInputChange}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  rows={2}
-                />
-              </div>
-            </div>
-            
-            <div className="md:col-span-2 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={limpiarFormulario}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    {modoEdicion ? 'Actualizar' : 'Guardar'}
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
 
-      {/* Tabla de clientes */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className="p-4 border-b bg-gray-50">
-          <h2 className="text-lg font-semibold text-gray-900">Lista de Clientes</h2>
+          {/* Barra de búsqueda */}
+          <div className="mt-6">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Buscar por nombre, documento, teléfono o email..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm"
+              />
+            </div>
+          </div>
         </div>
-        
-        {loading && clientesFiltrados.length === 0 ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">Cargando clientes...</p>
-          </div>
-        ) : clientesFiltrados.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                    Documento
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                    Nombre Completo
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
-                    Teléfono
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
-                    Email
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
-                    Dirección
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase hidden xl:table-cell">
-                    Registrado
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {clientesFiltrados.map((cliente) => (
-                  <tr key={cliente.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                        {cliente.documento}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {cliente.nombre} {cliente.apellido}
-                        </div>
-                        <div className="text-sm text-gray-500 sm:hidden">
-                          {cliente.telefono}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
-                      {cliente.telefono ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Phone className="w-3 h-3 text-gray-400" />
-                          {cliente.telefono}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      {cliente.email ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Mail className="w-3 h-3 text-gray-400" />
-                          {cliente.email}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
-                      {cliente.direccion ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <MapPin className="w-3 h-3 text-gray-400" />
-                          <span className="truncate max-w-xs" title={cliente.direccion}>
-                            {cliente.direccion}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 hidden xl:table-cell">
-                      {formatearFecha(cliente.created_at)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => iniciarEdicion(cliente)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                          title="Editar"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => confirmarEliminar(cliente)}
-                          className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-8 text-center">
-            <User className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-gray-900 mb-1">
-              {busqueda ? 'No se encontraron clientes' : 'No hay clientes registrados'}
-            </h3>
-            <p className="text-gray-600">
-              {busqueda 
-                ? 'Intenta con otros términos de búsqueda'
-                : 'Comienza agregando tu primer cliente'
-              }
-            </p>
+
+        {/* Mensaje de éxito/error */}
+        {mensaje && (
+          <div className={`mb-6 backdrop-blur-xl rounded-xl p-4 flex items-center gap-3 shadow-lg animate-fade-in ${
+            mensaje.tipo === 'exito' 
+              ? 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-100'
+              : 'bg-red-500/20 border border-red-500/50 text-red-100'
+          }`}>
+            {mensaje.tipo === 'exito' ? (
+              <Check className="w-5 h-5 flex-shrink-0" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            )}
+            <span className="font-medium">{mensaje.texto}</span>
           </div>
         )}
+
+        {/* Formulario */}
+        {mostrarFormulario && (
+          <div className="backdrop-blur-xl bg-slate-800/40 rounded-xl border border-slate-700/50 shadow-2xl p-6 mb-6 animate-fade-in">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <User className="w-6 h-6 text-blue-400" />
+                {modoEdicion ? 'Editar Cliente' : 'Nuevo Cliente'}
+              </h2>
+              <button
+                onClick={limpiarFormulario}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={guardarCliente} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Nombre *
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    name="nombre"
+                    placeholder="Ingrese el nombre"
+                    value={formData.nombre}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Apellido *
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    name="apellido"
+                    placeholder="Ingrese el apellido"
+                    value={formData.apellido}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Documento *
+                </label>
+                <div className="relative">
+                  <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    name="documento"
+                    placeholder="DNI / CUIT / ID"
+                    value={formData.documento}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    required
+                    disabled={modoEdicion}
+                  />
+                </div>
+                {modoEdicion && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    El documento no se puede modificar
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Teléfono
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <input
+                    type="tel"
+                    name="telefono"
+                    placeholder="Ej: 11-1234-5678"
+                    value={formData.telefono}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="correo@ejemplo.com"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Dirección
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 text-slate-400 w-4 h-4" />
+                  <textarea
+                    name="direccion"
+                    placeholder="Calle, número, ciudad..."
+                    value={formData.direccion}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={2}
+                  />
+                </div>
+              </div>
+              
+              <div className="md:col-span-2 flex justify-end gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={limpiarFormulario}
+                  className="px-6 py-3 border border-slate-600 rounded-xl text-slate-300 hover:bg-slate-700/50 transition-colors font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      {modoEdicion ? 'Actualizar' : 'Guardar'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Tabla de clientes */}
+        <div className="backdrop-blur-xl bg-slate-800/40 rounded-xl border border-slate-700/50 shadow-2xl overflow-hidden">
+          <div className="p-4 border-b border-slate-700/50 bg-slate-800/60">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-400" />
+              Lista de Clientes
+            </h2>
+          </div>
+          
+          {loading && clientesFiltrados.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-600 border-t-blue-500 mb-4"></div>
+              <p className="text-slate-300 font-medium">Cargando clientes...</p>
+            </div>
+          ) : clientesFiltrados.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-800/60 border-b border-slate-700/50">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      Documento
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      Nombre Completo
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider hidden sm:table-cell">
+                      Teléfono
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider hidden md:table-cell">
+                      Email
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider hidden lg:table-cell">
+                      Dirección
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider hidden xl:table-cell">
+                      Registrado
+                    </th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/50">
+                  {clientesFiltrados.map((cliente) => (
+                    <tr key={cliente.id} className="hover:bg-slate-700/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-sm bg-slate-700/50 text-blue-300 px-3 py-1 rounded-lg">
+                          {cliente.documento}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div>
+                          <div className="font-semibold text-white">
+                            {cliente.nombre} {cliente.apellido}
+                          </div>
+                          <div className="text-sm text-slate-400 sm:hidden">
+                            {cliente.telefono}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        {cliente.telefono ? (
+                          <div className="flex items-center gap-2 text-sm text-slate-300">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            {cliente.telefono}
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-sm">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        {cliente.email ? (
+                          <div className="flex items-center gap-2 text-sm text-slate-300">
+                            <Mail className="w-3 h-3 text-slate-400" />
+                            <span className="truncate max-w-xs">{cliente.email}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-sm">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        {cliente.direccion ? (
+                          <div className="flex items-center gap-2 text-sm text-slate-300">
+                            <MapPin className="w-3 h-3 text-slate-400" />
+                            <span className="truncate max-w-xs" title={cliente.direccion}>
+                              {cliente.direccion}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-sm">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-400 hidden xl:table-cell">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-3 h-3" />
+                          {formatearFecha(cliente.created_at)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => iniciarEdicion(cliente)}
+                            className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
+                            title="Editar"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => confirmarEliminar(cliente)}
+                            className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-12 text-center">
+              <Users className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-white mb-2">
+                {busqueda ? 'No se encontraron clientes' : 'No hay clientes registrados'}
+              </h3>
+              <p className="text-slate-400">
+                {busqueda 
+                  ? 'Intenta con otros términos de búsqueda'
+                  : 'Comienza agregando tu primer cliente'
+                }
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modal de confirmación de eliminación */}
       {mostrarModalEliminar && clienteAEliminar && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="backdrop-blur-xl bg-slate-800/95 border border-slate-700/50 rounded-xl max-w-md w-full p-6 shadow-2xl animate-fade-in">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="flex-shrink-0 w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-bold text-white mb-2">
                   Confirmar eliminación
                 </h3>
-                <p className="text-gray-600 mb-4">
-                  ¿Estás seguro de que deseas eliminar al cliente <strong>
+                <p className="text-slate-300 mb-4">
+                  ¿Estás seguro de que deseas eliminar al cliente <strong className="text-white">
                     {clienteAEliminar.nombre} {clienteAEliminar.apellido}
                   </strong>?
                 </p>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-amber-800">
-                    <strong>⚠️ Advertencia:</strong> Esta acción no se puede deshacer. 
-                    Se eliminará permanentemente el registro del cliente.
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-amber-200">
+                    <strong>⚠️ Advertencia:</strong> Esta acción no se puede deshacer.
                   </p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
+                <div className="bg-slate-700/50 rounded-lg p-3 space-y-1 text-sm text-slate-300">
                   <p><strong>Documento:</strong> {clienteAEliminar.documento}</p>
                   {clienteAEliminar.telefono && (
                     <p><strong>Teléfono:</strong> {clienteAEliminar.telefono}</p>
@@ -632,25 +657,25 @@ export default function ClientesPage() {
               </div>
             </div>
             
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="flex justify-end gap-3">
               <button
                 onClick={() => {
                   setMostrarModalEliminar(false)
                   setClienteAEliminar(null)
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700/50 transition-colors"
                 disabled={loading}
               >
                 Cancelar
               </button>
               <button
                 onClick={eliminarCliente}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 disabled={loading}
               >
                 {loading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Eliminando...
                   </>
                 ) : (
@@ -664,6 +689,32 @@ export default function ClientesPage() {
           </div>
         </div>
       )}
+
+      {/* Custom animations */}
+      <style jsx>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+      `}</style>
     </div>
   )
 }

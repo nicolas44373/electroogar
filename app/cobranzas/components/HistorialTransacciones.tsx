@@ -66,6 +66,7 @@ export default function HistorialTransacciones({
     }
   }
 
+  // (No se usa hoy, pero lo dejo por si lo necesitas después)
   const formatearFechaLarga = (fecha: string) => {
     try {
       const [year, month, day] = fecha.split('-').map(Number)
@@ -96,15 +97,13 @@ export default function HistorialTransacciones({
 
   const generarDatosComprobante = (transaccion: Transaccion) => {
     const pagosTransaccion = pagos[transaccion.id] || []
-    
-    // Preparar cuotas para el comprobante
-    const cuotas = pagosTransaccion.map(pago => ({
+
+    const cuotas = pagosTransaccion.map((pago) => ({
       numero: pago.numero_cuota,
-      monto: pago.monto_cuota || 0, // ✅ Asegurar que siempre sea number
-      fechaVencimiento: pago.fecha_vencimiento
+      monto: pago.monto_cuota || 0,
+      fechaVencimiento: pago.fecha_vencimiento,
     }))
 
-    // Calcular interés original
     const montoOriginal = transaccion.monto_original || transaccion.monto_total
     const interesAplicado = transaccion.interes_porcentaje || 0
 
@@ -114,7 +113,7 @@ export default function HistorialTransacciones({
         nombre: cliente.nombre,
         apellido: cliente.apellido || '',
         telefono: cliente.telefono,
-        email: cliente.email
+        email: cliente.email,
       },
       transaccion: {
         numeroFactura: transaccion.numero_factura,
@@ -125,10 +124,10 @@ export default function HistorialTransacciones({
         numeroCuotas: transaccion.numero_cuotas,
         montoCuota: transaccion.monto_cuota,
         tipoPago: transaccion.tipo_pago,
-        descripcion: transaccion.descripcion || undefined, // ✅ Convertir null a undefined
-        productoNombre: transaccion.producto?.nombre
+        descripcion: transaccion.descripcion || undefined,
+        productoNombre: transaccion.producto?.nombre,
       },
-      cuotas: cuotas
+      cuotas,
     }
   }
 
@@ -141,7 +140,7 @@ export default function HistorialTransacciones({
   }
 
   // Renderizar comprobante si está activo
-  const transaccionConComprobante = transacciones.find(t => t.id === comprobanteActivo)
+  const transaccionConComprobante = transacciones.find((t) => t.id === comprobanteActivo)
   if (comprobanteActivo && transaccionConComprobante) {
     const datosComprobante = generarDatosComprobante(transaccionConComprobante)
     return (
@@ -168,15 +167,25 @@ export default function HistorialTransacciones({
         <div key={transaccion.id} className="bg-white rounded-lg shadow overflow-hidden relative">
           {/* Modal de confirmación */}
           {mostrarConfirmacion === transaccion.id && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-2 sm:p-4">
-              <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-sm sm:max-w-md shadow-xl">
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-2 sm:p-4"
+              onClick={() => setMostrarConfirmacion(null)}
+              role="dialog"
+              aria-modal="true"
+            >
+              <div
+                className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-sm sm:max-w-md shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <h3 className="text-base sm:text-lg font-semibold mb-3 text-red-600">
                   ⚠️ Confirmar eliminación
                 </h3>
+
                 <div className="mb-4 text-sm sm:text-base">
                   <p className="text-gray-700 mb-2">
                     ¿Estás seguro de que deseas eliminar esta transacción?
                   </p>
+
                   <div className="bg-gray-50 p-3 rounded text-xs sm:text-sm">
                     <p className="font-medium">{obtenerTituloTransaccion(transaccion)}</p>
                     <p className="text-gray-600">
@@ -184,20 +193,33 @@ export default function HistorialTransacciones({
                     </p>
                     <p className="text-gray-600">Cuotas: {transaccion.numero_cuotas}</p>
                   </div>
+
                   <p className="text-red-600 text-xs sm:text-sm mt-3 font-medium">
                     ⚠️ Esta acción eliminará permanentemente la transacción y todos sus pagos asociados.
                   </p>
                 </div>
+
                 <div className="flex gap-2 sm:gap-3 justify-end flex-wrap">
                   <button
-                    onClick={() => setMostrarConfirmacion(null)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setMostrarConfirmacion(null)
+                    }}
                     className="px-3 py-2 text-gray-600 hover:text-gray-800 transition-colors text-sm"
                     disabled={eliminando === transaccion.id}
                   >
                     Cancelar
                   </button>
+
                   <button
-                    onClick={() => handleEliminar(transaccion.id)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      void handleEliminar(transaccion.id)
+                    }}
                     disabled={eliminando === transaccion.id}
                     className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center gap-2"
                   >
@@ -239,7 +261,6 @@ export default function HistorialTransacciones({
                   {obtenerTituloTransaccion(transaccion)}
                 </h3>
 
-                {/* Descripción de la transacción */}
                 {transaccion.descripcion && (
                   <div className="mt-2 bg-blue-50 border-l-4 border-blue-400 p-2 rounded">
                     <p className="text-sm text-gray-700">
@@ -263,9 +284,7 @@ export default function HistorialTransacciones({
                   <p className="text-gray-600">
                     <EstadoBadge estado={transaccion.estado || 'activo'} />
                   </p>
-                  <p className="text-gray-500 text-xs">
-                    Inicio: {formatearFecha(transaccion.fecha_inicio)}
-                  </p>
+                  <p className="text-gray-500 text-xs">Inicio: {formatearFecha(transaccion.fecha_inicio)}</p>
                 </div>
               </div>
 
@@ -292,9 +311,13 @@ export default function HistorialTransacciones({
 
                 {/* Botones de acción */}
                 <div className="flex gap-2">
-                  {/* Botón de Comprobante */}
                   <button
-                    onClick={() => abrirComprobante(transaccion.id)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      abrirComprobante(transaccion.id)
+                    }}
                     className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm whitespace-nowrap"
                     title="Ver comprobante"
                   >
@@ -302,10 +325,14 @@ export default function HistorialTransacciones({
                     <span className="hidden sm:inline">Comprobante</span>
                   </button>
 
-                  {/* Botón de Eliminar */}
                   {onEliminarTransaccion && (
                     <button
-                      onClick={() => setMostrarConfirmacion(transaccion.id)}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setMostrarConfirmacion(transaccion.id)
+                      }}
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Eliminar transacción"
                     >
@@ -360,6 +387,7 @@ function EstadoBadge({ estado }: { estado: string }) {
     completado: 'Completado',
     moroso: 'Moroso',
   }
+
   return (
     <span
       className={`px-2 py-1 rounded-full text-xs font-medium ${

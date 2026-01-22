@@ -1,3 +1,6 @@
+'use client'
+
+import { useRef, useState } from 'react'
 import { X, Download, Printer, CheckCircle } from 'lucide-react'
 
 interface Cuota {
@@ -37,7 +40,9 @@ export default function ComprobanteTransaccion({
   cuotas,
   onCerrar
 }: ComprobanteTransaccionProps) {
-  
+  const contenidoRef = useRef<HTMLDivElement>(null)
+  const [generando, setGenerando] = useState(false)
+
   const formatearMoneda = (monto: number) => {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -56,360 +61,81 @@ export default function ComprobanteTransaccion({
     })
   }
 
-  const handleImprimir = () => {
+  const handleImprimir = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     window.print()
   }
 
-  const handleDescargar = () => {
-    const contenido = document.getElementById('comprobante-contenido')
-    if (contenido) {
-      const ventanaImpresion = window.open('', '', 'width=900,height=1200')
-      if (ventanaImpresion) {
-        const colorPrincipal = tipo === 'venta' ? '#2563eb' : '#059669'
-        const colorSecundario = tipo === 'venta' ? '#dbeafe' : '#d1fae5'
-        
-        ventanaImpresion.document.write(`
-          <html>
-            <head>
-              <title>Comprobante - ${tipo === 'venta' ? 'Venta' : 'Préstamo'}</title>
-              <meta charSet="UTF-8">
-              <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                
-                body { 
-                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                  line-height: 1.6;
-                  color: #1f2937;
-                  background: #fff;
-                  padding: 30px;
-                }
-                
-                .comprobante-wrapper {
-                  max-width: 850px;
-                  margin: 0 auto;
-                  background: white;
-                  box-shadow: 0 0 20px rgba(0,0,0,0.1);
-                  border-radius: 8px;
-                  overflow: hidden;
-                }
-                
-                .header-banner {
-                  background: linear-gradient(135deg, ${colorPrincipal} 0%, ${colorPrincipal}dd 100%);
-                  color: white;
-                  padding: 30px 40px;
-                  text-align: center;
-                }
-                
-                .header-banner h1 {
-                  font-size: 32px;
-                  font-weight: 700;
-                  letter-spacing: 1px;
-                  margin-bottom: 8px;
-                  text-transform: uppercase;
-                }
-                
-                .header-banner .numero {
-                  font-size: 16px;
-                  opacity: 0.95;
-                  font-weight: 500;
-                }
-                
-                .header-banner .fecha {
-                  font-size: 13px;
-                  opacity: 0.85;
-                  margin-top: 8px;
-                }
-                
-                .contenido {
-                  padding: 40px;
-                }
-                
-                .seccion {
-                  margin-bottom: 30px;
-                  page-break-inside: avoid;
-                }
-                
-                .seccion-titulo {
-                  font-size: 16px;
-                  font-weight: 700;
-                  color: ${colorPrincipal};
-                  text-transform: uppercase;
-                  letter-spacing: 0.5px;
-                  border-bottom: 3px solid ${colorPrincipal};
-                  padding-bottom: 8px;
-                  margin-bottom: 15px;
-                }
-                
-                .info-box {
-                  background: #f9fafb;
-                  border-left: 4px solid ${colorPrincipal};
-                  padding: 20px;
-                  border-radius: 4px;
-                }
-                
-                .info-grid {
-                  display: grid;
-                  grid-template-columns: repeat(2, 1fr);
-                  gap: 15px;
-                }
-                
-                .info-item {
-                  display: flex;
-                  flex-direction: column;
-                }
-                
-                .info-label {
-                  font-size: 12px;
-                  color: #6b7280;
-                  font-weight: 600;
-                  text-transform: uppercase;
-                  margin-bottom: 4px;
-                }
-                
-                .info-value {
-                  font-size: 15px;
-                  color: #111827;
-                  font-weight: 600;
-                }
-                
-                .detalle-box {
-                  background: ${colorSecundario};
-                  border: 2px solid ${colorPrincipal}33;
-                  padding: 25px;
-                  border-radius: 8px;
-                  margin-top: 15px;
-                }
-                
-                .detalle-row {
-                  display: flex;
-                  justify-content: space-between;
-                  padding: 10px 0;
-                  border-bottom: 1px solid ${colorPrincipal}20;
-                }
-                
-                .detalle-row:last-child {
-                  border-bottom: none;
-                }
-                
-                .detalle-label {
-                  font-size: 14px;
-                  color: #374151;
-                  font-weight: 500;
-                }
-                
-                .detalle-value {
-                  font-size: 14px;
-                  color: #111827;
-                  font-weight: 700;
-                }
-                
-                .monto-total {
-                  background: ${colorPrincipal};
-                  color: white;
-                  padding: 15px 25px;
-                  border-radius: 8px;
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  margin-top: 15px;
-                  font-size: 18px;
-                  font-weight: 700;
-                }
-                
-                .plan-pagos-summary {
-                  display: grid;
-                  grid-template-columns: repeat(3, 1fr);
-                  gap: 15px;
-                  background: #f9fafb;
-                  padding: 20px;
-                  border-radius: 8px;
-                  margin: 20px 0;
-                  text-align: center;
-                }
-                
-                .plan-item {
-                  padding: 10px;
-                }
-                
-                .plan-item-label {
-                  font-size: 11px;
-                  color: #6b7280;
-                  text-transform: uppercase;
-                  font-weight: 600;
-                  margin-bottom: 6px;
-                }
-                
-                .plan-item-value {
-                  font-size: 18px;
-                  color: #111827;
-                  font-weight: 700;
-                }
-                
-                .tabla-cuotas {
-                  width: 100%;
-                  border-collapse: collapse;
-                  margin-top: 20px;
-                  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                  border-radius: 8px;
-                  overflow: hidden;
-                }
-                
-                .tabla-cuotas thead {
-                  background: ${colorPrincipal};
-                  color: white;
-                }
-                
-                .tabla-cuotas th {
-                  padding: 14px 16px;
-                  text-align: left;
-                  font-size: 13px;
-                  font-weight: 700;
-                  text-transform: uppercase;
-                  letter-spacing: 0.5px;
-                }
-                
-                .tabla-cuotas tbody tr {
-                  border-bottom: 1px solid #e5e7eb;
-                  transition: background 0.2s;
-                }
-                
-                .tabla-cuotas tbody tr:hover {
-                  background: ${colorSecundario};
-                }
-                
-                .tabla-cuotas tbody tr:last-child {
-                  border-bottom: none;
-                }
-                
-                .tabla-cuotas td {
-                  padding: 12px 16px;
-                  font-size: 13px;
-                }
-                
-                .tabla-cuotas tfoot {
-                  background: #f3f4f6;
-                  font-weight: 700;
-                }
-                
-                .tabla-cuotas tfoot td {
-                  padding: 14px 16px;
-                  font-size: 14px;
-                }
-                
-                .badge {
-                  display: inline-block;
-                  padding: 4px 12px;
-                  border-radius: 12px;
-                  font-size: 11px;
-                  font-weight: 600;
-                  text-transform: uppercase;
-                }
-                
-                .badge-pendiente {
-                  background: #fef3c7;
-                  color: #92400e;
-                }
-                
-                .terminos {
-                  background: #fef9f3;
-                  border: 1px solid #fbbf24;
-                  border-radius: 8px;
-                  padding: 20px;
-                  margin-top: 30px;
-                }
-                
-                .terminos-titulo {
-                  font-size: 13px;
-                  font-weight: 700;
-                  color: #92400e;
-                  margin-bottom: 12px;
-                  text-transform: uppercase;
-                }
-                
-                .terminos ul {
-                  list-style: none;
-                  padding-left: 0;
-                }
-                
-                .terminos li {
-                  font-size: 12px;
-                  color: #78350f;
-                  margin-bottom: 8px;
-                  padding-left: 20px;
-                  position: relative;
-                }
-                
-                .terminos li:before {
-                  content: "•";
-                  position: absolute;
-                  left: 8px;
-                  font-weight: bold;
-                }
-                
-                .firmas {
-                  display: grid;
-                  grid-template-columns: repeat(2, 1fr);
-                  gap: 60px;
-                  margin-top: 50px;
-                  padding-top: 30px;
-                }
-                
-                .firma-box {
-                  text-align: center;
-                }
-                
-                .firma-linea {
-                  border-top: 2px solid #111827;
-                  margin: 60px 20px 12px 20px;
-                }
-                
-                .firma-label {
-                  font-weight: 700;
-                  color: #111827;
-                  font-size: 14px;
-                  margin-bottom: 4px;
-                }
-                
-                .firma-nombre {
-                  font-size: 12px;
-                  color: #6b7280;
-                }
-                
-                .footer {
-                  text-align: center;
-                  padding: 20px;
-                  background: #f9fafb;
-                  border-top: 2px solid #e5e7eb;
-                  margin-top: 30px;
-                }
-                
-                .footer-text {
-                  font-size: 11px;
-                  color: #6b7280;
-                }
-                
-                @media print {
-                  body { padding: 0; }
-                  .comprobante-wrapper { box-shadow: none; }
-                  @page { margin: 1cm; }
-                }
-                
-                @media screen and (max-width: 768px) {
-                  body { padding: 15px; }
-                  .contenido { padding: 25px; }
-                  .info-grid { grid-template-columns: 1fr; }
-                  .plan-pagos-summary { grid-template-columns: 1fr; }
-                }
-              </style>
-            </head>
-            <body>
-              ${contenido.innerHTML}
-            </body>
-          </html>
-        `)
-        ventanaImpresion.document.close()
-        ventanaImpresion.print()
+  const handleDescargar = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!contenidoRef.current || generando) return
+
+    setGenerando(true)
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const { jsPDF } = await import('jspdf')
+
+      const canvas = await html2canvas(contenidoRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: contenidoRef.current.scrollWidth,
+        windowHeight: contenidoRef.current.scrollHeight
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      })
+
+      const pageWidth = 210
+      const pageHeight = 297
+
+      const imgWidth = pageWidth
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      let heightLeft = imgHeight
+      let position = 0
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST')
+      heightLeft -= pageHeight
+
+      while (heightLeft > 0) {
+        position -= pageHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST')
+        heightLeft -= pageHeight
       }
+
+      const fileName = `Comprobante_${tipo}_${transaccion.numeroFactura || 'SIN-NUM'}_${transaccion.fecha}.pdf`
+
+      const pdfBlob = pdf.output('blob')
+      const blobUrl = URL.createObjectURL(pdfBlob)
+
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = fileName
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+
+      setTimeout(() => {
+        document.body.removeChild(link)
+        URL.revokeObjectURL(blobUrl)
+      }, 0)
+    } catch (err) {
+      console.error('Error generando PDF:', err)
+      alert('No se pudo generar el PDF. Revisá consola y dependencias html2canvas/jspdf.')
+    } finally {
+      setGenerando(false)
     }
   }
 
@@ -419,13 +145,13 @@ export default function ComprobanteTransaccion({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <style>{`
-        .comprobante-personalizado {
+        .comprobante-ultra-compacto {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          line-height: 1.6;
+          line-height: 1.3;
           color: #1f2937;
         }
-        
-        .comprobante-personalizado .comprobante-wrapper {
+
+        .comprobante-ultra-compacto .comprobante-wrapper {
           max-width: 850px;
           margin: 0 auto;
           background: white;
@@ -433,304 +159,351 @@ export default function ComprobanteTransaccion({
           border-radius: 8px;
           overflow: hidden;
         }
-        
-        .comprobante-personalizado .header-banner {
+
+        /* ===== HEADER ===== */
+        .comprobante-ultra-compacto .header-banner {
           background: linear-gradient(135deg, ${colorPrincipal} 0%, ${colorPrincipal}dd 100%);
           color: white;
-          padding: 30px 40px;
+          padding: 12px 20px;
           text-align: center;
         }
-        
-        .comprobante-personalizado .header-banner h1 {
-          font-size: 32px;
+
+        .comprobante-ultra-compacto .header-banner h1 {
+          font-size: 18px;
           font-weight: 700;
-          letter-spacing: 1px;
-          margin-bottom: 8px;
+          letter-spacing: 0.3px;
+          margin-bottom: 3px;
           text-transform: uppercase;
         }
-        
-        .comprobante-personalizado .header-banner .numero {
-          font-size: 16px;
+
+        .comprobante-ultra-compacto .header-banner .numero {
+          font-size: 11px;
           opacity: 0.95;
           font-weight: 500;
         }
-        
-        .comprobante-personalizado .header-banner .fecha {
-          font-size: 13px;
+
+        .comprobante-ultra-compacto .header-banner .fecha {
+          font-size: 9px;
           opacity: 0.85;
-          margin-top: 8px;
+          margin-top: 3px;
         }
-        
-        .comprobante-personalizado .contenido {
-          padding: 40px;
+
+        /* ===== CONTENIDO ===== */
+        .comprobante-ultra-compacto .contenido {
+          padding: 12px 15px;
         }
-        
-        .comprobante-personalizado .seccion {
-          margin-bottom: 30px;
+
+        .comprobante-ultra-compacto .seccion {
+          margin-bottom: 10px;
           page-break-inside: avoid;
         }
-        
-        .comprobante-personalizado .seccion-titulo {
-          font-size: 16px;
+
+        .comprobante-ultra-compacto .seccion-titulo {
+          font-size: 11px;
           font-weight: 700;
           color: ${colorPrincipal};
           text-transform: uppercase;
-          letter-spacing: 0.5px;
-          border-bottom: 3px solid ${colorPrincipal};
-          padding-bottom: 8px;
-          margin-bottom: 15px;
+          letter-spacing: 0.2px;
+          border-bottom: 2px solid ${colorPrincipal};
+          padding-bottom: 3px;
+          margin-bottom: 6px;
         }
-        
-        .comprobante-personalizado .info-box {
+
+        /* ===== INFO BOXES ===== */
+        .comprobante-ultra-compacto .info-box {
           background: #f9fafb;
-          border-left: 4px solid ${colorPrincipal};
-          padding: 20px;
-          border-radius: 4px;
+          border-left: 3px solid ${colorPrincipal};
+          padding: 8px 10px;
+          border-radius: 3px;
         }
-        
-        .comprobante-personalizado .info-grid {
+
+        .comprobante-ultra-compacto .info-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 15px;
+          gap: 8px;
         }
-        
-        .comprobante-personalizado .info-item {
+
+        .comprobante-ultra-compacto .info-item {
           display: flex;
           flex-direction: column;
         }
-        
-        .comprobante-personalizado .info-label {
-          font-size: 12px;
+
+        .comprobante-ultra-compacto .info-label {
+          font-size: 8px;
           color: #6b7280;
           font-weight: 600;
           text-transform: uppercase;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         }
-        
-        .comprobante-personalizado .info-value {
-          font-size: 15px;
+
+        .comprobante-ultra-compacto .info-value {
+          font-size: 11px;
           color: #111827;
           font-weight: 600;
         }
-        
-        .comprobante-personalizado .detalle-box {
+
+        /* ===== DETALLE ===== */
+        .comprobante-ultra-compacto .detalle-box {
           background: ${colorSecundario};
           border: 2px solid ${colorPrincipal}33;
-          padding: 25px;
-          border-radius: 8px;
-          margin-top: 15px;
+          padding: 10px 12px;
+          border-radius: 4px;
+          margin-top: 6px;
         }
-        
-        .comprobante-personalizado .detalle-row {
+
+        .comprobante-ultra-compacto .detalle-row {
           display: flex;
           justify-content: space-between;
-          padding: 10px 0;
+          gap: 12px;
+          padding: 4px 0;
           border-bottom: 1px solid ${colorPrincipal}20;
         }
-        
-        .comprobante-personalizado .detalle-row:last-child {
+
+        .comprobante-ultra-compacto .detalle-row:last-child {
           border-bottom: none;
         }
-        
-        .comprobante-personalizado .detalle-label {
-          font-size: 14px;
+
+        .comprobante-ultra-compacto .detalle-label {
+          font-size: 10px;
           color: #374151;
           font-weight: 500;
         }
-        
-        .comprobante-personalizado .detalle-value {
-          font-size: 14px;
+
+        .comprobante-ultra-compacto .detalle-value {
+          font-size: 10px;
           color: #111827;
           font-weight: 700;
+          text-align: right;
         }
-        
-        .comprobante-personalizado .monto-total {
+
+        .comprobante-ultra-compacto .monto-total {
           background: ${colorPrincipal};
           color: white;
-          padding: 15px 25px;
-          border-radius: 8px;
+          padding: 8px 12px;
+          border-radius: 4px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-top: 15px;
-          font-size: 18px;
+          margin-top: 6px;
+          font-size: 13px;
           font-weight: 700;
         }
-        
-        .comprobante-personalizado .plan-pagos-summary {
+
+        /* ===== PLAN DE PAGOS ===== */
+        .comprobante-ultra-compacto .plan-pagos-summary {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 15px;
+          gap: 8px;
           background: #f9fafb;
-          padding: 20px;
-          border-radius: 8px;
-          margin: 20px 0;
+          padding: 8px;
+          border-radius: 4px;
+          margin: 8px 0;
           text-align: center;
         }
-        
-        .comprobante-personalizado .plan-item {
-          padding: 10px;
+
+        .comprobante-ultra-compacto .plan-item {
+          padding: 4px;
         }
-        
-        .comprobante-personalizado .plan-item-label {
-          font-size: 11px;
+
+        .comprobante-ultra-compacto .plan-item-label {
+          font-size: 7px;
           color: #6b7280;
           text-transform: uppercase;
           font-weight: 600;
-          margin-bottom: 6px;
+          margin-bottom: 3px;
         }
-        
-        .comprobante-personalizado .plan-item-value {
-          font-size: 18px;
+
+        .comprobante-ultra-compacto .plan-item-value {
+          font-size: 12px;
           color: #111827;
           font-weight: 700;
         }
-        
-        .comprobante-personalizado .tabla-cuotas {
+
+        /* ===== TABLA DE CUOTAS ===== */
+        .comprobante-ultra-compacto .tabla-cuotas {
           width: 100%;
           border-collapse: collapse;
-          margin-top: 20px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-          border-radius: 8px;
+          margin-top: 8px;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+          border-radius: 4px;
           overflow: hidden;
+          page-break-inside: avoid;
         }
-        
-        .comprobante-personalizado .tabla-cuotas thead {
+
+        .comprobante-ultra-compacto .tabla-cuotas thead {
           background: ${colorPrincipal};
           color: white;
         }
-        
-        .comprobante-personalizado .tabla-cuotas th {
-          padding: 14px 16px;
+
+        .comprobante-ultra-compacto .tabla-cuotas th {
+          padding: 6px 8px;
           text-align: left;
-          font-size: 13px;
+          font-size: 9px;
           font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.2px;
         }
-        
-        .comprobante-personalizado .tabla-cuotas tbody tr {
+
+        .comprobante-ultra-compacto .tabla-cuotas tbody tr {
           border-bottom: 1px solid #e5e7eb;
-          transition: background 0.2s;
         }
-        
-        .comprobante-personalizado .tabla-cuotas tbody tr:hover {
-          background: ${colorSecundario};
+
+        .comprobante-ultra-compacto .tabla-cuotas td {
+          padding: 6px 8px;
+          font-size: 9px;
         }
-        
-        .comprobante-personalizado .tabla-cuotas tbody tr:last-child {
-          border-bottom: none;
-        }
-        
-        .comprobante-personalizado .tabla-cuotas td {
-          padding: 12px 16px;
-          font-size: 13px;
-        }
-        
-        .comprobante-personalizado .tabla-cuotas tfoot {
+
+        .comprobante-ultra-compacto .tabla-cuotas tfoot {
           background: #f3f4f6;
           font-weight: 700;
         }
-        
-        .comprobante-personalizado .tabla-cuotas tfoot td {
-          padding: 14px 16px;
-          font-size: 14px;
+
+        .comprobante-ultra-compacto .tabla-cuotas tfoot td {
+          padding: 6px 8px;
+          font-size: 10px;
         }
-        
-        .comprobante-personalizado .badge {
+
+        .comprobante-ultra-compacto .badge {
           display: inline-block;
-          padding: 4px 12px;
-          border-radius: 12px;
-          font-size: 11px;
+          padding: 2px 6px;
+          border-radius: 8px;
+          font-size: 7px;
           font-weight: 600;
           text-transform: uppercase;
         }
-        
-        .comprobante-personalizado .badge-pendiente {
+
+        .comprobante-ultra-compacto .badge-pendiente {
           background: #fef3c7;
           color: #92400e;
         }
-        
-        .comprobante-personalizado .terminos {
+
+        /* ===== TÉRMINOS ===== */
+        .comprobante-ultra-compacto .terminos {
           background: #fef9f3;
           border: 1px solid #fbbf24;
-          border-radius: 8px;
-          padding: 20px;
-          margin-top: 30px;
+          border-radius: 4px;
+          padding: 8px 10px;
+          margin-top: 10px;
+          page-break-inside: avoid;
         }
-        
-        .comprobante-personalizado .terminos-titulo {
-          font-size: 13px;
+
+        .comprobante-ultra-compacto .terminos-titulo {
+          font-size: 9px;
           font-weight: 700;
           color: #92400e;
-          margin-bottom: 12px;
+          margin-bottom: 5px;
           text-transform: uppercase;
         }
-        
-        .comprobante-personalizado .terminos ul {
+
+        .comprobante-ultra-compacto .terminos ul {
           list-style: none;
           padding-left: 0;
+          margin: 0;
         }
-        
-        .comprobante-personalizado .terminos li {
-          font-size: 12px;
+
+        .comprobante-ultra-compacto .terminos li {
+          font-size: 8px;
           color: #78350f;
-          margin-bottom: 8px;
-          padding-left: 20px;
+          margin-bottom: 3px;
+          padding-left: 12px;
           position: relative;
+          line-height: 1.3;
         }
-        
-        .comprobante-personalizado .terminos li:before {
+
+        .comprobante-ultra-compacto .terminos li:before {
           content: "•";
           position: absolute;
-          left: 8px;
+          left: 4px;
           font-weight: bold;
         }
-        
-        .comprobante-personalizado .firmas {
+
+        /* ===== FIRMAS ===== */
+        .comprobante-ultra-compacto .firmas {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 60px;
-          margin-top: 50px;
-          padding-top: 30px;
+          gap: 30px;
+          margin-top: 20px;
+          padding-top: 12px;
+          page-break-inside: avoid;
         }
-        
-        .comprobante-personalizado .firma-box {
+
+        .comprobante-ultra-compacto .firma-box {
           text-align: center;
         }
-        
-        .comprobante-personalizado .firma-linea {
-          border-top: 2px solid #111827;
-          margin: 60px 20px 12px 20px;
+
+        .comprobante-ultra-compacto .firma-linea {
+          border-top: 1.5px solid #111827;
+          margin: 30px 10px 6px 10px;
         }
-        
-        .comprobante-personalizado .firma-label {
+
+        .comprobante-ultra-compacto .firma-label {
           font-weight: 700;
           color: #111827;
-          font-size: 14px;
-          margin-bottom: 4px;
+          font-size: 10px;
+          margin-bottom: 2px;
         }
-        
-        .comprobante-personalizado .firma-nombre {
-          font-size: 12px;
+
+        .comprobante-ultra-compacto .firma-nombre {
+          font-size: 8px;
           color: #6b7280;
         }
-        
-        .comprobante-personalizado .footer {
+
+        /* ===== FOOTER ===== */
+        .comprobante-ultra-compacto .footer {
           text-align: center;
-          padding: 20px;
+          padding: 8px;
           background: #f9fafb;
-          border-top: 2px solid #e5e7eb;
-          margin-top: 30px;
+          border-top: 1px solid #e5e7eb;
+          margin-top: 12px;
         }
-        
-        .comprobante-personalizado .footer-text {
-          font-size: 11px;
+
+        .comprobante-ultra-compacto .footer-text {
+          font-size: 7px;
           color: #6b7280;
+        }
+
+        /* ===== PRINT STYLES ===== */
+        @media print {
+          body { 
+            background: #fff !important; 
+            margin: 0;
+            padding: 0;
+          }
+          
+          .comprobante-ultra-compacto .comprobante-wrapper {
+            box-shadow: none;
+            border-radius: 0;
+            max-width: 100%;
+          }
+          
+          .comprobante-ultra-compacto .contenido {
+            padding: 8mm 10mm;
+          }
+          
+          .comprobante-ultra-compacto .seccion {
+            page-break-inside: avoid;
+          }
+          
+          .comprobante-ultra-compacto .tabla-cuotas {
+            page-break-inside: avoid;
+          }
+          
+          .comprobante-ultra-compacto .terminos {
+            page-break-inside: avoid;
+          }
+          
+          .comprobante-ultra-compacto .firmas {
+            page-break-inside: avoid;
+          }
+          
+          @page {
+            size: A4;
+            margin: 8mm;
+          }
         }
       `}</style>
 
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto comprobante-personalizado">
+      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto comprobante-ultra-compacto">
         {/* Header con acciones */}
         <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-xl flex justify-between items-center print:hidden">
           <div>
@@ -742,9 +515,16 @@ export default function ComprobanteTransaccion({
               Comprobante generado el {formatearFecha(transaccion.fecha)}
             </p>
           </div>
+
           <button
-            onClick={onCerrar}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onCerrar()
+            }}
             className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
+            aria-label="Cerrar"
           >
             <X className="w-6 h-6" />
           </button>
@@ -753,32 +533,31 @@ export default function ComprobanteTransaccion({
         {/* Botones de acción */}
         <div className="flex gap-3 p-4 bg-gray-50 border-b print:hidden">
           <button
+            type="button"
             onClick={handleImprimir}
             className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors"
           >
             <Printer className="w-4 h-4" />
             Imprimir
           </button>
+
           <button
+            type="button"
             onClick={handleDescargar}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            disabled={generando}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
-            Descargar PDF
+            {generando ? 'Generando...' : 'Descargar PDF'}
           </button>
         </div>
 
         {/* Contenido del comprobante */}
-        <div id="comprobante-contenido" className="comprobante-wrapper">
-          {/* Encabezado del comprobante */}
+        <div ref={contenidoRef} id="comprobante-contenido" className="comprobante-wrapper">
           <div className="header-banner">
             <h1>COMPROBANTE DE {tipo === 'venta' ? 'VENTA' : 'PRÉSTAMO'}</h1>
-            {transaccion.numeroFactura && (
-              <div className="numero">N° {transaccion.numeroFactura}</div>
-            )}
-            <div className="fecha">
-              Fecha de emisión: {formatearFecha(transaccion.fecha)}
-            </div>
+            {transaccion.numeroFactura && <div className="numero">N° {transaccion.numeroFactura}</div>}
+            <div className="fecha">Fecha de emisión: {formatearFecha(transaccion.fecha)}</div>
           </div>
 
           <div className="contenido">
@@ -789,14 +568,18 @@ export default function ComprobanteTransaccion({
                 <div className="info-grid">
                   <div className="info-item">
                     <div className="info-label">Nombre Completo</div>
-                    <div className="info-value">{cliente.nombre} {cliente.apellido}</div>
+                    <div className="info-value">
+                      {cliente.nombre} {cliente.apellido}
+                    </div>
                   </div>
+
                   {cliente.telefono && (
                     <div className="info-item">
                       <div className="info-label">Teléfono</div>
                       <div className="info-value">{cliente.telefono}</div>
                     </div>
                   )}
+
                   {cliente.email && (
                     <div className="info-item" style={{ gridColumn: 'span 2' }}>
                       <div className="info-label">Email</div>
@@ -817,11 +600,11 @@ export default function ComprobanteTransaccion({
                     <span className="detalle-value">{transaccion.productoNombre}</span>
                   </div>
                 )}
-                
+
                 {transaccion.descripcion && (
                   <div className="detalle-row">
                     <span className="detalle-label">Descripción:</span>
-                    <span className="detalle-value" style={{ textAlign: 'right', maxWidth: '400px' }}>
+                    <span className="detalle-value" style={{ maxWidth: '380px', fontSize: '9px' }}>
                       {transaccion.descripcion}
                     </span>
                   </div>
@@ -851,32 +634,34 @@ export default function ComprobanteTransaccion({
             {/* Plan de pagos */}
             <div className="seccion">
               <h3 className="seccion-titulo">Plan de Pagos</h3>
-              
+
               <div className="plan-pagos-summary">
                 <div className="plan-item">
                   <div className="plan-item-label">Modalidad</div>
-                  <div className="plan-item-value" style={{ textTransform: 'capitalize' }}>
+                  <div className="plan-item-value" style={{ textTransform: 'capitalize', fontSize: '11px' }}>
                     {transaccion.tipoPago}
                   </div>
                 </div>
                 <div className="plan-item">
-                  <div className="plan-item-label">Número de Cuotas</div>
+                  <div className="plan-item-label">Nº Cuotas</div>
                   <div className="plan-item-value">{transaccion.numeroCuotas}</div>
                 </div>
                 <div className="plan-item">
-                  <div className="plan-item-label">Valor por Cuota</div>
-                  <div className="plan-item-value" style={{ color: tipo === 'venta' ? '#2563eb' : '#059669' }}>
+                  <div className="plan-item-label">Valor Cuota</div>
+                  <div
+                    className="plan-item-value"
+                    style={{ color: tipo === 'venta' ? '#2563eb' : '#059669', fontSize: '11px' }}
+                  >
                     {formatearMoneda(transaccion.montoCuota)}
                   </div>
                 </div>
               </div>
 
-              {/* Tabla de cuotas */}
               <table className="tabla-cuotas">
                 <thead>
                   <tr>
                     <th>N° Cuota</th>
-                    <th>Fecha de Vencimiento</th>
+                    <th>Fecha Vencimiento</th>
                     <th style={{ textAlign: 'right' }}>Monto</th>
                     <th style={{ textAlign: 'center' }}>Estado</th>
                   </tr>
@@ -884,30 +669,36 @@ export default function ComprobanteTransaccion({
                 <tbody>
                   {cuotas.map((cuota) => (
                     <tr key={cuota.numero}>
-                      <td style={{ fontWeight: '600' }}>Cuota #{cuota.numero}</td>
+                      <td style={{ fontWeight: 600 }}>#{cuota.numero}</td>
                       <td>{formatearFecha(cuota.fechaVencimiento)}</td>
-                      <td style={{ textAlign: 'right', fontWeight: '700' }}>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>
                         {formatearMoneda(cuota.monto)}
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <span className="badge badge-pendiente">Pendiente</span>
+                        <span className="badge badge-pendiente">PENDIENTE</span>
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={2} style={{ textAlign: 'right' }}>TOTAL:</td>
-                    <td style={{ textAlign: 'right', color: tipo === 'venta' ? '#2563eb' : '#059669' }}>
+                    <td colSpan={2} style={{ textAlign: 'right' }}>
+                      TOTAL:
+                    </td>
+                    <td
+                      style={{
+                        textAlign: 'right',
+                        color: tipo === 'venta' ? '#2563eb' : '#059669'
+                      }}
+                    >
                       {formatearMoneda(transaccion.montoTotal)}
                     </td>
-                    <td></td>
+                    <td />
                   </tr>
                 </tfoot>
               </table>
             </div>
 
-            {/* Términos y condiciones */}
             <div className="terminos">
               <div className="terminos-titulo">Términos y Condiciones</div>
               <ul>
@@ -918,12 +709,13 @@ export default function ComprobanteTransaccion({
               </ul>
             </div>
 
-            {/* Firmas */}
             <div className="firmas">
               <div className="firma-box">
                 <div className="firma-linea"></div>
                 <div className="firma-label">Firma del Cliente</div>
-                <div className="firma-nombre">{cliente.nombre} {cliente.apellido}</div>
+                <div className="firma-nombre">
+                  {cliente.nombre} {cliente.apellido}
+                </div>
               </div>
               <div className="firma-box">
                 <div className="firma-linea"></div>
@@ -932,7 +724,6 @@ export default function ComprobanteTransaccion({
               </div>
             </div>
 
-            {/* Footer */}
             <div className="footer">
               <div className="footer-text">
                 Este documento ha sido generado electrónicamente • Sistema de Cobranzas
@@ -941,10 +732,15 @@ export default function ComprobanteTransaccion({
           </div>
         </div>
 
-        {/* Footer con botón de cerrar */}
+        {/* Footer */}
         <div className="p-4 bg-gray-50 border-t flex justify-end print:hidden">
           <button
-            onClick={onCerrar}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onCerrar()
+            }}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
             Cerrar Comprobante

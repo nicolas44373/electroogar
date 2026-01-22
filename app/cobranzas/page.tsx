@@ -11,7 +11,16 @@ import GestorPagos from './components/GestorPagos'
 import GeneradorRecibos from './components/GeneradorRecibos'
 import PanelNotificaciones from './components/PanelNotificaciones'
 import Dashboard from './components/Dashboard'
-import { Bell, CreditCard, FileText, Users, DollarSign, AlertTriangle, Menu } from 'lucide-react'
+import { 
+  Bell, 
+  Menu, 
+  LayoutDashboard,
+  X,
+  Zap,
+  Users,
+  FileText,
+  AlertTriangle
+} from 'lucide-react'
 
 export default function CobranzasPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -94,25 +103,17 @@ export default function CobranzasPage() {
     }
   }
 
-  // Función auxiliar para obtener el monto de cuota correcto
   const obtenerMontoCuota = (pago: any) => {
     let montoBase = 0
-    
-    // Primero intentar obtener el monto_cuota del pago
     if (pago.monto_cuota && pago.monto_cuota > 0) {
       montoBase = pago.monto_cuota
     } else {
-      // Si no, obtenerlo de la transacción
       montoBase = pago.transaccion?.monto_cuota || 0
     }
-    
-    // Sumar intereses de mora si existen
     const interesesMora = pago.intereses_mora || 0
-    
     return montoBase + interesesMora
   }
 
-  // Función auxiliar para obtener el nombre del producto o tipo de transacción
   const obtenerNombreTransaccion = (transaccion: any) => {
     if (transaccion?.producto?.nombre) {
       return transaccion.producto.nombre
@@ -120,7 +121,6 @@ export default function CobranzasPage() {
     return transaccion?.tipo_transaccion === 'prestamo' ? 'Préstamo de Dinero' : 'Venta'
   }
 
-  // Función cargarNotificaciones CORREGIDA - calcula correctamente el saldo total
   const cargarNotificaciones = async () => {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
@@ -128,7 +128,6 @@ export default function CobranzasPage() {
     fechaLimite.setDate(hoy.getDate() + 15)
     
     try {
-      // Primero, cargar notificaciones dentro del rango de 15 días
       const { data: notificacionesRango } = await supabase
         .from('pagos')
         .select(`
@@ -152,23 +151,18 @@ export default function CobranzasPage() {
       
       if (!notificacionesRango) return
 
-      // Obtener IDs únicos de transacciones
       const transaccionIds = [...new Set(notificacionesRango
         .map(p => p.transaccion?.id)
         .filter(Boolean))]
 
-      // CAMBIO IMPORTANTE: Cargar TODOS los pagos de esas transacciones para calcular el saldo correcto
       const { data: todosPagosCompletos } = await supabase
         .from('pagos')
         .select('*')
         .in('transaccion_id', transaccionIds)
-      // NO filtrar por estado ni fecha aquí - necesitamos TODOS los pagos
 
-      // Calcular saldo total REAL por transacción
       const saldosPorTransaccion = new Map<string, number>()
       
       if (todosPagosCompletos) {
-        // Agrupar pagos por transacción con tipo explícito
         interface PagosAgrupados {
           [key: string]: any[]
         }
@@ -180,13 +174,10 @@ export default function CobranzasPage() {
           return acc
         }, {})
 
-        // Calcular el saldo real de cada transacción
         Object.entries(pagosAgrupados).forEach(([transaccionId, pagos]: [string, any[]]) => {
           let saldoTotalTransaccion = 0
           
-          // Sumar TODAS las cuotas que no estén completamente pagadas
           pagos.forEach((pago: any) => {
-            // Si el pago no está completamente pagado
             if (pago.estado !== 'pagado') {
               const montoCuota = pago.monto_cuota || 0
               const intereses = pago.intereses_mora || 0
@@ -202,7 +193,6 @@ export default function CobranzasPage() {
         })
       }
       
-      // Mapear las notificaciones con el saldo correcto
       const notificacionesMapeadas: NotificacionVencimiento[] = notificacionesRango.map(pago => {
         const [y, m, d] = pago.fecha_vencimiento.split('-').map(Number)
         const fechaVenc = new Date(y, m - 1, d)
@@ -217,15 +207,12 @@ export default function CobranzasPage() {
         const clienteId = pago.transaccion?.cliente?.id || ''
         const transaccionId = pago.transaccion?.id || ''
         
-        // Obtener monto de cuota
         const montoCuota = obtenerMontoCuota(pago)
         const montoPagado = pago.monto_pagado || 0
         const montoRestante = montoCuota - montoPagado
         
-        // Obtener el saldo total calculado o usar el monto_total como fallback
         let saldoTotal = saldosPorTransaccion.get(transaccionId) || 0
         
-        // Si el saldo calculado es 0 pero hay monto_total en la transacción, usar ese valor
         if (saldoTotal === 0 && pago.transaccion?.monto_total) {
           const montoTotal = pago.transaccion.monto_total
           saldoTotal = montoTotal
@@ -239,8 +226,7 @@ export default function CobranzasPage() {
           cliente_telefono: pago.transaccion?.cliente?.telefono,
           cliente_email: pago.transaccion?.cliente?.email,
           
-          // Campos de monto
-          monto: montoRestante, // Lo que falta pagar de ESTA cuota
+          monto: montoRestante,
           monto_cuota: montoCuota,
           monto_cuota_total: montoCuota,
           monto_pagado: montoPagado,
@@ -253,24 +239,20 @@ export default function CobranzasPage() {
           producto_nombre: obtenerNombreTransaccion(pago.transaccion),
           transaccion_id: transaccionId,
           
-          // SALDO TOTAL DE LA DEUDA
           saldo_total_cliente: saldoTotal,
           
           tipo_transaccion: pago.transaccion?.tipo_transaccion || 'venta',
           numero_factura: pago.transaccion?.numero_factura,
           fecha_inicio: pago.transaccion?.fecha_inicio || '',
           
-          // Campos de reprogramación
           fecha_reprogramacion: pago.fecha_reprogramacion || undefined,
           intereses_mora: pago.intereses_mora || undefined,
           motivo_reprogramacion: pago.motivo_reprogramacion || undefined,
           
-          // Incluir transacción completa
           transaccion: pago.transaccion
         }
       })
       
-      console.log(`Notificaciones cargadas del padre: ${notificacionesMapeadas.length}`)
       setNotificaciones(notificacionesMapeadas)
     } catch (error) {
       console.error('Error cargando notificaciones:', error)
@@ -284,32 +266,27 @@ export default function CobranzasPage() {
     const hoyStr = hoy.toISOString().split('T')[0]
     
     try {
-      // Total de clientes
       const { count: totalClientes } = await supabase
         .from('clientes')
         .select('*', { count: 'exact', head: true })
       
-      // Ventas del mes
       const { data: ventasMes } = await supabase
         .from('transacciones')
         .select('monto_total')
         .gte('created_at', inicioMes.toISOString())
       
-      // Cobros del mes
       const { data: cobrosMes } = await supabase
         .from('pagos')
         .select('monto_pagado')
         .eq('estado', 'pagado')
         .gte('fecha_pago', inicioMes.toISOString().split('T')[0])
       
-      // Clientes vencidos (únicos)
       const { data: pagosVencidos } = await supabase
         .from('pagos')
         .select('transaccion_id, transaccion:transacciones!inner(cliente_id)')
         .in('estado', ['pendiente', 'parcial', 'reprogramado'])
         .lt('fecha_vencimiento', hoyStr)
       
-      // Obtener IDs únicos de clientes vencidos
       const clientesVencidosUnicos = new Set<string>()
       pagosVencidos?.forEach(p => {
         if (p.transaccion && 'cliente_id' in p.transaccion) {
@@ -318,19 +295,45 @@ export default function CobranzasPage() {
         }
       })
       
-      // IMPORTANTE: montoTotalPendiente se calculará en el Dashboard
-      // Aquí solo guardamos un valor temporal que será reemplazado
+      // ✅ CALCULAR MONTO URGENTE AQUÍ DIRECTAMENTE (vencidos + hoy)
+      const { data: pagosUrgentes } = await supabase
+        .from('pagos')
+        .select('transaccion_id, monto_cuota, monto_pagado, intereses_mora, estado')
+        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+        .lte('fecha_vencimiento', hoyStr)
+      
+      const transaccionesUrgentes = [...new Set(pagosUrgentes?.map(p => p.transaccion_id) || [])]
+      const saldoPorTransaccion = new Map()
+      
+      for (const transId of transaccionesUrgentes) {
+        const { data: todosPagos } = await supabase
+          .from('pagos')
+          .select('*')
+          .eq('transaccion_id', transId)
+        
+        let saldo = 0
+        todosPagos?.forEach(p => {
+          if (p.estado !== 'pagado') {
+            const montoCuota = p.monto_cuota || 0
+            const intereses = p.intereses_mora || 0
+            const pagado = p.monto_pagado || 0
+            saldo += (montoCuota + intereses - pagado)
+          }
+        })
+        
+        saldoPorTransaccion.set(transId, saldo)
+      }
+      
+      const montoTotalPendiente = Array.from(saldoPorTransaccion.values())
+        .reduce((sum, val) => sum + val, 0)
+      
       setEstadisticas({
         totalClientes: totalClientes || 0,
         ventasDelMes: ventasMes?.reduce((s, v) => s + v.monto_total, 0) || 0,
         cobrosDelMes: cobrosMes?.reduce((s, v) => s + v.monto_pagado, 0) || 0,
         clientesVencidos: clientesVencidosUnicos.size,
-        montoTotalPendiente: 0 // Se actualizará desde el Dashboard
+        montoTotalPendiente: montoTotalPendiente // ✅ Calculado aquí
       })
-      
-      console.log('=== ESTADÍSTICAS BÁSICAS CARGADAS ===')
-      console.log('Clientes en mora:', clientesVencidosUnicos.size)
-      console.log('======================================')
       
     } catch (err) {
       console.error('Error cargando estadísticas:', err)
@@ -340,24 +343,22 @@ export default function CobranzasPage() {
   const clienteActual = clientes.find(c => c.id === clienteSeleccionado)
   const notificacionesUrgentes = notificaciones.filter(n => n.tipo === 'vencido' || n.tipo === 'hoy')
 
-  // Función para ver la cuenta de un cliente desde las notificaciones
   const verCuentaCliente = (clienteId: string) => {
     setClienteSeleccionado(clienteId)
     setVistaActiva('clientes')
     setMostrarNuevaVenta(false)
   }
 
-  const actualizarMontoUrgente = (monto: number) => {
-    setEstadisticas(prev => ({
-      ...prev,
-      montoTotalPendiente: monto
-    }))
-  }
-
   const renderVistaActiva = () => {
     switch (vistaActiva) {
       case 'dashboard':
-        return <Dashboard estadisticas={estadisticas} onVerNotificaciones={() => setVistaActiva('notificaciones')} onRegistrarPago={() => setVistaActiva('pagos')} onNuevaVenta={() => { setVistaActiva('clientes'); setMostrarNuevaVenta(true) }} onActualizarMontoUrgente={actualizarMontoUrgente} />
+        // ✅ SIN onActualizarMontoUrgente
+        return <Dashboard 
+          estadisticas={estadisticas} 
+          onVerNotificaciones={() => setVistaActiva('notificaciones')} 
+          onRegistrarPago={() => setVistaActiva('pagos')} 
+          onNuevaVenta={() => { setVistaActiva('clientes'); setMostrarNuevaVenta(true) }} 
+        />
       case 'clientes':
         return (
           <div className="space-y-6">
@@ -381,72 +382,234 @@ export default function CobranzasPage() {
     }
   }
 
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'emerald' },
+    { id: 'clientes', label: 'Clientes', icon: Users, color: 'blue' },
+    { id: 'recibos', label: 'Recibos', icon: FileText, color: 'purple' },
+    { id: 'notificaciones', label: 'Notificaciones', icon: AlertTriangle, color: 'orange' }
+  ]
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* HEADER */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-        <div className="flex items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex items-center space-x-2">
-            <button className="lg:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100" onClick={() => setMenuAbierto(!menuAbierto)}>
-              <Menu className="w-6 h-6" />
-            </button>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Sistema de Cobranzas</h1>
-              <p className="text-xs sm:text-sm text-gray-500">Gestión profesional de cobranzas y cuentas corrientes</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 relative overflow-hidden">
+      {/* Animated background pattern */}
+      <div className="absolute inset-0 overflow-hidden opacity-10">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}></div>
+      </div>
+
+      {/* Floating shapes */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-20 left-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse animation-delay-2000"></div>
+        <div className="absolute top-1/2 right-1/3 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse animation-delay-4000"></div>
+      </div>
+
+      <div className="relative">
+        {/* HEADER */}
+        <header className="backdrop-blur-xl bg-slate-800/40 border-b border-slate-700/50 sticky top-0 z-40 shadow-xl">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-4">
+              <div className="flex items-center space-x-3">
+                <button 
+                  className="lg:hidden p-2 rounded-lg text-slate-300 hover:bg-slate-700/50 transition-colors" 
+                  onClick={() => setMenuAbierto(!menuAbierto)}
+                >
+                  {menuAbierto ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                </button>
+                
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-lg blur opacity-50"></div>
+                    <div className="relative bg-gradient-to-br from-slate-700 to-slate-800 w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center border border-emerald-500/30">
+                      <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" strokeWidth={2.5} />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h1 className="text-lg sm:text-xl font-bold text-white">Sistema de Cobranzas</h1>
+                    <p className="text-xs text-slate-400 hidden sm:block">Gestión profesional de cobranzas</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notificaciones */}
+              {notificacionesUrgentes.length > 0 && (
+                <button 
+                  onClick={() => setVistaActiva('notificaciones')} 
+                  className="group relative p-3 hover:bg-red-500/10 rounded-xl transition-all"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-orange-600 rounded-xl blur opacity-0 group-hover:opacity-50 transition-opacity"></div>
+                  <div className="relative flex items-center gap-2">
+                    <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-red-400 group-hover:text-red-300 transition-colors" />
+                    <div className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-lg">
+                      {notificacionesUrgentes.length}
+                    </div>
+                  </div>
+                </button>
+              )}
+            </div>
+
+            {/* NAVIGATION - Desktop */}
+            <nav className="hidden lg:block pb-4">
+              <div className="flex space-x-2">
+                {tabs.map(({ id, label, icon: Icon, color }) => {
+                  const isActive = vistaActiva === id
+                  const colorClasses = {
+                    emerald: {
+                      active: 'from-emerald-600 to-emerald-500 text-white border-emerald-400/50',
+                      inactive: 'text-slate-300 hover:text-emerald-400 border-transparent hover:border-emerald-500/30'
+                    },
+                    blue: {
+                      active: 'from-blue-600 to-blue-500 text-white border-blue-400/50',
+                      inactive: 'text-slate-300 hover:text-blue-400 border-transparent hover:border-blue-500/30'
+                    },
+                    purple: {
+                      active: 'from-purple-600 to-purple-500 text-white border-purple-400/50',
+                      inactive: 'text-slate-300 hover:text-purple-400 border-transparent hover:border-purple-500/30'
+                    },
+                    orange: {
+                      active: 'from-orange-600 to-red-500 text-white border-orange-400/50',
+                      inactive: 'text-slate-300 hover:text-orange-400 border-transparent hover:border-orange-500/30'
+                    }
+                  }
+                  
+                  const classes = colorClasses[color as keyof typeof colorClasses]
+                  
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => { setVistaActiva(id as any); setMenuAbierto(false) }}
+                      className={`group relative flex items-center space-x-2 px-5 py-3 rounded-lg font-medium text-sm transition-all ${
+                        isActive 
+                          ? `bg-gradient-to-r ${classes.active} shadow-lg`
+                          : `backdrop-blur-sm bg-slate-800/30 ${classes.inactive} border hover:bg-slate-700/30`
+                      }`}
+                    >
+                      {isActive && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-lg"></div>
+                      )}
+                      <Icon className={`w-4 h-4 relative z-10 ${isActive ? 'animate-pulse' : ''}`} />
+                      <span className="relative z-10">{label}</span>
+                      {id === 'notificaciones' && notificacionesUrgentes.length > 0 && (
+                        <div className="relative z-10 bg-white text-red-600 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold ml-1">
+                          {notificacionesUrgentes.length}
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </nav>
+          </div>
+        </header>
+
+        {/* NAVIGATION - Mobile */}
+        {menuAbierto && (
+          <div className="lg:hidden backdrop-blur-xl bg-slate-800/95 border-b border-slate-700/50 shadow-xl">
+            <div className="max-w-7xl mx-auto px-4 py-4 space-y-2">
+              {tabs.map(({ id, label, icon: Icon, color }) => {
+                const isActive = vistaActiva === id
+                const colorClasses = {
+                  emerald: {
+                    active: 'from-emerald-600 to-emerald-500 text-white',
+                    inactive: 'text-slate-300 hover:text-emerald-400'
+                  },
+                  blue: {
+                    active: 'from-blue-600 to-blue-500 text-white',
+                    inactive: 'text-slate-300 hover:text-blue-400'
+                  },
+                  purple: {
+                    active: 'from-purple-600 to-purple-500 text-white',
+                    inactive: 'text-slate-300 hover:text-purple-400'
+                  },
+                  orange: {
+                    active: 'from-orange-600 to-red-500 text-white',
+                    inactive: 'text-slate-300 hover:text-orange-400'
+                  }
+                }
+                
+                const classes = colorClasses[color as keyof typeof colorClasses]
+                
+                return (
+                  <button
+                    key={id}
+                    onClick={() => { setVistaActiva(id as any); setMenuAbierto(false) }}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg font-medium text-sm transition-all ${
+                      isActive 
+                        ? `bg-gradient-to-r ${classes.active} shadow-lg`
+                        : `bg-slate-800/30 ${classes.inactive} hover:bg-slate-700/30`
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Icon className="w-5 h-5" />
+                      <span>{label}</span>
+                    </div>
+                    {id === 'notificaciones' && notificacionesUrgentes.length > 0 && (
+                      <div className="bg-white text-red-600 text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                        {notificacionesUrgentes.length}
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
-          {notificacionesUrgentes.length > 0 && (
-            <button onClick={() => setVistaActiva('notificaciones')} className="relative p-2 text-red-600 hover:bg-red-50 rounded-full">
-              <Bell className="w-6 h-6" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{notificacionesUrgentes.length}</span>
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* NAVIGATION */}
-      <nav className={`bg-white shadow-sm lg:block ${menuAbierto ? 'block' : 'hidden'}`}>
-        <div className="overflow-x-auto lg:overflow-visible">
-          <div className="flex lg:justify-center space-x-4 px-4">
-            {[
-              { id: 'dashboard', label: 'Dashboard', icon: DollarSign },
-              { id: 'clientes', label: 'Clientes', icon: Users },
-              { id: 'recibos', label: 'Recibos', icon: FileText },
-              { id: 'notificaciones', label: 'Notificaciones', icon: AlertTriangle }
-            ].map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => { setVistaActiva(id as any); setMenuAbierto(false) }}
-                className={`flex items-center space-x-2 py-3 px-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
-                  vistaActiva === id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{label}</span>
-                {id === 'notificaciones' && notificacionesUrgentes.length > 0 && (
-                  <span className="bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                    {notificacionesUrgentes.length}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </nav>
-
-      {/* MAIN CONTENT */}
-      <main className="flex-1 max-w-7xl mx-auto w-full py-6 px-4 sm:px-6 lg:px-8">
-        {loading && vistaActiva === 'clientes' ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600">Cargando...</span>
-          </div>
-        ) : (
-          renderVistaActiva()
         )}
-      </main>
+
+        {/* MAIN CONTENT */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          {loading && vistaActiva === 'clientes' ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full blur-xl opacity-50 animate-pulse"></div>
+                <div className="relative animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-emerald-400"></div>
+              </div>
+              <span className="mt-4 text-slate-300 font-medium">Cargando datos...</span>
+            </div>
+          ) : (
+            <div className="animate-fade-in">
+              {renderVistaActiva()}
+            </div>
+          )}
+        </main>
+
+        {/* Status indicator */}
+        <div className="fixed bottom-6 right-6 z-40">
+          <div className="backdrop-blur-sm bg-slate-800/80 rounded-full px-4 py-2 border border-slate-700/50 shadow-xl">
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+              <span className="text-slate-300 font-medium">Sistema activo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Custom animations */}
+      <style jsx>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.5s ease-out;
+        }
+
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+      `}</style>
     </div>
   )
 }
