@@ -23,7 +23,7 @@ interface Producto {
   id: string
   nombre: string
   descripcion: string
-  precio_unitario: number
+  precio: number
   tipo: string
   stock: number
   created_at?: string
@@ -46,7 +46,7 @@ export default function ProductosPage() {
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
-    precio_unitario: '',
+    precio: '',
     tipo: 'electrodomestico',
     stock: ''
   })
@@ -107,7 +107,7 @@ export default function ProductosPage() {
     setFormData({
       nombre: '',
       descripcion: '',
-      precio_unitario: '',
+      precio: '',
       tipo: 'electrodomestico',
       stock: ''
     })
@@ -121,7 +121,7 @@ export default function ProductosPage() {
       setMensaje({ tipo: 'error', texto: 'El nombre es obligatorio' })
       return false
     }
-    if (!formData.precio_unitario || parseFloat(formData.precio_unitario) <= 0) {
+    if (!formData.precio || parseFloat(formData.precio) <= 0) {
       setMensaje({ tipo: 'error', texto: 'El precio debe ser mayor a 0' })
       return false
     }
@@ -138,7 +138,7 @@ export default function ProductosPage() {
       const dataToSave = {
         nombre: formData.nombre,
         descripcion: formData.descripcion,
-        precio_unitario: parseFloat(formData.precio_unitario),
+        precio: parseFloat(formData.precio),
         tipo: formData.tipo,
         stock: parseInt(formData.stock) || 0
       }
@@ -173,7 +173,7 @@ export default function ProductosPage() {
     setFormData({
       nombre: producto.nombre,
       descripcion: producto.descripcion || '',
-      precio_unitario: producto.precio_unitario.toString(),
+      precio: producto.precio.toString(),
       tipo: producto.tipo,
       stock: producto.stock?.toString() || '0'
     })
@@ -241,7 +241,7 @@ export default function ProductosPage() {
     }
   }
 
-  const totalValorInventario = productosFiltrados.reduce((sum, p) => sum + (p.precio_unitario * (p.stock || 0)), 0)
+  const totalValorInventario = productosFiltrados.reduce((sum, p) => sum + (p.precio * (p.stock || 0)), 0)
   const totalProductos = productosFiltrados.reduce((sum, p) => sum + (p.stock || 0), 0)
 
   return (
@@ -407,9 +407,9 @@ export default function ProductosPage() {
                   <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <input
                     type="number"
-                    name="precio_unitario"
+                    name="precio"
                     placeholder="0.00"
-                    value={formData.precio_unitario}
+                    value={formData.precio}
                     onChange={handleInputChange}
                     className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     step="0.01"
@@ -558,7 +558,7 @@ export default function ProductosPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="font-bold text-emerald-400">
-                          {formatearMoneda(producto.precio_unitario)}
+                          {formatearMoneda(producto.precio)}
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -638,7 +638,7 @@ export default function ProductosPage() {
                   </p>
                 </div>
                 <div className="bg-slate-700/50 rounded-lg p-3 space-y-1 text-sm text-slate-300">
-                  <p><strong>Precio:</strong> {formatearMoneda(productoAEliminar.precio_unitario)}</p>
+                  <p><strong>Precio:</strong> {formatearMoneda(productoAEliminar.precio)}</p>
                   <p><strong>Tipo:</strong> {getTipoLabel(productoAEliminar.tipo)}</p>
                   <p><strong>Stock:</strong> {productoAEliminar.stock || 0} unidades</p>
                 </div>
