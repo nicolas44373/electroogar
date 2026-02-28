@@ -146,7 +146,6 @@ export default function CobranzasPage() {
           )
         `)
         .in('estado', ['pendiente', 'parcial', 'reprogramado'])
-        .lte('fecha_vencimiento', fechaLimite.toISOString().split('T')[0])
         .order('fecha_vencimiento')
       
       if (!notificacionesRango) return
@@ -377,7 +376,7 @@ export default function CobranzasPage() {
         )
       case 'pagos': return <GestorPagos clientes={clientes} onPagoRegistrado={() => cargarHistorial(clienteSeleccionado)} />
       case 'recibos': return <GeneradorRecibos clientes={clientes} transacciones={transacciones} pagos={pagos} />
-      case 'notificaciones': return <PanelNotificaciones notificaciones={notificaciones} onActualizar={cargarNotificaciones} onVerCuentaCliente={verCuentaCliente} />
+      case 'notificaciones': return <PanelNotificaciones onActualizar={cargarNotificaciones} onVerCuentaCliente={verCuentaCliente} />
       default: return null
     }
   }
