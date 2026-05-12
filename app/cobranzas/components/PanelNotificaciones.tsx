@@ -119,29 +119,40 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
   const cargarNotificacionesDetalladas = useCallback(async () => {
     setLoading(true)
     try {
-      // Single query — no pagination loop, no second round of queries
-      // We fetch up to 1000 pending/partial/reprogrammed payments with their joins.
-      // The saldo is computed from this same result set (no extra queries needed,
-      // since pagado rows contribute 0 to the balance anyway).
-      const { data, error } = await supabase
-        .from('pagos')
-        .select(`
-          id, transaccion_id, fecha_vencimiento, numero_cuota,
-          monto_cuota, monto_pagado, intereses_mora,
-          fecha_reprogramacion, motivo_reprogramacion,
-          transaccion:transacciones(
-            id, cliente_id, monto_total, monto_cuota,
-            numero_factura, tipo_transaccion, fecha_inicio,
-            cliente:clientes(id, nombre, apellido, email, telefono),
-            producto:productos(nombre)
-          )
-        `)
-        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
-        .order('fecha_vencimiento', { ascending: true })
-        .limit(1000)
+      // Paginate all pending/partial/reprogrammed pagos with their joins.
+      // No second round of queries needed: saldo is computed from this result set
+      // since pagados contribute 0 to the balance.
+      const PAGE_SIZE = 1000
+      let allData: any[] = []
+      let from = 0
 
-      if (error) { console.error('Error cargando notificaciones:', error); return }
-      if (!data || data.length === 0) { setNotificacionesDetalladas([]); return }
+      while (true) {
+        const { data: page, error } = await supabase
+          .from('pagos')
+          .select(`
+            id, transaccion_id, fecha_vencimiento, numero_cuota,
+            monto_cuota, monto_pagado, intereses_mora,
+            fecha_reprogramacion, motivo_reprogramacion,
+            transaccion:transacciones(
+              id, cliente_id, monto_total, monto_cuota,
+              numero_factura, tipo_transaccion, fecha_inicio,
+              cliente:clientes(id, nombre, apellido, email, telefono),
+              producto:productos(nombre)
+            )
+          `)
+          .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+          .order('fecha_vencimiento', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1)
+
+        if (error) { console.error('Error cargando notificaciones:', error); return }
+        if (!page || page.length === 0) break
+        allData = allData.concat(page)
+        if (page.length < PAGE_SIZE) break
+        from += PAGE_SIZE
+      }
+
+      const data = allData
+      if (data.length === 0) { setNotificacionesDetalladas([]); return }
 
       // Normalise Supabase join (can return array or object)
       const pagosNormalizados = (data as any[])
@@ -385,9 +396,13 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
   })()
 
   const estadisticas = {
-    vencidos: notificacionesDetalladas.filter(n => n.tipo === 'vencido').length,
-    hoy: notificacionesDetalladas.filter(n => n.tipo === 'hoy').length,
-    montoTotal: notificacionesDetalladas.reduce((s, n) => s + n.monto, 0),
+    vencidos:     notificacionesDetalladas.filter(n => n.tipo === 'vencido').length,
+    hoy:          notificacionesDetalladas.filter(n => n.tipo === 'hoy').length,
+    porVencer:    notificacionesDetalladas.filter(n => n.tipo === 'por_vencer').length,
+    montoVencido: notificacionesDetalladas.filter(n => n.tipo === 'vencido').reduce((s, n) => s + n.monto, 0),
+    montoHoy:     notificacionesDetalladas.filter(n => n.tipo === 'hoy').reduce((s, n) => s + n.monto, 0),
+    montoFuturo:  notificacionesDetalladas.filter(n => n.tipo === 'por_vencer').reduce((s, n) => s + n.monto, 0),
+    montoTotal:   notificacionesDetalladas.reduce((s, n) => s + n.monto, 0),
   }
 
   const obtenerTextoVencimiento = (notif: NotificacionVencimiento): string => {
@@ -438,46 +453,48 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
         </div>
 
         {/* Tarjetas de estadísticas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
           <div className="bg-red-50 rounded-lg p-3 md:p-4 border border-red-200">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
               <div>
-                <div className="text-xs md:text-sm text-red-600 font-medium">Pagos Vencidos</div>
-                <div className="text-xl md:text-2xl font-bold text-red-700">{estadisticas.vencidos}</div>
+                <div className="text-xs text-red-600 font-medium mb-1">Vencidos</div>
+                <div className="text-xl font-bold text-red-700">{estadisticas.vencidos}</div>
+                <div className="text-xs text-red-500 mt-1 font-medium">{formatearMoneda(estadisticas.montoVencido)}</div>
               </div>
-              <AlertTriangle className="w-6 h-6 md:w-8 md:h-8 text-red-500" />
+              <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
             </div>
           </div>
 
           <div className="bg-orange-50 rounded-lg p-3 md:p-4 border border-orange-200">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
               <div>
-                <div className="text-xs md:text-sm text-orange-600 font-medium">Vencen Hoy</div>
-                <div className="text-xl md:text-2xl font-bold text-orange-700">{estadisticas.hoy}</div>
+                <div className="text-xs text-orange-600 font-medium mb-1">Vencen Hoy</div>
+                <div className="text-xl font-bold text-orange-700">{estadisticas.hoy}</div>
+                <div className="text-xs text-orange-500 mt-1 font-medium">{formatearMoneda(estadisticas.montoHoy)}</div>
               </div>
-              <Clock className="w-6 h-6 md:w-8 md:h-8 text-orange-500" />
+              <Clock className="w-5 h-5 text-orange-400 flex-shrink-0" />
             </div>
           </div>
 
-          <div className="bg-purple-50 rounded-lg p-3 md:p-4 border border-purple-200">
-            <div className="flex items-center justify-between">
+          <div className="bg-blue-50 rounded-lg p-3 md:p-4 border border-blue-200">
+            <div className="flex items-start justify-between">
               <div>
-                <div className="text-xs md:text-sm text-purple-600 font-medium">Ver Calendario</div>
-                <div className="text-xs md:text-sm text-purple-700">Seleccionar fecha</div>
+                <div className="text-xs text-blue-600 font-medium mb-1">Próximos</div>
+                <div className="text-xl font-bold text-blue-700">{estadisticas.porVencer}</div>
+                <div className="text-xs text-blue-500 mt-1 font-medium">{formatearMoneda(estadisticas.montoFuturo)}</div>
               </div>
-              <Calendar className="w-6 h-6 md:w-8 md:h-8 text-purple-500" />
+              <Calendar className="w-5 h-5 text-blue-400 flex-shrink-0" />
             </div>
           </div>
 
           <div className="bg-gray-50 rounded-lg p-3 md:p-4 border border-gray-200">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
               <div>
-                <div className="text-xs md:text-sm text-gray-600 font-medium">Monto Total</div>
-                <div className="text-sm md:text-lg font-bold text-gray-700 break-all">
-                  {formatearMoneda(estadisticas.montoTotal)}
-                </div>
+                <div className="text-xs text-gray-600 font-medium mb-1">Total Cartera</div>
+                <div className="text-sm font-bold text-gray-700">{formatearMoneda(estadisticas.montoTotal)}</div>
+                <div className="text-xs text-gray-400 mt-1">{notificacionesDetalladas.length} cuotas</div>
               </div>
-              <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-gray-500" />
+              <DollarSign className="w-5 h-5 text-gray-400 flex-shrink-0" />
             </div>
           </div>
         </div>

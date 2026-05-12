@@ -52,17 +52,24 @@ export default function HomePage() {
         .select('*', { count: 'exact', head: true })
         .eq('estado', 'activo')
       
-      // Calcular monto real pendiente (cuota - pagado) para pagos no cobrados
+      // Calcular monto real pendiente con fallback a transaccion.monto_cuota
+      // cuando el campo en la fila de pagos es null/0
       const { data: pagosData } = await supabase
         .from('pagos')
-        .select('monto_cuota, monto_pagado, intereses_mora')
+        .select('monto_cuota, monto_pagado, intereses_mora, transaccion:transacciones(monto_cuota)')
         .in('estado', ['pendiente', 'parcial', 'reprogramado'])
-      
-      const montosPendientes = pagosData?.reduce((sum, pago) => {
-        const cuota = (pago.monto_cuota || 0) + (pago.intereses_mora || 0)
+
+      const montosPendientes = (pagosData || []).reduce((sum, pago: any) => {
+        const transCuota = Array.isArray(pago.transaccion)
+          ? pago.transaccion[0]?.monto_cuota
+          : pago.transaccion?.monto_cuota
+        const cuotaBase = (pago.monto_cuota && pago.monto_cuota > 0)
+          ? pago.monto_cuota
+          : (transCuota || 0)
+        const cuota = cuotaBase + (pago.intereses_mora || 0)
         const pagado = pago.monto_pagado || 0
         return sum + Math.max(0, cuota - pagado)
-      }, 0) || 0
+      }, 0)
 
       setEstadisticas({
         totalClientes: clientesCount || 0,

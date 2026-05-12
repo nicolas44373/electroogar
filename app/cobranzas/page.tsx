@@ -294,14 +294,20 @@ export default function CobranzasPage() {
         }
       })
       
-      // Suma real de TODOS los pagos no cobrados — misma lógica que la home page
+      // Suma real de TODOS los pagos no cobrados con fallback a transaccion.monto_cuota
       const { data: todosPagosPendientes } = await supabase
         .from('pagos')
-        .select('monto_cuota, monto_pagado, intereses_mora')
+        .select('monto_cuota, monto_pagado, intereses_mora, transaccion:transacciones(monto_cuota)')
         .in('estado', ['pendiente', 'parcial', 'reprogramado'])
 
-      const montoTotalPendiente = (todosPagosPendientes || []).reduce((sum, p) => {
-        const cuota = (p.monto_cuota || 0) + (p.intereses_mora || 0)
+      const montoTotalPendiente = (todosPagosPendientes || []).reduce((sum, p: any) => {
+        const transCuota = Array.isArray(p.transaccion)
+          ? p.transaccion[0]?.monto_cuota
+          : p.transaccion?.monto_cuota
+        const cuotaBase = (p.monto_cuota && p.monto_cuota > 0)
+          ? p.monto_cuota
+          : (transCuota || 0)
+        const cuota = cuotaBase + (p.intereses_mora || 0)
         const pagado = p.monto_pagado || 0
         return sum + Math.max(0, cuota - pagado)
       }, 0)
