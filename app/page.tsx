@@ -52,14 +52,22 @@ export default function HomePage() {
         .select('*', { count: 'exact', head: true })
         .eq('estado', 'activo')
       
-      // Calcular monto real pendiente con fallback a transaccion.monto_cuota
-      // cuando el campo en la fila de pagos es null/0
-      const { data: pagosData } = await supabase
-        .from('pagos')
-        .select('monto_cuota, monto_pagado, intereses_mora, transaccion:transacciones(monto_cuota)')
-        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+      // Paginar TODOS los pagos pendientes (LEFT JOIN para no excluir ninguno)
+      let allPagos: any[] = []
+      let pagFrom = 0
+      while (true) {
+        const { data: page } = await supabase
+          .from('pagos')
+          .select('monto_cuota, monto_pagado, intereses_mora, transaccion:transacciones(monto_cuota)')
+          .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+          .range(pagFrom, pagFrom + 999)
+        if (!page || page.length === 0) break
+        allPagos = allPagos.concat(page)
+        if (page.length < 1000) break
+        pagFrom += 1000
+      }
 
-      const montosPendientes = (pagosData || []).reduce((sum, pago: any) => {
+      const montosPendientes = allPagos.reduce((sum, pago: any) => {
         const transCuota = Array.isArray(pago.transaccion)
           ? pago.transaccion[0]?.monto_cuota
           : pago.transaccion?.monto_cuota

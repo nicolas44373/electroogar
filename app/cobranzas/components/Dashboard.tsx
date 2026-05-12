@@ -43,15 +43,19 @@ interface Estadisticas {
   ventasDelMes: number
   cobrosDelMes: number
   clientesVencidos: number
+  pagosVencidosCount: number
+  pagosHoyCount: number
   montoTotalPendiente: number
+  montoVencido: number
+  montoHoy: number
 }
 
 interface DashboardProps {
   estadisticas: Estadisticas
+  notificaciones: NotificacionVencimiento[]
   onVerNotificaciones: () => void
   onRegistrarPago: () => void
   onNuevaVenta: () => void
-  // ✅ ELIMINADA: onActualizarMontoUrgente
 }
 
 interface ClienteConPrestamo {
@@ -71,54 +75,18 @@ interface ClienteConPrestamo {
 
 export default function Dashboard({
   estadisticas,
+  notificaciones,
   onVerNotificaciones,
   onRegistrarPago,
-  onNuevaVenta
-  // ✅ ELIMINADA: onActualizarMontoUrgente
+  onNuevaVenta,
 }: DashboardProps) {
-  const [notificaciones, setNotificaciones] = useState<NotificacionVencimiento[]>([])
   const [clientesConPrestamos, setClientesConPrestamos] = useState<ClienteConPrestamo[]>([])
-  const [loading, setLoading] = useState(true)
   const [loadingPrestamos, setLoadingPrestamos] = useState(true)
   const [mostrarTodosPrestamos, setMostrarTodosPrestamos] = useState(false)
 
   useEffect(() => {
-    // Run both in parallel — neither depends on the other
-    void Promise.all([cargarNotificaciones(), cargarClientesConPrestamos()])
+    void cargarClientesConPrestamos()
   }, [])
-
-  // ✅ ELIMINADO: useEffect que causaba el loop infinito
-  // useEffect(() => {
-  //   if (onActualizarMontoUrgente && montoUrgenteTotal > 0) {
-  //     onActualizarMontoUrgente(montoUrgenteTotal)
-  //   }
-  // }, [montoUrgenteTotal, onActualizarMontoUrgente])
-
-  const calcularDiasVencimiento = (fechaVencimiento: string) => {
-    const hoy = new Date()
-    hoy.setHours(0, 0, 0, 0)
-
-    const [year, month, day] = fechaVencimiento.split('-').map(Number)
-    const vencimiento = new Date(year, month - 1, day)
-    vencimiento.setHours(0, 0, 0, 0)
-
-    const diferencia = Math.floor((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
-    return diferencia
-  }
-
-  const obtenerMontoCuota = (pago: any) => {
-    if (pago.monto_cuota && pago.monto_cuota > 0) {
-      return pago.monto_cuota
-    }
-    return pago.transaccion?.monto_cuota || 0
-  }
-
-  const obtenerNombreTransaccion = (transaccion: any) => {
-    if (transaccion?.producto?.nombre) {
-      return transaccion.producto.nombre
-    }
-    return transaccion?.tipo_transaccion === 'prestamo' ? 'Préstamo de Dinero' : 'Venta'
-  }
 
   const cargarClientesConPrestamos = async () => {
     setLoadingPrestamos(true)
@@ -172,85 +140,6 @@ export default function Dashboard({
     }
   }
 
-  const cargarNotificaciones = async () => {
-    setLoading(true)
-    try {
-      const hoy = new Date()
-      hoy.setHours(0, 0, 0, 0)
-      const fechaLimite = new Date()
-      fechaLimite.setDate(hoy.getDate() + 15)
-      
-      const { data } = await supabase
-        .from('pagos')
-        .select(`
-          *,
-          transaccion:transacciones(
-            id,
-            cliente_id,
-            monto_total,
-            monto_cuota,
-            numero_factura,
-            tipo_transaccion,
-            cliente:clientes(id, nombre, apellido, email, telefono),
-            producto:productos(nombre)
-          )
-        `)
-        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
-        .lte('fecha_vencimiento', fechaLimite.toISOString().split('T')[0])
-        .order('fecha_vencimiento')
-
-      if (data) {
-        const saldosPorCliente = new Map<string, number>()
-
-        data.forEach(pago => {
-          const clienteId = pago.transaccion.cliente_id
-          const montoCuota = obtenerMontoCuota(pago)
-          const montoRestante = montoCuota - (pago.monto_pagado || 0)
-          const saldoActual = saldosPorCliente.get(clienteId) || 0
-          saldosPorCliente.set(clienteId, saldoActual + montoRestante)
-        })
-
-        const notificacionesMapeadas: NotificacionVencimiento[] = data.map(pago => {
-          const diferenciaDias = calcularDiasVencimiento(pago.fecha_vencimiento)
-
-          let tipo: 'vencido' | 'por_vencer' | 'hoy'
-          if (diferenciaDias < 0) tipo = 'vencido'
-          else if (diferenciaDias === 0) tipo = 'hoy'
-          else tipo = 'por_vencer'
-
-          const montoCuota = obtenerMontoCuota(pago)
-          const montoRestante = montoCuota - (pago.monto_pagado || 0)
-
-          return {
-            id: pago.id,
-            cliente_id: pago.transaccion.cliente_id,
-            cliente_nombre: pago.transaccion.cliente.nombre,
-            cliente_apellido: pago.transaccion.cliente.apellido,
-            cliente_telefono: pago.transaccion.cliente.telefono,
-            cliente_email: pago.transaccion.cliente.email,
-            monto: montoRestante,
-            monto_cuota_total: montoCuota,
-            monto_pagado: pago.monto_pagado || 0,
-            fecha_vencimiento: pago.fecha_vencimiento,
-            dias_vencimiento: diferenciaDias,
-            tipo,
-            numero_cuota: pago.numero_cuota,
-            producto_nombre: obtenerNombreTransaccion(pago.transaccion),
-            transaccion_id: pago.transaccion.id,
-            saldo_total_cliente: saldosPorCliente.get(pago.transaccion.cliente_id) || 0,
-            tipo_transaccion: pago.transaccion.tipo_transaccion
-          }
-        })
-
-        setNotificaciones(notificacionesMapeadas)
-      }
-    } catch (error) {
-      console.error('Error cargando notificaciones:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const formatearMoneda = (monto: number) => {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -274,30 +163,35 @@ export default function Dashboard({
     }
   }
 
+  // Listas para los paneles de detalle — vienen del padre (hasta 1000 items, suficiente para mostrar top 5)
   const notificacionesVencidas = notificaciones.filter(n => n.tipo === 'vencido')
-  const notificacionesHoy = notificaciones.filter(n => n.tipo === 'hoy')
+  const notificacionesHoy      = notificaciones.filter(n => n.tipo === 'hoy')
   const notificacionesProximas = notificaciones.filter(n => n.tipo === 'por_vencer' && n.dias_vencimiento <= 7)
+
+  // Conteos y montos exactos del padre (calculados con paginación completa)
+  const pagosVencidosCount  = estadisticas?.pagosVencidosCount  || 0
+  const pagosHoyCount       = estadisticas?.pagosHoyCount       || 0
+  const montoVencido        = estadisticas?.montoVencido        || 0
+  const montoHoy            = estadisticas?.montoHoy            || 0
+  const montoProximo        = notificacionesProximas.reduce((sum, n) => sum + n.monto, 0)
 
   const efectividadCobros = estadisticas?.ventasDelMes > 0
     ? ((estadisticas.cobrosDelMes / estadisticas.ventasDelMes) * 100)
     : 0
 
-  const promedioPorCliente = estadisticas?.totalClientes > 0
-    ? estadisticas.montoTotalPendiente / estadisticas.totalClientes
+  const promedioPorCliente = estadisticas?.clientesVencidos > 0
+    ? montoVencido / estadisticas.clientesVencidos
     : 0
 
   const porcentajeClientesMora = estadisticas?.totalClientes > 0
     ? ((estadisticas.clientesVencidos / estadisticas.totalClientes) * 100)
     : 0
 
-  const montoVencido = notificacionesVencidas.reduce((sum, n) => sum + n.monto, 0)
-  const montoHoy = notificacionesHoy.reduce((sum, n) => sum + n.monto, 0)
-  const montoProximo = notificacionesProximas.reduce((sum, n) => sum + n.monto, 0)
-
   const tarjetasEstadisticas = [
     {
       titulo: 'Total Clientes',
       valor: (estadisticas?.totalClientes || 0).toString(),
+      subtitulo: null,
       icon: Users,
       color: 'from-blue-500 to-blue-600',
       bgColor: 'bg-blue-50',
@@ -307,39 +201,43 @@ export default function Dashboard({
     {
       titulo: 'Ventas del Mes',
       valor: formatearMoneda(estadisticas?.ventasDelMes || 0),
+      subtitulo: null,
       icon: TrendingUp,
       color: 'from-green-500 to-green-600',
       bgColor: 'bg-green-50',
       textColor: 'text-green-600',
-      descripcion: 'Facturación mensual',
+      descripcion: 'Facturación este mes',
     },
     {
       titulo: 'Cobros del Mes',
       valor: formatearMoneda(estadisticas?.cobrosDelMes || 0),
+      subtitulo: null,
       icon: DollarSign,
       color: 'from-emerald-500 to-emerald-600',
       bgColor: 'bg-emerald-50',
       textColor: 'text-emerald-600',
-      descripcion: 'Ingresos recibidos',
+      descripcion: 'Ingresos cobrados este mes',
     },
     {
       titulo: 'Clientes en Mora',
       valor: (estadisticas?.clientesVencidos || 0).toString(),
+      subtitulo: `${pagosVencidosCount} cuotas vencidas`,
       icon: AlertTriangle,
       color: 'from-red-500 to-red-600',
       bgColor: 'bg-red-50',
       textColor: 'text-red-600',
-      descripcion: 'Requieren atención urgente',
+      descripcion: 'Con al menos 1 cuota vencida',
     },
     {
-      titulo: 'Cartera Urgente',
-      valor: formatearMoneda(estadisticas?.montoTotalPendiente || 0),
+      titulo: 'Cartera Vencida',
+      valor: formatearMoneda(montoVencido + montoHoy),
+      subtitulo: `+ ${formatearMoneda(estadisticas?.montoTotalPendiente || 0)} total pendiente`,
       icon: CreditCard,
       color: 'from-orange-500 to-orange-600',
       bgColor: 'bg-orange-50',
       textColor: 'text-orange-600',
-      descripcion: 'Vencidos + hoy',
-    }
+      descripcion: 'Vencido + vence hoy',
+    },
   ]
 
   return (
@@ -370,27 +268,29 @@ export default function Dashboard({
       {/* Tarjetas de estadísticas principales */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {tarjetasEstadisticas.map((tarjeta, index) => (
-          <div 
-            key={index} 
+          <div
+            key={index}
             className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
           >
             <div className="p-5">
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-3">
                 <div className={`${tarjeta.bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform duration-300`}>
                   <tarjeta.icon className={`w-6 h-6 ${tarjeta.textColor}`} />
                 </div>
               </div>
-              
-              <div className="space-y-1">
+
+              <div className="space-y-0.5">
                 <p className="text-sm font-medium text-gray-600">{tarjeta.titulo}</p>
                 <p className="text-2xl font-bold text-gray-900 truncate">{tarjeta.valor}</p>
-                <p className="text-xs text-gray-500">{tarjeta.descripcion}</p>
+                {tarjeta.subtitulo && (
+                  <p className={`text-xs font-medium ${tarjeta.textColor}`}>{tarjeta.subtitulo}</p>
+                )}
+                <p className="text-xs text-gray-400">{tarjeta.descripcion}</p>
               </div>
             </div>
-            
+
             <div className="h-1 bg-gray-100">
-              <div className={`h-full bg-gradient-to-r ${tarjeta.color} transition-all duration-1000`} 
-                   style={{ width: '75%' }}></div>
+              <div className={`h-full bg-gradient-to-r ${tarjeta.color}`} style={{ width: '75%' }} />
             </div>
           </div>
         ))}
@@ -412,17 +312,13 @@ export default function Dashboard({
                 </div>
               </div>
               <div className="bg-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-sm">
-                {notificacionesVencidas.length}
+                {pagosVencidosCount}
               </div>
             </div>
           </div>
-          
+
           <div className="p-4 max-h-80 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-3 border-red-200 border-t-red-600"></div>
-              </div>
-            ) : notificacionesVencidas.length > 0 ? (
+            {notificacionesVencidas.length > 0 ? (
               <div className="space-y-2">
                 {notificacionesVencidas.slice(0, 5).map((notif, index) => (
                   <div 
@@ -456,12 +352,12 @@ export default function Dashboard({
                   </div>
                 ))}
                 
-                {notificacionesVencidas.length > 5 && (
+                {pagosVencidosCount > 5 && (
                   <button
                     onClick={onVerNotificaciones}
                     className="w-full mt-3 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
-                    Ver todos los {notificacionesVencidas.length} pagos vencidos
+                    Ver los {pagosVencidosCount} pagos vencidos
                     <ArrowUpRight className="w-4 h-4" />
                   </button>
                 )}
@@ -490,17 +386,13 @@ export default function Dashboard({
                 </div>
               </div>
               <div className="bg-orange-500 text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-sm">
-                {notificacionesHoy.length}
+                {pagosHoyCount}
               </div>
             </div>
           </div>
-          
+
           <div className="p-4 max-h-80 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-3 border-orange-200 border-t-orange-600"></div>
-              </div>
-            ) : notificacionesHoy.length > 0 ? (
+            {notificacionesHoy.length > 0 ? (
               <div className="space-y-2">
                 {notificacionesHoy.map((notif, index) => (
                   <div 
@@ -564,11 +456,7 @@ export default function Dashboard({
           </div>
           
           <div className="p-4 max-h-80 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-200 border-t-blue-600"></div>
-              </div>
-            ) : notificacionesProximas.length > 0 ? (
+            {notificacionesProximas.length > 0 ? (
               <div className="space-y-2">
                 {notificacionesProximas.slice(0, 5).map((notif, index) => (
                   <div 
@@ -850,11 +738,11 @@ export default function Dashboard({
                 <div className="text-3xl font-bold text-blue-600 mb-2">
                   {formatearMoneda(promedioPorCliente)}
                 </div>
-                <div className="text-sm font-medium text-gray-700 mb-1">Deuda Promedio</div>
-                <div className="text-xs text-gray-500">Por cliente activo</div>
+                <div className="text-sm font-medium text-gray-700 mb-1">Deuda Promedio en Mora</div>
+                <div className="text-xs text-gray-500">Por cliente con cuotas vencidas</div>
                 <div className="mt-3 flex items-center justify-center gap-2 text-xs">
                   <div className="bg-blue-100 px-2 py-1 rounded">
-                    Total: {formatearMoneda(estadisticas.montoTotalPendiente)}
+                    Cartera total: {formatearMoneda(estadisticas.montoTotalPendiente)}
                   </div>
                 </div>
               </div>

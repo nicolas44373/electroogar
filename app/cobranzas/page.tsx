@@ -39,7 +39,11 @@ export default function CobranzasPage() {
     ventasDelMes: 0,
     cobrosDelMes: 0,
     clientesVencidos: 0,
-    montoTotalPendiente: 0
+    pagosVencidosCount: 0,
+    pagosHoyCount: 0,
+    montoTotalPendiente: 0,
+    montoVencido: 0,
+    montoHoy: 0,
   })
 
   useEffect(() => {
@@ -262,64 +266,79 @@ export default function CobranzasPage() {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
     const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
-    const hoyStr = hoy.toISOString().split('T')[0]
-    
-    try {
-      const { count: totalClientes } = await supabase
-        .from('clientes')
-        .select('*', { count: 'exact', head: true })
-      
-      const { data: ventasMes } = await supabase
-        .from('transacciones')
-        .select('monto_total')
-        .gte('created_at', inicioMes.toISOString())
-      
-      const { data: cobrosMes } = await supabase
-        .from('pagos')
-        .select('monto_pagado')
-        .eq('estado', 'pagado')
-        .gte('fecha_pago', inicioMes.toISOString().split('T')[0])
-      
-      const { data: pagosVencidos } = await supabase
-        .from('pagos')
-        .select('transaccion_id, transaccion:transacciones!inner(cliente_id)')
-        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
-        .lt('fecha_vencimiento', hoyStr)
-      
-      const clientesVencidosUnicos = new Set<string>()
-      pagosVencidos?.forEach(p => {
-        if (p.transaccion && 'cliente_id' in p.transaccion) {
-          const clienteId = (p.transaccion as any).cliente_id
-          if (clienteId) clientesVencidosUnicos.add(clienteId)
-        }
-      })
-      
-      // Suma real de TODOS los pagos no cobrados con fallback a transaccion.monto_cuota
-      const { data: todosPagosPendientes } = await supabase
-        .from('pagos')
-        .select('monto_cuota, monto_pagado, intereses_mora, transaccion:transacciones(monto_cuota)')
-        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+    const y = hoy.getFullYear()
+    const m = String(hoy.getMonth() + 1).padStart(2, '0')
+    const d = String(hoy.getDate()).padStart(2, '0')
+    const hoyStr = `${y}-${m}-${d}`
 
-      const montoTotalPendiente = (todosPagosPendientes || []).reduce((sum, p: any) => {
-        const transCuota = Array.isArray(p.transaccion)
-          ? p.transaccion[0]?.monto_cuota
-          : p.transaccion?.monto_cuota
-        const cuotaBase = (p.monto_cuota && p.monto_cuota > 0)
-          ? p.monto_cuota
-          : (transCuota || 0)
-        const cuota = cuotaBase + (p.intereses_mora || 0)
-        const pagado = p.monto_pagado || 0
-        return sum + Math.max(0, cuota - pagado)
-      }, 0)
-      
-      setEstadisticas({
-        totalClientes: totalClientes || 0,
-        ventasDelMes: ventasMes?.reduce((s, v) => s + v.monto_total, 0) || 0,
-        cobrosDelMes: cobrosMes?.reduce((s, v) => s + v.monto_pagado, 0) || 0,
-        clientesVencidos: clientesVencidosUnicos.size,
-        montoTotalPendiente: montoTotalPendiente // ✅ Calculado aquí
+    try {
+      // Consultas independientes en paralelo (conteos exactos via DB)
+      const [
+        { count: totalClientes },
+        { data: ventasMes },
+        { data: cobrosMes },
+        { count: pagosVencidosCount },
+        { count: pagosHoyCount },
+      ] = await Promise.all([
+        supabase.from('clientes').select('*', { count: 'exact', head: true }),
+        supabase.from('transacciones').select('monto_total').gte('created_at', inicioMes.toISOString()),
+        supabase.from('pagos').select('monto_pagado').eq('estado', 'pagado').gte('fecha_pago', inicioMes.toISOString().split('T')[0]),
+        supabase.from('pagos').select('*', { count: 'exact', head: true })
+          .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+          .lt('fecha_vencimiento', hoyStr),
+        supabase.from('pagos').select('*', { count: 'exact', head: true })
+          .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+          .eq('fecha_vencimiento', hoyStr),
+      ])
+
+      // Paginar TODOS los pagos pendientes para montos y clientes únicos en mora.
+      // LEFT JOIN (sin !inner) para incluir pagos con monto_cuota propio aunque
+      // el join con transacciones no resuelva (evita subcuenta).
+      let allPendientes: any[] = []
+      let from = 0
+      while (true) {
+        const { data: page } = await supabase
+          .from('pagos')
+          .select('monto_cuota, monto_pagado, intereses_mora, fecha_vencimiento, transaccion_id, transaccion:transacciones(monto_cuota, cliente_id)')
+          .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+          .range(from, from + 999)
+        if (!page || page.length === 0) break
+        allPendientes = allPendientes.concat(page)
+        if (page.length < 1000) break
+        from += 1000
+      }
+
+      const calcularMonto = (lista: any[]) =>
+        lista.reduce((sum, p: any) => {
+          const t = Array.isArray(p.transaccion) ? p.transaccion[0] : p.transaccion
+          const cuotaBase = (p.monto_cuota && p.monto_cuota > 0) ? p.monto_cuota : (t?.monto_cuota || 0)
+          const cuota = cuotaBase + (p.intereses_mora || 0)
+          const pagado = p.monto_pagado || 0
+          return sum + Math.max(0, cuota - pagado)
+        }, 0)
+
+      const vencidos = allPendientes.filter((p: any) => p.fecha_vencimiento < hoyStr)
+      const hoys    = allPendientes.filter((p: any) => p.fecha_vencimiento === hoyStr)
+
+      // Clientes únicos con al menos un pago vencido
+      const clientesVencidosUnicos = new Set<string>()
+      vencidos.forEach((p: any) => {
+        const t = Array.isArray(p.transaccion) ? p.transaccion[0] : p.transaccion
+        if (t?.cliente_id) clientesVencidosUnicos.add(t.cliente_id)
       })
-      
+
+      setEstadisticas({
+        totalClientes:       totalClientes || 0,
+        ventasDelMes:        ventasMes?.reduce((s, v) => s + v.monto_total, 0) || 0,
+        cobrosDelMes:        cobrosMes?.reduce((s, v) => s + v.monto_pagado, 0) || 0,
+        clientesVencidos:    clientesVencidosUnicos.size,
+        pagosVencidosCount:  pagosVencidosCount || 0,
+        pagosHoyCount:       pagosHoyCount || 0,
+        montoTotalPendiente: calcularMonto(allPendientes),
+        montoVencido:        calcularMonto(vencidos),
+        montoHoy:            calcularMonto(hoys),
+      })
+
     } catch (err) {
       console.error('Error cargando estadísticas:', err)
     }
@@ -356,12 +375,12 @@ export default function CobranzasPage() {
   const renderVistaActiva = () => {
     switch (vistaActiva) {
       case 'dashboard':
-        // ✅ SIN onActualizarMontoUrgente
-        return <Dashboard 
-          estadisticas={estadisticas} 
-          onVerNotificaciones={() => setVistaActiva('notificaciones')} 
-          onRegistrarPago={() => setVistaActiva('pagos')} 
-          onNuevaVenta={() => { setVistaActiva('clientes'); setMostrarNuevaVenta(true) }} 
+        return <Dashboard
+          estadisticas={estadisticas}
+          notificaciones={notificaciones}
+          onVerNotificaciones={() => setVistaActiva('notificaciones')}
+          onRegistrarPago={() => setVistaActiva('pagos')}
+          onNuevaVenta={() => { setVistaActiva('clientes'); setMostrarNuevaVenta(true) }}
         />
       case 'clientes':
         return (
