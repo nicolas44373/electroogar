@@ -99,9 +99,15 @@ export default function HistorialTransacciones({
     const pagosTransaccion = pagos[transaccion.id] || []
 
     const cuotas = pagosTransaccion.map((pago) => ({
-      numero: pago.numero_cuota,
-      monto: pago.monto_cuota || 0,
+      numero: pago.numero_cuota ?? 0,
+      // Fallback to transaccion.monto_cuota when the pago row has 0/null
+      monto: (pago.monto_cuota || transaccion.monto_cuota),
+      interesesMora: pago.intereses_mora || 0,
       fechaVencimiento: pago.fecha_vencimiento,
+      fechaReprogramacion: pago.fecha_reprogramacion || undefined,
+      estado: pago.estado as 'pendiente' | 'pagado' | 'parcial' | 'reprogramado',
+      montoPagado: pago.monto_pagado || 0,
+      fechaPago: pago.fecha_pago || undefined,
     }))
 
     const montoOriginal = transaccion.monto_original || transaccion.monto_total

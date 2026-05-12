@@ -1,12 +1,19 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import { X, Download, Printer, CheckCircle } from 'lucide-react'
 
 interface Cuota {
   numero: number
   monto: number
+  interesesMora?: number
   fechaVencimiento: string
+  fechaReprogramacion?: string
+  estado?: 'pendiente' | 'pagado' | 'parcial' | 'reprogramado'
+  montoPagado?: number
+  fechaPago?: string
 }
 
 interface ComprobanteTransaccionProps {
@@ -75,9 +82,6 @@ export default function ComprobanteTransaccion({
 
     setGenerando(true)
     try {
-      const html2canvas = (await import('html2canvas')).default
-      const { jsPDF } = await import('jspdf')
-
       const canvas = await html2canvas(contenidoRef.current, {
         scale: 2,
         useCORS: true,
@@ -377,6 +381,26 @@ export default function ComprobanteTransaccion({
           color: #92400e;
         }
 
+        .comprobante-ultra-compacto .badge-pagado {
+          background: #dcfce7;
+          color: #166534;
+        }
+
+        .comprobante-ultra-compacto .badge-parcial {
+          background: #dbeafe;
+          color: #1e40af;
+        }
+
+        .comprobante-ultra-compacto .badge-reprogramado {
+          background: #ede9fe;
+          color: #5b21b6;
+        }
+
+        .comprobante-ultra-compacto .badge-vencido {
+          background: #fee2e2;
+          color: #991b1b;
+        }
+
         /* ===== TÉRMINOS ===== */
         .comprobante-ultra-compacto .terminos {
           background: #fef9f3;
@@ -661,29 +685,92 @@ export default function ComprobanteTransaccion({
                 <thead>
                   <tr>
                     <th>N° Cuota</th>
-                    <th>Fecha Vencimiento</th>
-                    <th style={{ textAlign: 'right' }}>Monto</th>
+                    <th>Vencimiento</th>
+                    <th style={{ textAlign: 'right' }}>Cuota</th>
+                    <th style={{ textAlign: 'right' }}>Mora</th>
+                    <th style={{ textAlign: 'right' }}>Total</th>
                     <th style={{ textAlign: 'center' }}>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {cuotas.map((cuota) => (
-                    <tr key={cuota.numero}>
-                      <td style={{ fontWeight: 600 }}>#{cuota.numero}</td>
-                      <td>{formatearFecha(cuota.fechaVencimiento)}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                        {formatearMoneda(cuota.monto)}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span className="badge badge-pendiente">PENDIENTE</span>
-                      </td>
-                    </tr>
-                  ))}
+                  {cuotas.map((cuota) => {
+                    const hoy = new Date()
+                    hoy.setHours(0, 0, 0, 0)
+                    const [fy, fm, fd] = cuota.fechaVencimiento.split('-').map(Number)
+                    const fVenc = new Date(fy, fm - 1, fd)
+                    const estaVencida = fVenc < hoy && (!cuota.estado || cuota.estado === 'pendiente')
+
+                    const estadoEfectivo = cuota.estado || 'pendiente'
+                    const mora = cuota.interesesMora || 0
+                    const totalCuota = cuota.monto + mora
+
+                    const badgeClass =
+                      estadoEfectivo === 'pagado'
+                        ? 'badge-pagado'
+                        : estadoEfectivo === 'parcial'
+                        ? 'badge-parcial'
+                        : estadoEfectivo === 'reprogramado'
+                        ? 'badge-reprogramado'
+                        : estaVencida
+                        ? 'badge-vencido'
+                        : 'badge-pendiente'
+                    const estadoLabel =
+                      estadoEfectivo === 'pagado'
+                        ? 'PAGADO'
+                        : estadoEfectivo === 'parcial'
+                        ? 'PARCIAL'
+                        : estadoEfectivo === 'reprogramado'
+                        ? 'REPROG.'
+                        : estaVencida
+                        ? 'VENCIDO'
+                        : 'PENDIENTE'
+
+                    return (
+                      <tr key={cuota.numero} style={{ background: estaVencida ? '#fef2f2' : undefined }}>
+                        <td style={{ fontWeight: 600 }}>#{cuota.numero}</td>
+                        <td>
+                          {formatearFecha(cuota.fechaVencimiento)}
+                          {cuota.fechaReprogramacion && (
+                            <div style={{ fontSize: '7px', color: '#7c3aed' }}>
+                              Reprog: {formatearFecha(cuota.fechaReprogramacion)}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          {formatearMoneda(cuota.monto)}
+                        </td>
+                        <td style={{ textAlign: 'right', color: mora > 0 ? '#dc2626' : '#9ca3af' }}>
+                          {mora > 0 ? formatearMoneda(mora) : '—'}
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                          {formatearMoneda(totalCuota)}
+                          {(cuota.montoPagado || 0) > 0 && estadoEfectivo !== 'pagado' && (
+                            <div style={{ fontSize: '8px', color: '#16a34a', fontWeight: 400 }}>
+                              Abonado: {formatearMoneda(cuota.montoPagado || 0)}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className={`badge ${badgeClass}`}>{estadoLabel}</span>
+                          {cuota.fechaPago && (
+                            <div style={{ fontSize: '7px', color: '#6b7280', marginTop: 2 }}>
+                              {formatearFecha(cuota.fechaPago)}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={2} style={{ textAlign: 'right' }}>
+                    <td colSpan={3} style={{ textAlign: 'right' }}>
                       TOTAL:
+                    </td>
+                    <td style={{ textAlign: 'right', color: '#dc2626' }}>
+                      {cuotas.reduce((s, c) => s + (c.interesesMora || 0), 0) > 0
+                        ? formatearMoneda(cuotas.reduce((s, c) => s + (c.interesesMora || 0), 0))
+                        : '—'}
                     </td>
                     <td
                       style={{
@@ -691,7 +778,7 @@ export default function ComprobanteTransaccion({
                         color: tipo === 'venta' ? '#2563eb' : '#059669'
                       }}
                     >
-                      {formatearMoneda(transaccion.montoTotal)}
+                      {formatearMoneda(cuotas.reduce((s, c) => s + c.monto + (c.interesesMora || 0), 0))}
                     </td>
                     <td />
                   </tr>

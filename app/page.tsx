@@ -29,31 +29,40 @@ export default function HomePage() {
     cargarEstadisticas()
   }, [])
 
+  const formatearMoneda = (monto: number) =>
+    new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(monto)
+
   const cargarEstadisticas = async () => {
     try {
-      // Contar clientes
       const { count: clientesCount } = await supabase
         .from('clientes')
         .select('*', { count: 'exact', head: true })
       
-      // Contar productos
       const { count: productosCount } = await supabase
         .from('productos')
         .select('*', { count: 'exact', head: true })
       
-      // Contar transacciones activas
       const { count: ventasCount } = await supabase
         .from('transacciones')
         .select('*', { count: 'exact', head: true })
         .eq('estado', 'activo')
       
-      // Calcular montos pendientes
+      // Calcular monto real pendiente (cuota - pagado) para pagos no cobrados
       const { data: pagosData } = await supabase
         .from('pagos')
-        .select('*')
-        .eq('estado', 'pendiente')
+        .select('monto_cuota, monto_pagado, intereses_mora')
+        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
       
-      const montosPendientes = pagosData?.length || 0
+      const montosPendientes = pagosData?.reduce((sum, pago) => {
+        const cuota = (pago.monto_cuota || 0) + (pago.intereses_mora || 0)
+        const pagado = pago.monto_pagado || 0
+        return sum + Math.max(0, cuota - pagado)
+      }, 0) || 0
 
       setEstadisticas({
         totalClientes: clientesCount || 0,
@@ -187,11 +196,11 @@ export default function HomePage() {
                   <span>Urgente</span>
                 </div>
               </div>
-              <h3 className="text-slate-400 text-sm font-medium mb-2">Pagos Pendientes</h3>
+              <h3 className="text-slate-400 text-sm font-medium mb-2">Cartera Pendiente</h3>
               {loading ? (
                 <div className="h-10 w-20 bg-slate-700/50 animate-pulse rounded"></div>
               ) : (
-                <p className="text-4xl font-bold text-white">{estadisticas.montosPendientes}</p>
+                <p className="text-2xl font-bold text-white truncate">{formatearMoneda(estadisticas.montosPendientes)}</p>
               )}
             </div>
           </div>

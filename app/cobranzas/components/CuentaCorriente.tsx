@@ -8,9 +8,13 @@ import {
   Trash2,
   AlertCircle,
   X,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react'
 import { Transaccion, Pago } from '@/app/lib/types/cobranzas'
 import { supabase } from '@/app/lib/supabase'
+
+interface ToastMsg { tipo: 'success' | 'error'; texto: string }
 
 interface MovimientoCuentaCorriente {
   id: string
@@ -44,6 +48,12 @@ export default function CuentaCorriente({
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'ventas' | 'pagos'>('todos')
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
+  const [toast, setToast] = useState<ToastMsg | null>(null)
+
+  const mostrarToast = (tipo: 'success' | 'error', texto: string) => {
+    setToast({ tipo, texto })
+    setTimeout(() => setToast(null), 4000)
+  }
 
   // Pago modal
   const [modalPagoAbierto, setModalPagoAbierto] = useState(false)
@@ -168,9 +178,15 @@ export default function CuentaCorriente({
   }
 
   const registrarPago = async () => {
-    if (!ventaSeleccionada || !ventaSeleccionada.transaccionId) return alert('Venta inválida')
+    if (!ventaSeleccionada || !ventaSeleccionada.transaccionId) {
+      mostrarToast('error', 'Venta inválida')
+      return
+    }
     const monto = typeof montoPago === 'string' ? parseFloat(montoPago || '0') : (montoPago as any)
-    if (!monto || monto <= 0) return alert('Ingrese un monto válido')
+    if (!monto || monto <= 0) {
+      mostrarToast('error', 'Ingrese un monto válido')
+      return
+    }
 
     const { error } = await supabase.from('pagos').insert({
       transaccion_id: ventaSeleccionada.transaccionId,
@@ -184,9 +200,9 @@ export default function CuentaCorriente({
 
     if (error) {
       console.error(error)
-      alert('Error al registrar el pago: ' + error.message)
+      mostrarToast('error', 'Error al registrar el pago: ' + error.message)
     } else {
-      alert('Pago registrado correctamente')
+      mostrarToast('success', 'Pago registrado correctamente')
       cerrarModalPago()
       onTransaccionesUpdate?.()
       generarMovimientos()
@@ -251,13 +267,10 @@ export default function CuentaCorriente({
 
       if (error) {
         console.error(error)
-        alert(
-          `Error al procesar ${movimientoAEliminar.tipo}: ${
-            error.message || JSON.stringify(error)
-          }`
-        )
+        mostrarToast('error', `Error al procesar ${movimientoAEliminar.tipo}: ${error.message || JSON.stringify(error)}`)
       } else {
-        alert(
+        mostrarToast(
+          'success',
           movimientoAEliminar.tipo === 'venta'
             ? 'Transacción eliminada y pagos revertidos correctamente'
             : 'Pago revertido a estado pendiente correctamente'
@@ -285,7 +298,7 @@ export default function CuentaCorriente({
       }
     } catch (err) {
       console.error('Error inesperado:', err)
-      alert('Ocurrió un error inesperado al procesar la operación')
+      mostrarToast('error', 'Ocurrió un error inesperado al procesar la operación')
     } finally {
       setEliminando(false)
     }
@@ -299,6 +312,14 @@ export default function CuentaCorriente({
 
   return (
     <div className="w-full max-w-full">
+      {toast && (
+        <div className={`mb-3 flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium ${
+          toast.tipo === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          {toast.tipo === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
+          {toast.texto}
+        </div>
+      )}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         {/* Header */}
         <div className="p-4 sm:p-6 border-b">

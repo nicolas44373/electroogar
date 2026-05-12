@@ -6,9 +6,12 @@ interface ResumenPagosProps {
   pagos: Pago[]
 }
 
+const fmt = (n: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(n)
+
 export default function ResumenPagos({ transaccion, pagos }: ResumenPagosProps) {
-  const totalPagado = pagos.reduce((sum, p) => sum + p.monto_pagado, 0)
-  const totalPendiente = transaccion.monto_total - totalPagado
+  const totalPagado = pagos.reduce((sum, p) => sum + (p.monto_pagado || 0), 0)
+  const totalPendiente = Math.max(0, transaccion.monto_total - totalPagado)
   const cuotasPagadas = pagos.filter(p => p.estado === 'pagado').length
   const porcentajePagado = (totalPagado / transaccion.monto_total) * 100
   
@@ -17,10 +20,12 @@ export default function ResumenPagos({ transaccion, pagos }: ResumenPagosProps) 
     .filter(p => p.estado !== 'pagado')
     .sort((a, b) => new Date(a.fecha_vencimiento).getTime() - new Date(b.fecha_vencimiento).getTime())[0]
   
-  // Calcular pagos vencidos
+  // Calcular pagos vencidos (timezone-safe)
   const pagosVencidos = pagos.filter(p => {
     const hoy = new Date()
-    const vencimiento = new Date(p.fecha_vencimiento)
+    hoy.setHours(0, 0, 0, 0)
+    const [y, m, d] = p.fecha_vencimiento.split('-').map(Number)
+    const vencimiento = new Date(y, m - 1, d)
     return p.estado !== 'pagado' && vencimiento < hoy
   })
   
@@ -36,13 +41,13 @@ export default function ResumenPagos({ transaccion, pagos }: ResumenPagosProps) 
             )}
           </div>
           <p className="text-xl font-bold text-green-600">
-            ${totalPagado.toFixed(2)}
+            {fmt(totalPagado)}
           </p>
           <div className="mt-2 pt-2 border-t">
             <div className="flex justify-between items-center">
               <p className="text-xs text-gray-500">Pendiente</p>
               <p className="font-semibold text-gray-700">
-                ${totalPendiente.toFixed(2)}
+                {fmt(totalPendiente)}
               </p>
             </div>
           </div>
@@ -87,7 +92,9 @@ export default function ResumenPagos({ transaccion, pagos }: ResumenPagosProps) 
               <div className="mt-2 pt-2 border-t">
                 <p className="text-xs text-gray-500">Monto vencido</p>
                 <p className="font-semibold text-red-600">
-                  ${(pagosVencidos.length * transaccion.monto_cuota).toFixed(2)}
+                  {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(
+                    pagosVencidos.reduce((s, p) => s + (p.monto_cuota || transaccion.monto_cuota) + (p.intereses_mora || 0) - (p.monto_pagado || 0), 0)
+                  )}
                 </p>
               </div>
             </>
@@ -101,13 +108,16 @@ export default function ResumenPagos({ transaccion, pagos }: ResumenPagosProps) 
                 <div className="flex justify-between items-center">
                   <p className="text-xs text-gray-500">Fecha</p>
                   <p className="font-semibold text-gray-700 text-sm">
-                    {new Date(proximoPago.fecha_vencimiento).toLocaleDateString('es-AR')}
+                    {(() => {
+                      const [y, m, d] = proximoPago.fecha_vencimiento.split('-').map(Number)
+                      return new Date(y, m - 1, d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    })()}
                   </p>
                 </div>
                 <div className="flex justify-between items-center mt-1">
                   <p className="text-xs text-gray-500">Monto</p>
                   <p className="font-semibold text-gray-700 text-sm">
-                    ${transaccion.monto_cuota.toFixed(2)}
+                    {fmt(proximoPago.monto_cuota || transaccion.monto_cuota)}
                   </p>
                 </div>
               </div>
@@ -164,7 +174,7 @@ export default function ResumenPagos({ transaccion, pagos }: ResumenPagosProps) 
               <span className="text-blue-800">Plan {transaccion.tipo_pago}</span>
             </div>
             <span className="text-blue-700 font-medium">
-              {transaccion.numero_cuotas} cuotas de ${transaccion.monto_cuota.toFixed(2)}
+              {transaccion.numero_cuotas} cuotas de {fmt(transaccion.monto_cuota)}
             </span>
           </div>
         </div>

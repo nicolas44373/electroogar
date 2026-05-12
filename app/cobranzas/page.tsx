@@ -294,37 +294,17 @@ export default function CobranzasPage() {
         }
       })
       
-      // ✅ CALCULAR MONTO URGENTE AQUÍ DIRECTAMENTE (vencidos + hoy)
-      const { data: pagosUrgentes } = await supabase
+      // Suma real de TODOS los pagos no cobrados — misma lógica que la home page
+      const { data: todosPagosPendientes } = await supabase
         .from('pagos')
-        .select('transaccion_id, monto_cuota, monto_pagado, intereses_mora, estado')
+        .select('monto_cuota, monto_pagado, intereses_mora')
         .in('estado', ['pendiente', 'parcial', 'reprogramado'])
-        .lte('fecha_vencimiento', hoyStr)
-      
-      const transaccionesUrgentes = [...new Set(pagosUrgentes?.map(p => p.transaccion_id) || [])]
-      const saldoPorTransaccion = new Map()
-      
-      for (const transId of transaccionesUrgentes) {
-        const { data: todosPagos } = await supabase
-          .from('pagos')
-          .select('*')
-          .eq('transaccion_id', transId)
-        
-        let saldo = 0
-        todosPagos?.forEach(p => {
-          if (p.estado !== 'pagado') {
-            const montoCuota = p.monto_cuota || 0
-            const intereses = p.intereses_mora || 0
-            const pagado = p.monto_pagado || 0
-            saldo += (montoCuota + intereses - pagado)
-          }
-        })
-        
-        saldoPorTransaccion.set(transId, saldo)
-      }
-      
-      const montoTotalPendiente = Array.from(saldoPorTransaccion.values())
-        .reduce((sum, val) => sum + val, 0)
+
+      const montoTotalPendiente = (todosPagosPendientes || []).reduce((sum, p) => {
+        const cuota = (p.monto_cuota || 0) + (p.intereses_mora || 0)
+        const pagado = p.monto_pagado || 0
+        return sum + Math.max(0, cuota - pagado)
+      }, 0)
       
       setEstadisticas({
         totalClientes: totalClientes || 0,
@@ -341,6 +321,25 @@ export default function CobranzasPage() {
 
   const clienteActual = clientes.find(c => c.id === clienteSeleccionado)
   const notificacionesUrgentes = notificaciones.filter(n => n.tipo === 'vencido' || n.tipo === 'hoy')
+
+  const eliminarTransaccion = async (transaccionId: string): Promise<void> => {
+    // Revert all paid pagos back to pending first
+    await supabase
+      .from('pagos')
+      .update({ estado: 'pendiente', fecha_pago: null, monto_pagado: 0, numero_recibo: null, metodo_pago: null })
+      .eq('transaccion_id', transaccionId)
+      .eq('estado', 'pagado')
+
+    // Delete all pagos for this transaction
+    await supabase.from('pagos').delete().eq('transaccion_id', transaccionId)
+
+    // Delete the transaction
+    await supabase.from('transacciones').delete().eq('id', transaccionId)
+
+    // Reload data
+    await cargarHistorial(clienteSeleccionado)
+    await cargarEstadisticas()
+  }
 
   const verCuentaCliente = (clienteId: string) => {
     setClienteSeleccionado(clienteId)
@@ -367,8 +366,8 @@ export default function CobranzasPage() {
                 <InfoCliente cliente={clienteActual} mostrarFormulario={mostrarNuevaVenta} onToggleFormulario={() => setMostrarNuevaVenta(!mostrarNuevaVenta)} />
                 {mostrarNuevaVenta && <FormularioVenta clienteId={clienteSeleccionado} productos={productos} onVentaCreada={() => { setMostrarNuevaVenta(false); cargarHistorial(clienteSeleccionado) }} onCancelar={() => setMostrarNuevaVenta(false)} />}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <CuentaCorriente clienteId={clienteSeleccionado} transacciones={transacciones} pagos={pagos} />
-                  <HistorialTransacciones cliente={clienteActual} transacciones={transacciones} pagos={pagos} onPagoRegistrado={() => cargarHistorial(clienteSeleccionado)} onEliminarTransaccion={() => cargarHistorial(clienteSeleccionado)} loading={loading} />
+                  <CuentaCorriente clienteId={clienteSeleccionado} transacciones={transacciones} pagos={pagos} onTransaccionesUpdate={() => cargarHistorial(clienteSeleccionado)} />
+                  <HistorialTransacciones cliente={clienteActual} transacciones={transacciones} pagos={pagos} onPagoRegistrado={() => cargarHistorial(clienteSeleccionado)} onEliminarTransaccion={eliminarTransaccion} loading={loading} />
                 </div>
               </>
             )}

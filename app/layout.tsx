@@ -12,7 +12,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <NavigationBar />
-          <main className="container mx-auto p-4">
+          <main>
             {children}
           </main>
         </AuthProvider>

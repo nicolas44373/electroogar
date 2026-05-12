@@ -83,8 +83,8 @@ export default function Dashboard({
   const [mostrarTodosPrestamos, setMostrarTodosPrestamos] = useState(false)
 
   useEffect(() => {
-    cargarNotificaciones()
-    cargarClientesConPrestamos()
+    // Run both in parallel — neither depends on the other
+    void Promise.all([cargarNotificaciones(), cargarClientesConPrestamos()])
   }, [])
 
   // ✅ ELIMINADO: useEffect que causaba el loop infinito
@@ -123,6 +123,7 @@ export default function Dashboard({
   const cargarClientesConPrestamos = async () => {
     setLoadingPrestamos(true)
     try {
+      // Single query with pagos embedded — eliminates N+1
       const { data: transacciones } = await supabase
         .from('transacciones')
         .select(`
@@ -133,49 +134,36 @@ export default function Dashboard({
           descripcion,
           estado,
           cliente_id,
-          clientes!inner (
-            id,
-            nombre,
-            apellido,
-            telefono
-          )
+          clientes!inner (id, nombre, apellido, telefono),
+          pagos (monto_pagado, estado)
         `)
         .eq('tipo_transaccion', 'prestamo')
         .in('estado', ['activo', 'completado'])
         .order('fecha_inicio', { ascending: false })
+        .limit(100)
 
       if (transacciones) {
-        const prestamosConDetalle = await Promise.all(
-          transacciones.map(async (trans: any) => {
-            const { data: pagos } = await supabase
-              .from('pagos')
-              .select('monto_pagado, estado')
-              .eq('transaccion_id', trans.id)
-
-            const cuotasPagadas = pagos?.filter(p => p.estado === 'pagado').length || 0
-            const montoPagado = pagos?.reduce((sum, p) => sum + (p.monto_pagado || 0), 0) || 0
-            const montoPendiente = trans.monto_total - montoPagado
-
-            const cliente = trans.clientes
-
-            return {
-              id: cliente.id,
-              nombre: cliente.nombre,
-              apellido: cliente.apellido || '',
-              telefono: cliente.telefono,
-              transaccion_id: trans.id,
-              monto_total: trans.monto_total,
-              monto_pendiente: montoPendiente,
-              fecha_inicio: trans.fecha_inicio,
-              numero_cuotas: trans.numero_cuotas,
-              cuotas_pagadas: cuotasPagadas,
-              descripcion: trans.descripcion,
-              estado: trans.estado
-            }
-          })
-        )
-
-        setClientesConPrestamos(prestamosConDetalle)
+        const prestamos: ClienteConPrestamo[] = transacciones.map((trans: any) => {
+          const pagos: any[] = trans.pagos || []
+          const cuotasPagadas = pagos.filter((p: any) => p.estado === 'pagado').length
+          const montoPagado = pagos.reduce((sum: number, p: any) => sum + (p.monto_pagado || 0), 0)
+          const cliente = trans.clientes
+          return {
+            id: cliente.id,
+            nombre: cliente.nombre,
+            apellido: cliente.apellido || '',
+            telefono: cliente.telefono,
+            transaccion_id: trans.id,
+            monto_total: trans.monto_total,
+            monto_pendiente: Math.max(0, trans.monto_total - montoPagado),
+            fecha_inicio: trans.fecha_inicio,
+            numero_cuotas: trans.numero_cuotas,
+            cuotas_pagadas: cuotasPagadas,
+            descripcion: trans.descripcion,
+            estado: trans.estado,
+          }
+        })
+        setClientesConPrestamos(prestamos)
       }
     } catch (error) {
       console.error('Error cargando clientes con préstamos:', error)
@@ -315,7 +303,6 @@ export default function Dashboard({
       bgColor: 'bg-blue-50',
       textColor: 'text-blue-600',
       descripcion: 'Clientes registrados',
-      tendencia: null
     },
     {
       titulo: 'Ventas del Mes',
@@ -325,7 +312,6 @@ export default function Dashboard({
       bgColor: 'bg-green-50',
       textColor: 'text-green-600',
       descripcion: 'Facturación mensual',
-      tendencia: '+12%'
     },
     {
       titulo: 'Cobros del Mes',
@@ -335,7 +321,6 @@ export default function Dashboard({
       bgColor: 'bg-emerald-50',
       textColor: 'text-emerald-600',
       descripcion: 'Ingresos recibidos',
-      tendencia: '+8%'
     },
     {
       titulo: 'Clientes en Mora',
@@ -345,7 +330,6 @@ export default function Dashboard({
       bgColor: 'bg-red-50',
       textColor: 'text-red-600',
       descripcion: 'Requieren atención urgente',
-      tendencia: '-3%'
     },
     {
       titulo: 'Cartera Urgente',
@@ -355,7 +339,6 @@ export default function Dashboard({
       bgColor: 'bg-orange-50',
       textColor: 'text-orange-600',
       descripcion: 'Vencidos + hoy',
-      tendencia: null
     }
   ]
 
@@ -396,20 +379,6 @@ export default function Dashboard({
                 <div className={`${tarjeta.bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform duration-300`}>
                   <tarjeta.icon className={`w-6 h-6 ${tarjeta.textColor}`} />
                 </div>
-                {tarjeta.tendencia && (
-                  <div className={`flex items-center text-xs font-medium px-2 py-1 rounded-full ${
-                    tarjeta.tendencia.startsWith('+') 
-                      ? 'bg-green-100 text-green-700' 
-                      : 'bg-red-100 text-red-700'
-                  }`}>
-                    {tarjeta.tendencia.startsWith('+') ? (
-                      <ArrowUpRight className="w-3 h-3 mr-1" />
-                    ) : (
-                      <ArrowDownRight className="w-3 h-3 mr-1" />
-                    )}
-                    {tarjeta.tendencia}
-                  </div>
-                )}
               </div>
               
               <div className="space-y-1">

@@ -119,98 +119,57 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
   const cargarNotificacionesDetalladas = useCallback(async () => {
     setLoading(true)
     try {
-      // 1) Traer TODOS los pagos paginando (Supabase limita 1000 filas por request)
-      const PAGE_SIZE = 1000
-      let allData: any[] = []
-      let from = 0
-      let hasMore = true
+      // Single query — no pagination loop, no second round of queries
+      // We fetch up to 1000 pending/partial/reprogrammed payments with their joins.
+      // The saldo is computed from this same result set (no extra queries needed,
+      // since pagado rows contribute 0 to the balance anyway).
+      const { data, error } = await supabase
+        .from('pagos')
+        .select(`
+          id, transaccion_id, fecha_vencimiento, numero_cuota,
+          monto_cuota, monto_pagado, intereses_mora,
+          fecha_reprogramacion, motivo_reprogramacion,
+          transaccion:transacciones(
+            id, cliente_id, monto_total, monto_cuota,
+            numero_factura, tipo_transaccion, fecha_inicio,
+            cliente:clientes(id, nombre, apellido, email, telefono),
+            producto:productos(nombre)
+          )
+        `)
+        .in('estado', ['pendiente', 'parcial', 'reprogramado'])
+        .order('fecha_vencimiento', { ascending: true })
+        .limit(1000)
 
-      while (hasMore) {
-        const { data: page, error } = await supabase
-          .from('pagos')
-          .select(`
-            id, transaccion_id, fecha_vencimiento, numero_cuota,
-            monto_cuota, monto_pagado, intereses_mora,
-            fecha_reprogramacion, motivo_reprogramacion,
-            transaccion:transacciones(
-              id, cliente_id, monto_total, monto_cuota,
-              numero_factura, tipo_transaccion, fecha_inicio,
-              cliente:clientes(id, nombre, apellido, email, telefono),
-              producto:productos(nombre)
-            )
-          `)
-          .in('estado', ['pendiente', 'parcial', 'reprogramado'])
-          .order('fecha_vencimiento', { ascending: true })
-          .range(from, from + PAGE_SIZE - 1)
+      if (error) { console.error('Error cargando notificaciones:', error); return }
+      if (!data || data.length === 0) { setNotificacionesDetalladas([]); return }
 
-        if (error) { console.error('Error cargando notificaciones:', error); return }
-        if (!page || page.length === 0) { hasMore = false; break }
-
-        allData = allData.concat(page)
-        hasMore = page.length === PAGE_SIZE
-        from += PAGE_SIZE
-      }
-
-      if (allData.length === 0) { setNotificacionesDetalladas([]); return }
-      const data = allData
-
-      // Castear a any[] para evitar que TypeScript infiera los joins como arrays
-      const pagosRaw = data as any[]
-
-      // Filtrar pagos que tengan transacción y cliente válidos
-      const pagosFiltrados = pagosRaw.filter(p => {
-        const t = p.transaccion
-        if (!t) return false
-        // Supabase a veces devuelve el join como array — normalizamos
-        const transaccion = Array.isArray(t) ? t[0] : t
-        const cliente = Array.isArray(transaccion?.cliente) ? transaccion.cliente[0] : transaccion?.cliente
-        return transaccion && cliente
-      })
-
-      // Normalizar cada pago para que transaccion y cliente sean objetos simples
-      const pagosNormalizados = pagosFiltrados.map(p => ({
-        ...p,
-        transaccion: (() => {
+      // Normalise Supabase join (can return array or object)
+      const pagosNormalizados = (data as any[])
+        .filter(p => {
+          const t = Array.isArray(p.transaccion) ? p.transaccion[0] : p.transaccion
+          const c = Array.isArray(t?.cliente) ? t.cliente[0] : t?.cliente
+          return t && c
+        })
+        .map(p => {
           const t = Array.isArray(p.transaccion) ? p.transaccion[0] : p.transaccion
           return {
-            ...t,
-            cliente:  Array.isArray(t.cliente)  ? t.cliente[0]  : t.cliente,
-            producto: Array.isArray(t.producto) ? t.producto[0] : t.producto,
+            ...p,
+            transaccion: {
+              ...t,
+              cliente:  Array.isArray(t.cliente)  ? t.cliente[0]  : t.cliente,
+              producto: Array.isArray(t.producto) ? t.producto[0] : t.producto,
+            },
           }
-        })(),
-      }))
+        })
 
-      // 2) IDs únicos de transacciones para calcular saldos
-      const transaccionIds = [...new Set(pagosNormalizados.map((p: any) => p.transaccion?.id).filter(Boolean))]
-
-      // 3) Traer TODOS los pagos de esas transacciones (incluyendo pagados)
-      //    para calcular el saldo real. En lotes de 100 para no saturar el IN.
-      let todosPagos: any[] = []
-      const LOTE = 100
-      for (let i = 0; i < transaccionIds.length; i += LOTE) {
-        const lote = transaccionIds.slice(i, i + LOTE)
-        const { data: loteData } = await supabase
-          .from('pagos')
-          .select('transaccion_id, monto_cuota, monto_pagado, intereses_mora, estado, numero_cuota')
-          .in('transaccion_id', lote)
-        if (loteData) todosPagos = todosPagos.concat(loteData)
-      }
-
-      // 4) Calcular saldo pendiente real por transacción
+      // Compute saldo per transaction from already-fetched pending pagos.
+      // Pagados contribute 0 to balance so we don't need a second query round.
       const saldosPorTransaccion = new Map<string, number>()
-      const pagosAgrupados = todosPagos.reduce<Record<string, any[]>>((acc, p) => {
-        if (!acc[p.transaccion_id]) acc[p.transaccion_id] = []
-        acc[p.transaccion_id].push(p)
-        return acc
-      }, {})
-
-      Object.entries(pagosAgrupados).forEach(([tid, pagos]) => {
-        const saldo = pagos.reduce((sum: number, p: any) => {
-          if (p.estado === 'pagado') return sum
-          const total = (p.monto_cuota ?? 0) + (p.intereses_mora ?? 0)
-          return sum + Math.max(0, total - (p.monto_pagado ?? 0))
-        }, 0)
-        saldosPorTransaccion.set(tid, saldo)
+      pagosNormalizados.forEach((p: any) => {
+        const tid = p.transaccion.id
+        const monto = obtenerMontoCuota(p)
+        const restante = Math.max(0, monto - (p.monto_pagado ?? 0))
+        saldosPorTransaccion.set(tid, (saldosPorTransaccion.get(tid) ?? 0) + restante)
       })
 
       // 5) Mapear a NotificacionVencimiento

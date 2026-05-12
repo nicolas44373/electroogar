@@ -35,6 +35,8 @@ interface GestorPagosProps {
   onPagoRegistrado: () => void
 }
 
+interface ToastMsg { tipo: 'success' | 'error'; texto: string }
+
 export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosProps) {
   const [pagosPendientes, setPagosPendientes] = useState<PagoExtendido[]>([])
   const [pagoSeleccionado, setPagoSeleccionado] = useState<PagoExtendido | null>(null)
@@ -43,6 +45,12 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
   const [busqueda, setBusqueda] = useState('')
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'pendiente' | 'parcial' | 'vencido'>('todos')
   const [filtroFecha, setFiltroFecha] = useState<'todos' | 'hoy' | 'semana' | 'mes' | 'vencidos'>('todos')
+  const [toast, setToast] = useState<ToastMsg | null>(null)
+
+  const mostrarToast = (tipo: 'success' | 'error', texto: string) => {
+    setToast({ tipo, texto })
+    setTimeout(() => setToast(null), 4000)
+  }
   
   // Datos del formulario de pago
   const [montoPago, setMontoPago] = useState('')
@@ -240,12 +248,10 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
       setPagoSeleccionado(null)
       await cargarPagosPendientes()
       onPagoRegistrado()
-      
-      // Mostrar mensaje de éxito
-      alert('Pago registrado correctamente')
+      mostrarToast('success', 'Pago registrado correctamente')
     } catch (error) {
       console.error('Error registrando pago:', error)
-      alert('Error al registrar el pago')
+      mostrarToast('error', 'Error al registrar el pago')
     } finally {
       setLoading(false)
     }
@@ -255,6 +261,14 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <div className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium ${
+          toast.tipo === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          {toast.tipo === 'success' ? <Check className="w-4 h-4 flex-shrink-0" /> : <AlertTriangle className="w-4 h-4 flex-shrink-0" />}
+          {toast.texto}
+        </div>
+      )}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center">

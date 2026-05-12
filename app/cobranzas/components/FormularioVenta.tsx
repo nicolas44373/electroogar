@@ -3,6 +3,8 @@ import { supabase } from '@/app/lib/supabase'
 import { Producto } from '@/app/lib/types/cobranzas'
 import ComprobanteTransaccion from './Comprobantetransaccion'
 
+interface ToastMsg { tipo: 'error' | 'success'; texto: string }
+
 interface FormularioVentaProps {
   clienteId: string
   productos: Producto[]
@@ -19,6 +21,12 @@ export default function FormularioVenta({
   const [guardando, setGuardando] = useState(false)
   const [mostrarComprobante, setMostrarComprobante] = useState(false)
   const [datosComprobante, setDatosComprobante] = useState<any>(null)
+  const [errorValidacion, setErrorValidacion] = useState<string>('')
+
+  const mostrarError = (msg: string) => {
+    setErrorValidacion(msg)
+    setTimeout(() => setErrorValidacion(''), 5000)
+  }
 
   // Estado separado para controlar el tipo de transacción
   const [tipoTransaccion, setTipoTransaccion] = useState<'venta' | 'prestamo' | null>(null)
@@ -64,21 +72,19 @@ export default function FormularioVenta({
 
   const validarFormulario = (): boolean => {
     if (!tipoTransaccion) {
-      alert('⚠️ Seleccione si es venta o préstamo')
+      mostrarError('Seleccione si es venta o préstamo')
       return false
     }
-
     if (tipoTransaccion === 'venta' && !formVenta.producto_id) {
-      alert('⚠️ Seleccione un producto')
+      mostrarError('Seleccione un producto')
       return false
     }
-
     if (!formVenta.monto_total || parseFloat(formVenta.monto_total) <= 0) {
-      alert('⚠️ Ingrese un monto válido')
+      mostrarError('Ingrese un monto válido')
       return false
     }
     if (!formVenta.numero_cuotas || parseInt(formVenta.numero_cuotas) <= 0) {
-      alert('⚠️ Ingrese un número de cuotas válido')
+      mostrarError('Ingrese un número de cuotas válido')
       return false
     }
     return true
@@ -217,7 +223,7 @@ export default function FormularioVenta({
         setMostrarComprobante(true)
       }
     } catch (error: any) {
-      alert('❌ Error al crear la transacción: ' + error.message)
+      mostrarError('Error al crear la transacción: ' + error.message)
       setGuardando(false)
     }
   }
@@ -258,6 +264,13 @@ export default function FormularioVenta({
           ✖
         </button>
       </div>
+
+      {errorValidacion && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm font-medium mb-4">
+          <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+          {errorValidacion}
+        </div>
+      )}
 
       <form onSubmit={crearNuevaVenta} className="space-y-5">
         {/* Primer paso: Seleccionar tipo de transacción */}
