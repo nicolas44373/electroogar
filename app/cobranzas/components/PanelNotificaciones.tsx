@@ -29,6 +29,14 @@ interface NotificacionVencimiento {
   fecha_reprogramacion?: string
   intereses_mora?: number
   motivo_reprogramacion?: string
+  transaccion_descripcion?: string
+}
+
+interface NotaDescripcion {
+  origen: 'venta' | 'pago' | 'reprogramacion'
+  texto: string
+  numero_cuota?: number
+  fecha?: string
 }
 
 interface PanelNotificacionesProps {
@@ -92,6 +100,8 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
   const [notificacionesDetalladas, setNotificacionesDetalladas] = useState<NotificacionVencimiento[]>([])
   const [loading, setLoading] = useState(false)
   const [mostrarContacto, setMostrarContacto] = useState<string | null>(null)
+  const [notasPorTransaccion, setNotasPorTransaccion] = useState<Record<string, NotaDescripcion[]>>({})
+  const [cargandoNotas, setCargandoNotas] = useState<string | null>(null)
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'vencido' | 'hoy' | 'calendario'>('todos')
 
   // — Calendario —
@@ -135,7 +145,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
             fecha_reprogramacion, motivo_reprogramacion,
             transaccion:transacciones(
               id, cliente_id, monto_total, monto_cuota,
-              numero_factura, tipo_transaccion, fecha_inicio,
+              numero_factura, tipo_transaccion, fecha_inicio, descripcion,
               cliente:clientes(id, nombre, apellido, email, telefono),
               producto:productos(nombre)
             )
@@ -215,6 +225,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
           fecha_reprogramacion: pago.fecha_reprogramacion ?? undefined,
           intereses_mora: pago.intereses_mora ?? undefined,
           motivo_reprogramacion: pago.motivo_reprogramacion ?? undefined,
+          transaccion_descripcion: transaccion.descripcion ?? undefined,
         }
       })
 
@@ -280,6 +291,65 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
     }
   }
 
+  // ─── Descripciones / notas de la transacción ─────────────────────────────────
+  const cargarNotasTransaccion = useCallback(async (notif: NotificacionVencimiento) => {
+    const tid = notif.transaccion_id
+    setCargandoNotas(tid)
+    try {
+      const { data, error } = await supabase
+        .from('pagos')
+        .select('numero_cuota, observaciones, motivo_reprogramacion, fecha_pago, fecha_reprogramacion')
+        .eq('transaccion_id', tid)
+        .order('numero_cuota', { ascending: true })
+
+      if (error) { console.error('Error cargando notas:', error); return }
+
+      const notas: NotaDescripcion[] = []
+
+      if (notif.transaccion_descripcion?.trim()) {
+        notas.push({
+          origen: 'venta',
+          texto: notif.transaccion_descripcion.trim(),
+          fecha: notif.fecha_inicio,
+        })
+      }
+
+      ;(data ?? []).forEach((p: any) => {
+        if (p.observaciones?.trim()) {
+          notas.push({
+            origen: 'pago',
+            texto: p.observaciones.trim(),
+            numero_cuota: p.numero_cuota ?? undefined,
+            fecha: p.fecha_pago ?? undefined,
+          })
+        }
+        if (p.motivo_reprogramacion?.trim()) {
+          notas.push({
+            origen: 'reprogramacion',
+            texto: p.motivo_reprogramacion.trim(),
+            numero_cuota: p.numero_cuota ?? undefined,
+            fecha: p.fecha_reprogramacion ?? undefined,
+          })
+        }
+      })
+
+      setNotasPorTransaccion(prev => ({ ...prev, [tid]: notas }))
+    } catch (err) {
+      console.error('Error inesperado cargando notas:', err)
+    } finally {
+      setCargandoNotas(null)
+    }
+  }, [])
+
+  const toggleMasInfo = (notif: NotificacionVencimiento) => {
+    if (mostrarContacto === notif.id) {
+      setMostrarContacto(null)
+      return
+    }
+    setMostrarContacto(notif.id)
+    cargarNotasTransaccion(notif)
+  }
+
   // ─── Modal pago ───────────────────────────────────────────────────────────────
   const abrirModalPago = (notif: NotificacionVencimiento) => {
     setNotifSeleccionada(notif)
@@ -323,6 +393,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
       if (error) throw error
 
       cerrarModalPago()
+      setNotasPorTransaccion({})
       await cargarNotificacionesDetalladas()
       onActualizar()
       alert('Pago registrado correctamente')
@@ -377,6 +448,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
       if (error) throw error
 
       cerrarModalReprogramacion()
+      setNotasPorTransaccion({})
       await cargarNotificacionesDetalladas()
       onActualizar()
       alert('✅ Pago reprogramado exitosamente')
@@ -705,7 +777,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
                       </button>
                     )}
                     <button
-                      onClick={() => setMostrarContacto(mostrarContacto === notif.id ? null : notif.id)}
+                      onClick={() => toggleMasInfo(notif)}
                       className="px-2 md:px-3 py-1 text-xs md:text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors whitespace-nowrap">
                       {mostrarContacto === notif.id ? 'Ocultar' : 'Más Info'}
                     </button>
@@ -728,6 +800,51 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
                     <p className="text-[10px] md:text-xs text-blue-600 mt-1 ml-6">
                       {notif.tipo_transaccion === 'prestamo' ? 'Este préstamo' : 'Esta venta'} comenzó el {formatearFecha(notif.fecha_inicio)}
                     </p>
+                  </div>
+
+                  {/* Descripciones y notas */}
+                  <div className="mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Mail className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                      <span className="text-xs md:text-sm font-medium text-indigo-900">Descripciones y Notas</span>
+                    </div>
+
+                    {cargandoNotas === notif.transaccion_id ? (
+                      <p className="text-xs text-indigo-600 ml-6">Cargando notas...</p>
+                    ) : (notasPorTransaccion[notif.transaccion_id]?.length ?? 0) === 0 ? (
+                      <p className="text-[10px] md:text-xs text-gray-500 ml-6">
+                        Sin descripciones registradas para esta {notif.tipo_transaccion === 'prestamo' ? 'operación' : 'venta'}.
+                      </p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {notasPorTransaccion[notif.transaccion_id].map((nota, i) => {
+                          const etiqueta =
+                            nota.origen === 'venta' ? 'Descripción de la venta'
+                            : nota.origen === 'reprogramacion' ? 'Motivo de reprogramación'
+                            : 'Nota de cobro'
+                          const colorEtiqueta =
+                            nota.origen === 'venta' ? 'bg-blue-100 text-blue-800'
+                            : nota.origen === 'reprogramacion' ? 'bg-orange-100 text-orange-800'
+                            : 'bg-green-100 text-green-800'
+                          return (
+                            <li key={i} className="p-2 bg-white rounded border border-indigo-100">
+                              <div className="flex flex-wrap items-center gap-1 mb-1">
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] md:text-[10px] font-semibold ${colorEtiqueta}`}>
+                                  {etiqueta}
+                                </span>
+                                {nota.numero_cuota != null && (
+                                  <span className="text-[9px] md:text-[10px] text-gray-500">Cuota {nota.numero_cuota}</span>
+                                )}
+                                {nota.fecha && (
+                                  <span className="text-[9px] md:text-[10px] text-gray-400">· {formatearFecha(nota.fecha)}</span>
+                                )}
+                              </div>
+                              <p className="text-[11px] md:text-xs text-gray-700 break-words whitespace-pre-wrap">{nota.texto}</p>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
                   </div>
 
                   {/* Reprogramación */}

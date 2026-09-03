@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { Producto } from '@/app/lib/types/cobranzas'
 import ComprobanteTransaccion from './Comprobantetransaccion'
+import ComprobanteCompra from './ComprobanteCompra'
 
 interface ToastMsg { tipo: 'error' | 'success'; texto: string }
 
@@ -20,6 +21,7 @@ export default function FormularioVenta({
 }: FormularioVentaProps) {
   const [guardando, setGuardando] = useState(false)
   const [mostrarComprobante, setMostrarComprobante] = useState(false)
+  const [vistaComprobante, setVistaComprobante] = useState<'completo' | 'compra'>('completo')
   const [datosComprobante, setDatosComprobante] = useState<any>(null)
   const [errorValidacion, setErrorValidacion] = useState<string>('')
 
@@ -238,13 +240,45 @@ export default function FormularioVenta({
   // Si se está mostrando el comprobante, renderizarlo
   if (mostrarComprobante && datosComprobante) {
     return (
-      <ComprobanteTransaccion
-        tipo={datosComprobante.tipo}
-        cliente={datosComprobante.cliente}
-        transaccion={datosComprobante.transaccion}
-        cuotas={datosComprobante.cuotas}
-        onCerrar={handleCerrarComprobante}
-      />
+      <>
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[60] flex gap-1 bg-white rounded-lg shadow-lg p-1 print:hidden">
+          <button
+            type="button"
+            onClick={() => setVistaComprobante('completo')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              vistaComprobante === 'completo' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Con plan de cuotas
+          </button>
+          <button
+            type="button"
+            onClick={() => setVistaComprobante('compra')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              vistaComprobante === 'compra' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Comprobante de compra
+          </button>
+        </div>
+
+        {vistaComprobante === 'completo' ? (
+          <ComprobanteTransaccion
+            tipo={datosComprobante.tipo}
+            cliente={datosComprobante.cliente}
+            transaccion={datosComprobante.transaccion}
+            cuotas={datosComprobante.cuotas}
+            onCerrar={handleCerrarComprobante}
+          />
+        ) : (
+          <ComprobanteCompra
+            tipo={datosComprobante.tipo}
+            cliente={datosComprobante.cliente}
+            transaccion={datosComprobante.transaccion}
+            onCerrar={handleCerrarComprobante}
+          />
+        )}
+      </>
     )
   }
 

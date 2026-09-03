@@ -4,7 +4,8 @@ import TablaPagos from './TablaPagos'
 import ResumenPagos from './ResumenPagos'
 import ExportadorPDFCliente from './Exportadorpdfcliente'
 import ComprobanteTransaccion from './Comprobantetransaccion'
-import { FileText } from 'lucide-react'
+import ComprobanteCompra from './ComprobanteCompra'
+import { FileText, ShoppingBag } from 'lucide-react'
 
 interface HistorialTransaccionesProps {
   cliente: Cliente
@@ -26,6 +27,7 @@ export default function HistorialTransacciones({
   const [eliminando, setEliminando] = useState<string | null>(null)
   const [mostrarConfirmacion, setMostrarConfirmacion] = useState<string | null>(null)
   const [comprobanteActivo, setComprobanteActivo] = useState<string | null>(null)
+  const [comprobanteCompraActivo, setComprobanteCompraActivo] = useState<string | null>(null)
 
   if (loading) {
     return (
@@ -156,6 +158,20 @@ export default function HistorialTransacciones({
         transaccion={datosComprobante.transaccion}
         cuotas={datosComprobante.cuotas}
         onCerrar={cerrarComprobante}
+      />
+    )
+  }
+
+  // Renderizar comprobante de compra (sin cuotas) si está activo
+  const transaccionCompra = transacciones.find((t) => t.id === comprobanteCompraActivo)
+  if (comprobanteCompraActivo && transaccionCompra) {
+    const datos = generarDatosComprobante(transaccionCompra)
+    return (
+      <ComprobanteCompra
+        tipo={datos.tipo as 'venta' | 'prestamo'}
+        cliente={{ ...datos.cliente, documento: cliente.documento }}
+        transaccion={datos.transaccion}
+        onCerrar={() => setComprobanteCompraActivo(null)}
       />
     )
   }
@@ -329,6 +345,20 @@ export default function HistorialTransacciones({
                   >
                     <FileText className="w-4 h-4" />
                     <span className="hidden sm:inline">Comprobante</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setComprobanteCompraActivo(transaccion.id)
+                    }}
+                    className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 text-sm whitespace-nowrap"
+                    title="Comprobante de compra (sin cuotas)"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span className="hidden sm:inline">Compra</span>
                   </button>
 
                   {onEliminarTransaccion && (
