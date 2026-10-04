@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { Transaccion, Pago } from '@/app/lib/types/cobranzas'
 import { supabase } from '@/app/lib/supabase'
+import { sincronizarEstadoTransaccion } from '@/app/lib/estadoTransaccion'
 import { hoyISO } from '@/app/lib/fechas'
 
 interface ToastMsg { tipo: 'success' | 'error'; texto: string }
@@ -203,6 +204,7 @@ export default function CuentaCorriente({
       console.error(error)
       mostrarToast('error', 'Error al registrar el pago: ' + error.message)
     } else {
+      await sincronizarEstadoTransaccion(ventaSeleccionada.transaccionId)
       mostrarToast('success', 'Pago registrado correctamente')
       cerrarModalPago()
       onTransaccionesUpdate?.()
@@ -264,6 +266,7 @@ export default function CuentaCorriente({
           .eq('id', movimientoAEliminar.pagoId)
 
         error = err
+        if (!err && movimientoAEliminar.transaccionId) await sincronizarEstadoTransaccion(movimientoAEliminar.transaccionId)
       }
 
       if (error) {

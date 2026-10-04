@@ -5,7 +5,7 @@ import ResumenPagos from './ResumenPagos'
 import ExportadorPDFCliente from './Exportadorpdfcliente'
 import ComprobanteTransaccion from './Comprobantetransaccion'
 import ComprobanteCompra from './ComprobanteCompra'
-import { FileText, ShoppingBag, ShoppingCart, Banknote, Trash2, AlertTriangle, Inbox, Circle, CheckCircle2 } from 'lucide-react'
+import { FileText, ShoppingBag, ShoppingCart, Banknote, Trash2, AlertTriangle, Inbox, Circle, CheckCircle2, ChevronDown } from 'lucide-react'
 
 // Solo presentación: muestra un número como $ 1.234,56
 const mostrarPesos = (valor: number | undefined) =>
@@ -32,6 +32,7 @@ export default function HistorialTransacciones({
   const [mostrarConfirmacion, setMostrarConfirmacion] = useState<string | null>(null)
   const [comprobanteActivo, setComprobanteActivo] = useState<string | null>(null)
   const [comprobanteCompraActivo, setComprobanteCompraActivo] = useState<string | null>(null)
+  const [verTerminadas, setVerTerminadas] = useState(false)
 
   if (loading) {
     return (
@@ -152,6 +153,13 @@ export default function HistorialTransacciones({
     setComprobanteActivo(null)
   }
 
+  // Terminada = todas sus cuotas pagadas (aunque el estado guardado no se haya actualizado)
+  const estaTerminada = (t: Transaccion) =>
+    t.estado === 'completado' ||
+    ((pagos[t.id]?.length ?? 0) > 0 && pagos[t.id].every((p) => p.estado === 'pagado'))
+  const enCurso = transacciones.filter((t) => !estaTerminada(t))
+  const terminadas = transacciones.filter((t) => estaTerminada(t))
+
   // Renderizar comprobante si está activo
   const transaccionConComprobante = transacciones.find((t) => t.id === comprobanteActivo)
   if (comprobanteActivo && transaccionConComprobante) {
@@ -191,8 +199,25 @@ export default function HistorialTransacciones({
       {/* Exportador PDF */}
       <ExportadorPDFCliente cliente={cliente} transacciones={transacciones} pagos={pagos} />
 
-      {transacciones.map((transaccion) => (
-        <div key={transaccion.id} className="card overflow-hidden relative">
+      {[...enCurso, ...terminadas].map((transaccion, indice) => (
+        <div key={transaccion.id} className="space-y-4">
+        {/* Botón antes de la primera operación terminada */}
+        {indice === enCurso.length && (
+          <button
+            type="button"
+            onClick={() => setVerTerminadas(!verTerminadas)}
+            aria-expanded={verTerminadas}
+            className="btn-secondary w-full justify-between"
+          >
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-success" />
+              {verTerminadas ? 'Ocultar' : 'Ver'} {terminadas.length} {terminadas.length === 1 ? 'operación terminada' : 'operaciones terminadas'}
+            </span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${verTerminadas ? 'rotate-180' : ''}`} />
+          </button>
+        )}
+        {(indice < enCurso.length || verTerminadas) && (
+        <div className="card overflow-hidden relative">
           {/* Modal de confirmación */}
           {mostrarConfirmacion === transaccion.id && (
             <div
@@ -281,7 +306,7 @@ export default function HistorialTransacciones({
                       {obtenerTituloTransaccion(transaccion)}
                     </h3>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
-                      <EstadoBadge estado={transaccion.estado || 'activo'} />
+                      <EstadoBadge estado={estaTerminada(transaccion) ? 'completado' : (transaccion.estado || 'activo')} />
                       <span className="text-xs text-muted">
                         {transaccion.tipo_transaccion === 'venta' ? 'Venta' : 'Préstamo'}
                         {' · '}
@@ -385,7 +410,13 @@ export default function HistorialTransacciones({
             <ResumenPagos transaccion={transaccion} pagos={pagos[transaccion.id] || []} />
           </div>
         </div>
+        )}
+        </div>
       ))}
+
+      {enCurso.length === 0 && (
+        <p className="text-sm text-muted">Este cliente no tiene operaciones en curso.</p>
+      )}
     </div>
   )
 }

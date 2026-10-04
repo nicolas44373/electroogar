@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { sincronizarEstadoTransaccion } from '@/app/lib/estadoTransaccion'
 import { hoyISO } from '@/app/lib/fechas'
 import {
   Bell, AlertTriangle, Calendar, Clock, Phone, Mail,
@@ -397,6 +398,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
         .eq('id', notifSeleccionada.id)
 
       if (error) throw error
+      await sincronizarEstadoTransaccion(notifSeleccionada.transaccion_id)
 
       cerrarModalPago()
       setNotasPorTransaccion({})

@@ -83,6 +83,8 @@ export default function CobranzasPage() {
   }
 
   const cargarHistorial = async (clienteId: string) => {
+    // Desde "Registrar pago" se llama sin cliente elegido: no hay historial que recargar
+    if (!clienteId) return
     setLoading(true)
     try {
       const { data: transData } = await supabase
@@ -407,8 +409,9 @@ export default function CobranzasPage() {
                 <InfoCliente cliente={clienteActual} mostrarFormulario={mostrarNuevaVenta} onToggleFormulario={() => setMostrarNuevaVenta(!mostrarNuevaVenta)} onClienteActualizado={cargarClientes} />
                 {mostrarNuevaVenta && <FormularioVenta clienteId={clienteSeleccionado} productos={productos} onVentaCreada={() => { setMostrarNuevaVenta(false); cargarHistorial(clienteSeleccionado) }} onCancelar={() => setMostrarNuevaVenta(false)} />}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <CuentaCorriente clienteId={clienteSeleccionado} transacciones={transacciones} pagos={pagos} onTransaccionesUpdate={() => cargarHistorial(clienteSeleccionado)} />
-                  <HistorialTransacciones cliente={clienteActual} transacciones={transacciones} pagos={pagos} onPagoRegistrado={() => cargarHistorial(clienteSeleccionado)} onEliminarTransaccion={eliminarTransaccion} loading={loading} />
+                  {/* En el celular, primero las ventas/préstamos; en escritorio, cuenta corriente a la izquierda */}
+                  <div className="order-2 lg:order-1 min-w-0"><CuentaCorriente clienteId={clienteSeleccionado} transacciones={transacciones} pagos={pagos} onTransaccionesUpdate={() => cargarHistorial(clienteSeleccionado)} /></div>
+                  <div className="order-1 lg:order-2 min-w-0"><HistorialTransacciones cliente={clienteActual} transacciones={transacciones} pagos={pagos} onPagoRegistrado={() => cargarHistorial(clienteSeleccionado)} onEliminarTransaccion={eliminarTransaccion} loading={loading} /></div>
                 </div>
               </>
             )}

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { supabase } from '@/app/lib/supabase'
+import { sincronizarEstadoTransaccion } from '@/app/lib/estadoTransaccion'
 import { hoyISO } from '@/app/lib/fechas'
 import { Cliente, Transaccion, Pago } from '@/app/lib/types/cobranzas'
 import {
@@ -222,6 +223,7 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
         numero_recibo: numeroRecibo,
       }).eq('id', pagoSeleccionado.id)
       if (error) throw error
+      await sincronizarEstadoTransaccion(pagoSeleccionado.transaccion_id)
 
       const datosRecibo = {
         numero_recibo: numeroRecibo,

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { sincronizarEstadoTransaccion } from '@/app/lib/estadoTransaccion'
 import { hoyISO } from '@/app/lib/fechas'
 import { Transaccion, Pago } from '@/app/lib/types/cobranzas'
 import EstadoBadge from '@/app/components/ui/EstadoBadge'
@@ -134,10 +135,7 @@ export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: Tab
 
       if (error) throw error
 
-      const cuotasPagadas = pagos.filter((p) => p.estado === 'pagado').length + 1
-      if (cuotasPagadas === transaccion.numero_cuotas) {
-        await supabase.from('transacciones').update({ estado: 'completado' }).eq('id', transaccion.id)
-      }
+      await sincronizarEstadoTransaccion(transaccion.id)
 
       mostrarToast('success', 'Pago registrado exitosamente')
       onPagoRegistrado()

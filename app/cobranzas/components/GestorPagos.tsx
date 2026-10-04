@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { sincronizarEstadoTransaccion } from '@/app/lib/estadoTransaccion'
 import { hoyISO } from '@/app/lib/fechas'
 import { Cliente, Pago, Transaccion } from '@/app/lib/types/cobranzas'
 import { Search, CreditCard, Calendar, DollarSign, Check, AlertTriangle, Filter, X } from 'lucide-react'
@@ -245,6 +246,7 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
         .eq('id', pagoSeleccionado.id)
 
       if (error) throw error
+      await sincronizarEstadoTransaccion(pagoSeleccionado.transaccion_id)
 
       setMostrarModal(false)
       setPagoSeleccionado(null)
