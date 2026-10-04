@@ -2,6 +2,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { fechaLocalISO } from '@/app/lib/fechas'
+import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 
 export default function ReporteMorosos() {
   const [morosos, setMorosos] = useState<any[]>([])
@@ -25,7 +27,7 @@ export default function ReporteMorosos() {
         )
       `)
       .eq('estado', 'pendiente')
-      .lt('fecha_vencimiento', fechaLimite.toISOString())
+      .lt('fecha_vencimiento', fechaLocalISO(fechaLimite))
       .order('fecha_vencimiento')
     
     if (data) {
@@ -34,60 +36,78 @@ export default function ReporteMorosos() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Reporte de Pagos Atrasados</h1>
-      
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <label className="block mb-2">Filtrar por días de atraso:</label>
-        <select
-          value={diasAtraso}
-          onChange={(e) => setDiasAtraso(parseInt(e.target.value))}
-          className="border p-2 rounded"
-        >
-          <option value={7}>Más de 7 días</option>
-          <option value={15}>Más de 15 días</option>
-          <option value={30}>Más de 30 días</option>
-        </select>
-      </div>
+    <div className="page">
+      <div className="page-container max-w-6xl">
+        <div className="mb-6">
+          <h1 className="page-title">Cuotas atrasadas</h1>
+          <p className="page-subtitle">Cuotas pendientes con más días de atraso que el filtro elegido.</p>
+        </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left p-2">Cliente</th>
-              <th className="text-left p-2">Documento</th>
-              <th className="text-left p-2">Teléfono</th>
-              <th className="text-left p-2">Cuota</th>
-              <th className="text-left p-2">Monto</th>
-              <th className="text-left p-2">Vencimiento</th>
-              <th className="text-left p-2">Días Atraso</th>
-            </tr>
-          </thead>
-          <tbody>
-            {morosos.map((pago) => {
-              const diasAtraso = Math.floor(
-                (new Date().getTime() - new Date(pago.fecha_vencimiento).getTime()) / (1000 * 60 * 60 * 24)
-              )
-              return (
-                <tr key={pago.id} className="border-b hover:bg-gray-50">
-                  <td className="p-2">
-                    {pago.transaccion?.cliente?.nombre} {pago.transaccion?.cliente?.apellido}
-                  </td>
-                  <td className="p-2">{pago.transaccion?.cliente?.documento}</td>
-                  <td className="p-2">{pago.transaccion?.cliente?.telefono}</td>
-                  <td className="p-2">#{pago.numero_cuota}</td>
-                  <td className="p-2">${pago.transaccion?.monto_cuota}</td>
-                  <td className="p-2">{new Date(pago.fecha_vencimiento).toLocaleDateString()}</td>
-                  <td className="p-2">
-                    <span className={`font-bold ${diasAtraso > 30 ? 'text-red-600' : 'text-orange-600'}`}>
-                      {diasAtraso} días
-                    </span>
-                  </td>
+        <div className="card card-body mb-6 max-w-xs">
+          <label htmlFor="morosos-dias" className="label">Días de atraso</label>
+          <select
+            id="morosos-dias"
+            value={diasAtraso}
+            onChange={(e) => setDiasAtraso(parseInt(e.target.value))}
+            className="input"
+          >
+            <option value={7}>Más de 7 días</option>
+            <option value={15}>Más de 15 días</option>
+            <option value={30}>Más de 30 días</option>
+          </select>
+        </div>
+
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="data-table min-w-[720px]">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Documento</th>
+                  <th>Teléfono</th>
+                  <th>Cuota</th>
+                  <th className="!text-right">Importe</th>
+                  <th>Vencimiento</th>
+                  <th className="!text-right">Atraso</th>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {morosos.map((pago) => {
+                  const diasAtraso = Math.floor(
+                    (new Date().getTime() - new Date(pago.fecha_vencimiento).getTime()) / (1000 * 60 * 60 * 24)
+                  )
+                  return (
+                    <tr key={pago.id}>
+                      <td className="font-medium text-fg">
+                        {pago.transaccion?.cliente?.nombre} {pago.transaccion?.cliente?.apellido}
+                      </td>
+                      <td className="text-muted num">{pago.transaccion?.cliente?.documento}</td>
+                      <td className="text-muted num">{pago.transaccion?.cliente?.telefono}</td>
+                      <td className="num">{pago.numero_cuota}</td>
+                      <td className="text-right font-semibold text-fg num whitespace-nowrap">
+                        {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(pago.transaccion?.monto_cuota || 0)}
+                      </td>
+                      <td className="text-muted num">{new Date(pago.fecha_vencimiento).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                      <td className="text-right">
+                        <span className={diasAtraso > 30 ? 'badge-danger' : 'badge-warning'}>
+                          <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span className="num">{diasAtraso} días</span>
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {morosos.length === 0 && (
+            <div className="empty-state">
+              <CheckCircle2 className="w-10 h-10 text-success mb-2" />
+              <p className="text-sm font-medium text-fg">No hay cuotas con ese atraso</p>
+              <p className="text-xs mt-1">Probá con un filtro de menos días.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

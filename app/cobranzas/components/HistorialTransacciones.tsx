@@ -5,7 +5,11 @@ import ResumenPagos from './ResumenPagos'
 import ExportadorPDFCliente from './Exportadorpdfcliente'
 import ComprobanteTransaccion from './Comprobantetransaccion'
 import ComprobanteCompra from './ComprobanteCompra'
-import { FileText, ShoppingBag } from 'lucide-react'
+import { FileText, ShoppingBag, ShoppingCart, Banknote, Trash2, AlertTriangle, Inbox, Circle, CheckCircle2 } from 'lucide-react'
+
+// Solo presentación: muestra un número como $ 1.234,56
+const mostrarPesos = (valor: number | undefined) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(Number(valor) || 0)
 
 interface HistorialTransaccionesProps {
   cliente: Cliente
@@ -31,20 +35,21 @@ export default function HistorialTransacciones({
 
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow text-center">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mx-auto mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div>
-        </div>
+      <div className="card p-5 space-y-3" role="status" aria-live="polite">
+        <span className="sr-only">Cargando historial…</span>
+        <div className="skeleton h-5 w-1/3"></div>
+        <div className="skeleton h-4 w-2/3"></div>
+        <div className="skeleton h-24 w-full"></div>
       </div>
     )
   }
 
   if (transacciones.length === 0) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow text-center text-gray-500">
-        <p className="text-lg mb-2">📭 No hay transacciones registradas</p>
-        <p className="text-sm">Las nuevas ventas y préstamos aparecerán aquí</p>
+      <div className="card empty-state">
+        <Inbox className="w-10 h-10 text-muted/60 mb-3" />
+        <p className="text-base font-semibold text-fg mb-1">Este cliente todavía no tiene ventas ni préstamos</p>
+        <p className="text-sm">Usá “Nueva venta o préstamo” para cargar la primera.</p>
       </div>
     )
   }
@@ -177,51 +182,52 @@ export default function HistorialTransacciones({
   }
 
   return (
-    <div className="space-y-6 px-2 sm:px-4">
-      <h2 className="text-lg sm:text-xl font-semibold text-center sm:text-left">
-        Historial de Compras y Préstamos
+    <div className="space-y-4">
+      <h2 className="section-title">
+        <ShoppingBag className="w-5 h-5 text-primary" />
+        Ventas y préstamos
       </h2>
 
       {/* Exportador PDF */}
       <ExportadorPDFCliente cliente={cliente} transacciones={transacciones} pagos={pagos} />
 
       {transacciones.map((transaccion) => (
-        <div key={transaccion.id} className="bg-white rounded-lg shadow overflow-hidden relative">
+        <div key={transaccion.id} className="card overflow-hidden relative">
           {/* Modal de confirmación */}
           {mostrarConfirmacion === transaccion.id && (
             <div
-              className="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-2 sm:p-4"
+              className="modal-backdrop"
               onClick={() => setMostrarConfirmacion(null)}
               role="dialog"
               aria-modal="true"
             >
               <div
-                className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-sm sm:max-w-md shadow-xl"
+                className="modal"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-base sm:text-lg font-semibold mb-3 text-red-600">
-                  ⚠️ Confirmar eliminación
-                </h3>
-
-                <div className="mb-4 text-sm sm:text-base">
-                  <p className="text-gray-700 mb-2">
-                    ¿Estás seguro de que deseas eliminar esta transacción?
-                  </p>
-
-                  <div className="bg-gray-50 p-3 rounded text-xs sm:text-sm">
-                    <p className="font-medium">{obtenerTituloTransaccion(transaccion)}</p>
-                    <p className="text-gray-600">
-                      Monto: ${transaccion.monto_total.toLocaleString('es-AR')}
-                    </p>
-                    <p className="text-gray-600">Cuotas: {transaccion.numero_cuotas}</p>
+                <div className="modal-body">
+                  <div className="flex items-start gap-3">
+                    <div className="icon-tile bg-danger-soft text-danger-text">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-fg">
+                        ¿Eliminar esta {transaccion.tipo_transaccion === 'venta' ? 'venta' : 'operación'}?
+                      </h3>
+                      <p className="text-sm text-muted mt-1">
+                        Se borran la operación y todas sus cuotas. Esta acción no se puede deshacer.
+                      </p>
+                    </div>
                   </div>
 
-                  <p className="text-red-600 text-xs sm:text-sm mt-3 font-medium">
-                    ⚠️ Esta acción eliminará permanentemente la transacción y todos sus pagos asociados.
-                  </p>
+                  <dl className="rounded-lg bg-surface-2 p-3 text-sm space-y-1">
+                    <p className="font-medium text-fg">{obtenerTituloTransaccion(transaccion)}</p>
+                    <div className="flex gap-2"><dt className="text-muted">Total:</dt><dd className="text-fg num">{mostrarPesos(transaccion.monto_total)}</dd></div>
+                    <div className="flex gap-2"><dt className="text-muted">Cuotas:</dt><dd className="text-fg num">{transaccion.numero_cuotas}</dd></div>
+                  </dl>
                 </div>
 
-                <div className="flex gap-2 sm:gap-3 justify-end flex-wrap">
+                <div className="modal-footer">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -229,7 +235,7 @@ export default function HistorialTransacciones({
                       e.stopPropagation()
                       setMostrarConfirmacion(null)
                     }}
-                    className="px-3 py-2 text-gray-600 hover:text-gray-800 transition-colors text-sm"
+                    className="btn-secondary"
                     disabled={eliminando === transaccion.id}
                   >
                     Cancelar
@@ -243,30 +249,18 @@ export default function HistorialTransacciones({
                       void handleEliminar(transaccion.id)
                     }}
                     disabled={eliminando === transaccion.id}
-                    className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center gap-2"
+                    className="btn-danger"
                   >
                     {eliminando === transaccion.id ? (
                       <>
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            fill="none"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          />
-                        </svg>
-                        Eliminando...
+                        <span className="spinner" />
+                        Eliminando…
                       </>
                     ) : (
-                      'Eliminar transacción'
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        Eliminar definitivamente
+                      </>
                     )}
                   </button>
                 </div>
@@ -275,54 +269,50 @@ export default function HistorialTransacciones({
           )}
 
           {/* Header */}
-          <div className="bg-gradient-to-r from-gray-50 to-white p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
-              <div className="flex-1">
-                <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2">
-                  {transaccion.tipo_transaccion === 'venta' ? '🛒' : '💵'}
-                  {obtenerTituloTransaccion(transaccion)}
-                </h3>
+          <div className="p-4 sm:p-5 border-b border-line">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3">
+                  <div className="icon-tile bg-primary/10 text-primary">
+                    {transaccion.tipo_transaccion === 'venta' ? <ShoppingCart className="w-5 h-5" /> : <Banknote className="w-5 h-5" />}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-base text-fg truncate">
+                      {obtenerTituloTransaccion(transaccion)}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <EstadoBadge estado={transaccion.estado || 'activo'} />
+                      <span className="text-xs text-muted">
+                        {transaccion.tipo_transaccion === 'venta' ? 'Venta' : 'Préstamo'}
+                        {' · '}
+                        <span className="capitalize">{transaccion.tipo_pago}</span>
+                        {' · '}
+                        <span className="num">Inicio {formatearFecha(transaccion.fecha_inicio)}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
                 {transaccion.descripcion && (
-                  <div className="mt-2 bg-blue-50 border-l-4 border-blue-400 p-2 rounded">
-                    <p className="text-sm text-gray-700">
-                      <span className="font-medium text-blue-700">📝 Descripción:</span>{' '}
-                      {transaccion.descripcion}
-                    </p>
-                  </div>
+                  <p className="mt-3 text-sm text-muted border-l-2 border-primary/40 pl-3">
+                    {transaccion.descripcion}
+                  </p>
                 )}
-
-                <div className="mt-2 space-y-1 text-sm sm:text-base">
-                  <p className="text-gray-600">
-                    Tipo:{' '}
-                    <span className="font-medium">
-                      {transaccion.tipo_transaccion === 'venta' ? 'Venta' : 'Préstamo'}
-                    </span>
-                  </p>
-                  <p className="text-gray-600">
-                    Plan de pago:{' '}
-                    <span className="font-medium capitalize">{transaccion.tipo_pago}</span>
-                  </p>
-                  <p className="text-gray-600">
-                    <EstadoBadge estado={transaccion.estado || 'activo'} />
-                  </p>
-                  <p className="text-gray-500 text-xs">Inicio: {formatearFecha(transaccion.fecha_inicio)}</p>
-                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-                <div className="text-left sm:text-right">
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-800">
-                    ${transaccion.monto_total.toLocaleString('es-AR')}
+              <div className="flex flex-col sm:items-end gap-3">
+                <div className="sm:text-right">
+                  <p className="text-2xl font-bold text-fg num">
+                    {mostrarPesos(transaccion.monto_total)}
                   </p>
-                  <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                    {transaccion.numero_cuotas} cuotas de ${transaccion.monto_cuota.toFixed(2)}
+                  <p className="text-xs text-muted mt-0.5 num">
+                    {transaccion.numero_cuotas} cuotas de {mostrarPesos(transaccion.monto_cuota)}
                   </p>
 
                   {transaccion.tipo_transaccion === 'prestamo' && (
-                    <div className="mt-2 text-xs text-gray-500">
+                    <div className="mt-1 text-xs text-muted num">
                       {transaccion.monto_original && (
-                        <p>Monto original: ${transaccion.monto_original.toFixed(2)}</p>
+                        <p>Monto prestado: {mostrarPesos(transaccion.monto_original)}</p>
                       )}
                       {transaccion.interes_porcentaje && transaccion.interes_porcentaje > 0 && (
                         <p>Interés aplicado: {transaccion.interes_porcentaje}%</p>
@@ -332,7 +322,7 @@ export default function HistorialTransacciones({
                 </div>
 
                 {/* Botones de acción */}
-                <div className="flex gap-2">
+                <div className="flex gap-1">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -340,8 +330,8 @@ export default function HistorialTransacciones({
                       e.stopPropagation()
                       abrirComprobante(transaccion.id)
                     }}
-                    className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm whitespace-nowrap"
-                    title="Ver comprobante"
+                    className="btn-secondary btn-sm"
+                    title="Ver comprobante con plan de cuotas"
                   >
                     <FileText className="w-4 h-4" />
                     <span className="hidden sm:inline">Comprobante</span>
@@ -354,7 +344,7 @@ export default function HistorialTransacciones({
                       e.stopPropagation()
                       setComprobanteCompraActivo(transaccion.id)
                     }}
-                    className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 text-sm whitespace-nowrap"
+                    className="btn-secondary btn-sm"
                     title="Comprobante de compra (sin cuotas)"
                   >
                     <ShoppingBag className="w-4 h-4" />
@@ -369,23 +359,11 @@ export default function HistorialTransacciones({
                         e.stopPropagation()
                         setMostrarConfirmacion(transaccion.id)
                       }}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Eliminar transacción"
+                      className="btn-icon hover:!text-danger hover:!bg-danger-soft"
+                      title="Eliminar operación"
+                      aria-label="Eliminar operación"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="w-5 h-5 sm:w-6 sm:h-6"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                        />
-                      </svg>
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -403,7 +381,7 @@ export default function HistorialTransacciones({
           </div>
 
           {/* Resumen */}
-          <div className="px-2 sm:px-4 pb-4">
+          <div className="px-4 sm:px-5 pb-5">
             <ResumenPagos transaccion={transaccion} pagos={pagos[transaccion.id] || []} />
           </div>
         </div>
@@ -414,22 +392,27 @@ export default function HistorialTransacciones({
 
 function EstadoBadge({ estado }: { estado: string }) {
   const estilos = {
-    activo: 'bg-green-100 text-green-800',
-    completado: 'bg-blue-100 text-blue-800',
-    moroso: 'bg-red-100 text-red-800',
+    activo: 'badge-primary',
+    completado: 'badge-success',
+    moroso: 'badge-danger',
   }
   const etiquetas = {
-    activo: 'Activo',
-    completado: 'Completado',
-    moroso: 'Moroso',
+    activo: 'En curso',
+    completado: 'Completada',
+    moroso: 'En mora',
   }
+  const iconos = {
+    activo: Circle,
+    completado: CheckCircle2,
+    moroso: AlertTriangle,
+  }
+  const Icono = iconos[estado as keyof typeof iconos] || Circle
 
   return (
     <span
-      className={`px-2 py-1 rounded-full text-xs font-medium ${
-        estilos[estado as keyof typeof estilos] || 'bg-gray-100 text-gray-800'
-      }`}
+      className={estilos[estado as keyof typeof estilos] || 'badge-neutral'}
     >
+      <Icono className="w-3.5 h-3.5" aria-hidden="true" />
       {etiquetas[estado as keyof typeof etiquetas] || estado}
     </span>
   )

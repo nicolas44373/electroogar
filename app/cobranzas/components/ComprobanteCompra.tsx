@@ -142,7 +142,7 @@ export default function ComprobanteCompra({
         .comprobante-compra {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           line-height: 1.4;
-          color: #1f2937;
+          color: #1E293B;
         }
         .comprobante-compra .cc-wrapper {
           max-width: 850px;
@@ -179,7 +179,7 @@ export default function ComprobanteCompra({
           margin-bottom: 10px;
         }
         .comprobante-compra .cc-info-box {
-          background: #f9fafb;
+          background: #F5F7FA;
           border-left: 3px solid ${colorPrincipal};
           padding: 12px 14px;
           border-radius: 3px;
@@ -191,12 +191,12 @@ export default function ComprobanteCompra({
         }
         .comprobante-compra .cc-label {
           font-size: 9px;
-          color: #6b7280;
+          color: #64748B;
           font-weight: 600;
           text-transform: uppercase;
           margin-bottom: 2px;
         }
-        .comprobante-compra .cc-value { font-size: 13px; color: #111827; font-weight: 600; }
+        .comprobante-compra .cc-value { font-size: 13px; color: #1E293B; font-weight: 600; }
         .comprobante-compra .cc-detalle {
           background: ${colorSecundario};
           border: 2px solid ${colorPrincipal}33;
@@ -211,8 +211,8 @@ export default function ComprobanteCompra({
           border-bottom: 1px solid ${colorPrincipal}20;
         }
         .comprobante-compra .cc-row:last-child { border-bottom: none; }
-        .comprobante-compra .cc-row-label { font-size: 11px; color: #374151; font-weight: 500; }
-        .comprobante-compra .cc-row-value { font-size: 11px; color: #111827; font-weight: 700; text-align: right; }
+        .comprobante-compra .cc-row-label { font-size: 11px; color: #334155; font-weight: 500; }
+        .comprobante-compra .cc-row-value { font-size: 11px; color: #1E293B; font-weight: 700; text-align: right; }
         .comprobante-compra .cc-total {
           background: ${colorPrincipal};
           color: white;
@@ -229,19 +229,19 @@ export default function ComprobanteCompra({
           display: grid;
           grid-template-columns: repeat(3, 1fr);
           gap: 10px;
-          background: #f9fafb;
+          background: #F5F7FA;
           padding: 12px;
           border-radius: 4px;
           text-align: center;
         }
         .comprobante-compra .cc-pago-label {
           font-size: 8px;
-          color: #6b7280;
+          color: #64748B;
           text-transform: uppercase;
           font-weight: 600;
           margin-bottom: 4px;
         }
-        .comprobante-compra .cc-pago-value { font-size: 13px; color: #111827; font-weight: 700; }
+        .comprobante-compra .cc-pago-value { font-size: 13px; color: #1E293B; font-weight: 700; }
         .comprobante-compra .cc-firmas {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
@@ -249,17 +249,17 @@ export default function ComprobanteCompra({
           margin-top: 32px;
         }
         .comprobante-compra .cc-firma { text-align: center; }
-        .comprobante-compra .cc-firma-linea { border-top: 1.5px solid #111827; margin: 36px 12px 6px 12px; }
-        .comprobante-compra .cc-firma-label { font-weight: 700; color: #111827; font-size: 10px; }
-        .comprobante-compra .cc-firma-nombre { font-size: 9px; color: #6b7280; }
+        .comprobante-compra .cc-firma-linea { border-top: 1.5px solid #1E293B; margin: 36px 12px 6px 12px; }
+        .comprobante-compra .cc-firma-label { font-weight: 700; color: #1E293B; font-size: 10px; }
+        .comprobante-compra .cc-firma-nombre { font-size: 9px; color: #64748B; }
         .comprobante-compra .cc-footer {
           text-align: center;
           padding: 12px;
-          background: #f9fafb;
-          border-top: 1px solid #e5e7eb;
+          background: #F5F7FA;
+          border-top: 1px solid #E2E8F0;
           margin-top: 16px;
         }
-        .comprobante-compra .cc-footer-text { font-size: 8px; color: #6b7280; }
+        .comprobante-compra .cc-footer-text { font-size: 8px; color: #64748B; }
         @media print {
           body { background: #fff !important; margin: 0; padding: 0; }
           @page { size: A4; margin: 10mm; }
@@ -268,13 +268,13 @@ export default function ComprobanteCompra({
 
       <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto comprobante-compra">
         {/* Header con acciones */}
-        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-xl flex justify-between items-center print:hidden">
+        <div className="sticky top-0 bg-[#0F4C81] text-white p-6 rounded-t-xl flex justify-between items-center print:hidden">
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2">
               <ShoppingBag className="w-7 h-7" />
               Comprobante de Compra
             </h2>
-            <p className="text-blue-100 text-sm mt-1">Detalle de la compra del cliente (sin plan de cuotas)</p>
+            <p className="text-white/80 text-sm mt-1">Detalle de la compra del cliente (sin plan de cuotas)</p>
           </div>
           <button
             type="button"
@@ -291,11 +291,11 @@ export default function ComprobanteCompra({
         </div>
 
         {/* Botones de acción */}
-        <div className="flex gap-3 p-4 bg-gray-50 border-b print:hidden">
+        <div className="flex flex-wrap gap-3 p-4 bg-surface-2 border-b border-line print:hidden">
           <button
             type="button"
             onClick={handleImprimir}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors"
+            className="btn-secondary"
           >
             <Printer className="w-4 h-4" />
             Imprimir
@@ -304,7 +304,7 @@ export default function ComprobanteCompra({
             type="button"
             onClick={handleDescargar}
             disabled={generando}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="btn-primary"
           >
             <Download className="w-4 h-4" />
             {generando ? 'Generando...' : 'Descargar PDF'}
@@ -378,7 +378,7 @@ export default function ComprobanteCompra({
                 {transaccion.interes > 0 && (
                   <div className="cc-row">
                     <span className="cc-row-label">Interés / recargo ({transaccion.interes}%):</span>
-                    <span className="cc-row-value" style={{ color: '#ea580c' }}>
+                    <span className="cc-row-value" style={{ color: '#D97706' }}>
                       + {formatearMoneda(interesMonto)}
                     </span>
                   </div>
@@ -409,7 +409,7 @@ export default function ComprobanteCompra({
                     <div className="cc-pago-label">Valor por Cuota</div>
                     <div
                       className="cc-pago-value"
-                      style={{ color: tipo === 'venta' ? '#2563eb' : '#059669' }}
+                      style={{ color: tipo === 'venta' ? '#0F4C81' : '#16A34A' }}
                     >
                       {formatearMoneda(transaccion.montoCuota)}
                     </div>
@@ -445,7 +445,7 @@ export default function ComprobanteCompra({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-gray-50 border-t flex justify-end print:hidden">
+        <div className="p-4 bg-surface-2 border-t border-line flex justify-end print:hidden">
           <button
             type="button"
             onClick={(e) => {
@@ -453,7 +453,7 @@ export default function ComprobanteCompra({
               e.stopPropagation()
               onCerrar()
             }}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="btn-primary"
           >
             Cerrar
           </button>

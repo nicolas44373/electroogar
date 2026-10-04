@@ -2,9 +2,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import Link from 'next/link'
-import { 
-  Zap, 
-  Users, 
+import {
+  Users,
   ShoppingCart, 
   DollarSign, 
   TrendingUp, 
@@ -12,7 +11,6 @@ import {
   CreditCard,
   AlertCircle,
   ArrowRight,
-  Sparkles,
   Activity
 } from 'lucide-react'
 
@@ -33,8 +31,8 @@ export default function HomePage() {
     new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(monto)
 
   const cargarEstadisticas = async () => {
@@ -93,318 +91,154 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 relative overflow-hidden">
-      {/* Animated background pattern */}
-      <div className="absolute inset-0 overflow-hidden opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }}></div>
-      </div>
-
-      {/* Floating shapes */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-20 left-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse animation-delay-2000"></div>
-        <div className="absolute top-1/2 right-1/3 w-96 h-96 bg-slate-500/10 rounded-full blur-3xl animate-pulse animation-delay-4000"></div>
-      </div>
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="page">
+      <div className="page-container">
         {/* Header Section */}
-        <div className="text-center mb-12 sm:mb-16 animate-fade-in">
-          <div className="inline-flex items-center justify-center mb-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-xl blur-xl opacity-50 animate-pulse"></div>
-              <div className="relative bg-gradient-to-br from-slate-700 to-slate-800 w-16 h-16 sm:w-20 sm:h-20 rounded-xl flex items-center justify-center shadow-xl border-2 border-emerald-500/30">
-                <Zap className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400" strokeWidth={2.5} />
-              </div>
-            </div>
-          </div>
-          
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-            Electro Hogar
-          </h1>
-          <div className="flex items-center justify-center gap-2 text-slate-300 mb-2">
-            <ShoppingCart className="w-5 h-5 text-emerald-400" />
-            <p className="text-base sm:text-lg">Sistema de Gestión Profesional</p>
-          </div>
-          <p className="text-sm sm:text-base text-slate-400">Electrodomésticos • Préstamos • Cobranzas</p>
+        <div className="mb-8">
+          <h1 className="page-title">Inicio</h1>
+          <p className="page-subtitle">Resumen general de Electro Hogar</p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-16">
-          {/* Total Clientes */}
-          <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl blur opacity-25 group-hover:opacity-40 transition-opacity"></div>
-            <div className="relative backdrop-blur-xl bg-slate-800/40 rounded-xl shadow-xl border border-slate-700/50 p-6 hover:transform hover:scale-105 transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-blue-500/20 rounded-lg">
-                  <Users className="w-6 h-6 text-blue-400" />
-                </div>
-                <div className="flex items-center text-blue-400 text-sm">
-                  <Activity className="w-4 h-4 mr-1" />
-                  <span>Activo</span>
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          {/* Cartera pendiente: protagonista */}
+          <div className="card p-5 sm:col-span-2 lg:col-span-1 lg:order-last border-l-4 border-l-primary">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="icon-tile bg-primary/10 text-primary">
+                <DollarSign className="w-5 h-5" />
               </div>
-              <h3 className="text-slate-400 text-sm font-medium mb-2">Total Clientes</h3>
-              {loading ? (
-                <div className="h-10 w-20 bg-slate-700/50 animate-pulse rounded"></div>
-              ) : (
-                <p className="text-4xl font-bold text-white">{estadisticas.totalClientes}</p>
-              )}
+              <h2 className="text-sm font-medium text-muted">Total a cobrar</h2>
             </div>
+            {loading ? (
+              <div className="skeleton h-8 w-40" />
+            ) : (
+              <p className="text-2xl font-bold text-fg num truncate">{formatearMoneda(estadisticas.montosPendientes)}</p>
+            )}
+            <p className="text-xs text-muted mt-1">Suma de cuotas pendientes</p>
+          </div>
+
+          {/* Total Clientes */}
+          <div className="card p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="icon-tile bg-info-soft text-info-text">
+                <Users className="w-5 h-5" />
+              </div>
+              <h2 className="text-sm font-medium text-muted">Clientes</h2>
+            </div>
+            {loading ? (
+              <div className="skeleton h-8 w-16" />
+            ) : (
+              <p className="text-2xl font-bold text-fg num">{estadisticas.totalClientes}</p>
+            )}
+            <p className="text-xs text-muted mt-1">Registrados</p>
           </div>
 
           {/* Total Productos */}
-          <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-xl blur opacity-25 group-hover:opacity-40 transition-opacity"></div>
-            <div className="relative backdrop-blur-xl bg-slate-800/40 rounded-xl shadow-xl border border-slate-700/50 p-6 hover:transform hover:scale-105 transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-emerald-500/20 rounded-lg">
-                  <Package className="w-6 h-6 text-emerald-400" />
-                </div>
-                <div className="flex items-center text-emerald-400 text-sm">
-                  <Sparkles className="w-4 h-4 mr-1" />
-                  <span>Stock</span>
-                </div>
+          <div className="card p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="icon-tile bg-success-soft text-success-text">
+                <Package className="w-5 h-5" />
               </div>
-              <h3 className="text-slate-400 text-sm font-medium mb-2">Total Productos</h3>
-              {loading ? (
-                <div className="h-10 w-20 bg-slate-700/50 animate-pulse rounded"></div>
-              ) : (
-                <p className="text-4xl font-bold text-white">{estadisticas.totalProductos}</p>
-              )}
+              <h2 className="text-sm font-medium text-muted">Productos</h2>
             </div>
+            {loading ? (
+              <div className="skeleton h-8 w-16" />
+            ) : (
+              <p className="text-2xl font-bold text-fg num">{estadisticas.totalProductos}</p>
+            )}
+            <p className="text-xs text-muted mt-1">En el catálogo</p>
           </div>
 
           {/* Ventas Activas */}
-          <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-purple-500 rounded-xl blur opacity-25 group-hover:opacity-40 transition-opacity"></div>
-            <div className="relative backdrop-blur-xl bg-slate-800/40 rounded-xl shadow-xl border border-slate-700/50 p-6 hover:transform hover:scale-105 transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-purple-500/20 rounded-lg">
-                  <TrendingUp className="w-6 h-6 text-purple-400" />
-                </div>
-                <div className="flex items-center text-purple-400 text-sm">
-                  <ArrowRight className="w-4 h-4 mr-1" />
-                  <span>En curso</span>
-                </div>
+          <div className="card p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="icon-tile bg-reprog-soft text-reprog-text">
+                <TrendingUp className="w-5 h-5" />
               </div>
-              <h3 className="text-slate-400 text-sm font-medium mb-2">Ventas Activas</h3>
-              {loading ? (
-                <div className="h-10 w-20 bg-slate-700/50 animate-pulse rounded"></div>
-              ) : (
-                <p className="text-4xl font-bold text-white">{estadisticas.ventasActivas}</p>
-              )}
+              <h2 className="text-sm font-medium text-muted">Ventas y préstamos activos</h2>
             </div>
-          </div>
-
-          {/* Pagos Pendientes */}
-          <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-orange-600 to-red-500 rounded-xl blur opacity-25 group-hover:opacity-40 transition-opacity"></div>
-            <div className="relative backdrop-blur-xl bg-slate-800/40 rounded-xl shadow-xl border border-slate-700/50 p-6 hover:transform hover:scale-105 transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-red-500/20 rounded-lg">
-                  <AlertCircle className="w-6 h-6 text-red-400" />
-                </div>
-                <div className="flex items-center text-red-400 text-sm">
-                  <Activity className="w-4 h-4 mr-1 animate-pulse" />
-                  <span>Urgente</span>
-                </div>
-              </div>
-              <h3 className="text-slate-400 text-sm font-medium mb-2">Cartera Pendiente</h3>
-              {loading ? (
-                <div className="h-10 w-20 bg-slate-700/50 animate-pulse rounded"></div>
-              ) : (
-                <p className="text-2xl font-bold text-white truncate">{formatearMoneda(estadisticas.montosPendientes)}</p>
-              )}
-            </div>
+            {loading ? (
+              <div className="skeleton h-8 w-16" />
+            ) : (
+              <p className="text-2xl font-bold text-fg num">{estadisticas.ventasActivas}</p>
+            )}
+            <p className="text-xs text-muted mt-1">Con cuotas en curso</p>
           </div>
         </div>
 
         {/* Quick Access Section */}
-        <div className="mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6 sm:mb-8 text-center">
-            Accesos Rápidos
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-            {/* Productos */}
-            <Link href="/productos" className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-xl blur-lg opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
-              <div className="relative backdrop-blur-xl bg-slate-800/40 rounded-xl shadow-xl border border-slate-700/50 p-6 sm:p-8 hover:transform hover:scale-105 transition-all duration-300 overflow-hidden">
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                
-                <div className="relative">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-emerald-500/20 rounded-lg group-hover:bg-emerald-500/30 transition-colors">
-                      <Package className="w-8 h-8 text-emerald-400" />
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-400 transform group-hover:translate-x-1 transition-all" />
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">
-                    Productos
-                  </h3>
-                  <p className="text-slate-400 text-sm sm:text-base">
-                    Gestionar catálogo de productos y electrodomésticos
-                  </p>
-                </div>
+        <section className="mb-10">
+          <h2 className="section-title mb-4">Accesos rápidos</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Cobranzas */}
+            <Link href="/cobranzas" className="group card p-5 flex items-start gap-4 hover:shadow-e2 hover:border-primary/40 transition-all md:order-first">
+              <div className="icon-tile w-12 h-12 bg-primary text-on-primary">
+                <CreditCard className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-semibold text-fg flex items-center gap-1">
+                  Cobranzas
+                  <ArrowRight className="w-4 h-4 text-muted group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                </h3>
+                <p className="text-sm text-muted mt-1">Cuotas, pagos, recibos y vencimientos</p>
               </div>
             </Link>
 
             {/* Clientes */}
-            <Link href="/clientes" className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur-lg opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
-              <div className="relative backdrop-blur-xl bg-slate-800/40 rounded-xl shadow-xl border border-slate-700/50 p-6 sm:p-8 hover:transform hover:scale-105 transition-all duration-300 overflow-hidden">
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                
-                <div className="relative">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-blue-500/20 rounded-lg group-hover:bg-blue-500/30 transition-colors">
-                      <Users className="w-8 h-8 text-blue-400" />
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-400 transform group-hover:translate-x-1 transition-all" />
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">
-                    Clientes
-                  </h3>
-                  <p className="text-slate-400 text-sm sm:text-base">
-                    Administrar información y historial de clientes
-                  </p>
-                </div>
+            <Link href="/clientes" className="group card p-5 flex items-start gap-4 hover:shadow-e2 hover:border-primary/40 transition-all">
+              <div className="icon-tile w-12 h-12 bg-info-soft text-info-text">
+                <Users className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-semibold text-fg flex items-center gap-1">
+                  Clientes
+                  <ArrowRight className="w-4 h-4 text-muted group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                </h3>
+                <p className="text-sm text-muted mt-1">Datos de contacto, notas y ubicación</p>
               </div>
             </Link>
 
-            {/* Cobranzas */}
-            <Link href="/cobranzas" className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl blur-lg opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
-              <div className="relative backdrop-blur-xl bg-slate-800/40 rounded-xl shadow-xl border border-slate-700/50 p-6 sm:p-8 hover:transform hover:scale-105 transition-all duration-300 overflow-hidden">
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                
-                <div className="relative">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-purple-500/20 rounded-lg group-hover:bg-purple-500/30 transition-colors">
-                      <CreditCard className="w-8 h-8 text-purple-400" />
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-purple-400 transform group-hover:translate-x-1 transition-all" />
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">
-                    Cobranzas
-                  </h3>
-                  <p className="text-slate-400 text-sm sm:text-base">
-                    Control de pagos, cuotas y seguimiento de deudas
-                  </p>
-                </div>
+            {/* Productos */}
+            <Link href="/productos" className="group card p-5 flex items-start gap-4 hover:shadow-e2 hover:border-primary/40 transition-all">
+              <div className="icon-tile w-12 h-12 bg-success-soft text-success-text">
+                <Package className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-semibold text-fg flex items-center gap-1">
+                  Productos
+                  <ArrowRight className="w-4 h-4 text-muted group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                </h3>
+                <p className="text-sm text-muted mt-1">Catálogo de electrodomésticos y stock</p>
               </div>
             </Link>
           </div>
-        </div>
+        </section>
 
         {/* Features Section */}
-        <div className="mt-12 sm:mt-16">
-          <div className="backdrop-blur-xl bg-slate-800/40 rounded-2xl shadow-xl border border-slate-700/50 p-6 sm:p-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-white mb-6 text-center">
-              Sistema Completo de Gestión
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              <div className="flex items-start space-x-3 p-4 bg-slate-900/30 rounded-lg border border-slate-700/30 hover:border-emerald-500/30 transition-colors">
-                <div className="flex-shrink-0 p-2 bg-emerald-500/20 rounded-lg">
-                  <ShoppingCart className="w-5 h-5 text-emerald-400" />
+        <section className="card card-body">
+          <h2 className="section-title mb-4">Qué podés hacer</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[
+              { icono: ShoppingCart, titulo: 'Ventas en cuotas', texto: 'Registrá ventas y generá el plan de cuotas.' },
+              { icono: DollarSign, titulo: 'Préstamos', texto: 'Préstamos de dinero con interés y cuotas.' },
+              { icono: Activity, titulo: 'Seguimiento', texto: 'Estado de cada cuota y de cada cliente.' },
+              { icono: AlertCircle, titulo: 'Vencimientos', texto: 'Avisos de cuotas por vencer y vencidas.' },
+              { icono: CreditCard, titulo: 'Recibos', texto: 'Comprobantes de pago listos para imprimir.' },
+              { icono: TrendingUp, titulo: 'Resumen', texto: 'Indicadores de cobranza del mes.' },
+            ].map(({ icono: Icono, titulo, texto }) => (
+              <div key={titulo} className="flex items-start gap-3 p-3 rounded-lg bg-surface-2">
+                <div className="icon-tile w-9 h-9 bg-surface text-primary border border-line">
+                  <Icono className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold mb-1 text-sm sm:text-base">Ventas a Crédito</h3>
-                  <p className="text-slate-400 text-xs sm:text-sm">Gestión completa de ventas en cuotas</p>
+                  <h3 className="text-sm font-semibold text-fg">{titulo}</h3>
+                  <p className="text-xs text-muted mt-0.5">{texto}</p>
                 </div>
               </div>
-
-              <div className="flex items-start space-x-3 p-4 bg-slate-900/30 rounded-lg border border-slate-700/30 hover:border-blue-500/30 transition-colors">
-                <div className="flex-shrink-0 p-2 bg-blue-500/20 rounded-lg">
-                  <DollarSign className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1 text-sm sm:text-base">Préstamos</h3>
-                  <p className="text-slate-400 text-xs sm:text-sm">Control de préstamos de dinero</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 p-4 bg-slate-900/30 rounded-lg border border-slate-700/30 hover:border-purple-500/30 transition-colors">
-                <div className="flex-shrink-0 p-2 bg-purple-500/20 rounded-lg">
-                  <Activity className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1 text-sm sm:text-base">Seguimiento</h3>
-                  <p className="text-slate-400 text-xs sm:text-sm">Monitoreo en tiempo real de pagos</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 p-4 bg-slate-900/30 rounded-lg border border-slate-700/30 hover:border-orange-500/30 transition-colors">
-                <div className="flex-shrink-0 p-2 bg-orange-500/20 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-orange-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1 text-sm sm:text-base">Notificaciones</h3>
-                  <p className="text-slate-400 text-xs sm:text-sm">Alertas de vencimientos y mora</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 p-4 bg-slate-900/30 rounded-lg border border-slate-700/30 hover:border-emerald-500/30 transition-colors">
-                <div className="flex-shrink-0 p-2 bg-emerald-500/20 rounded-lg">
-                  <CreditCard className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1 text-sm sm:text-base">Recibos</h3>
-                  <p className="text-slate-400 text-xs sm:text-sm">Generación automática de comprobantes</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 p-4 bg-slate-900/30 rounded-lg border border-slate-700/30 hover:border-blue-500/30 transition-colors">
-                <div className="flex-shrink-0 p-2 bg-blue-500/20 rounded-lg">
-                  <TrendingUp className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1 text-sm sm:text-base">Estadísticas</h3>
-                  <p className="text-slate-400 text-xs sm:text-sm">Reportes y análisis de datos</p>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-12 text-center">
-          <div className="inline-flex items-center gap-2 text-slate-400 text-sm backdrop-blur-sm bg-slate-800/30 rounded-full px-6 py-2 border border-slate-700/30">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-            <span>Sistema operando correctamente</span>
-          </div>
-        </div>
+        </section>
       </div>
-
-      {/* Custom animations */}
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 1s ease-out;
-        }
-
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
     </div>
   )
 }

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { hoyISO } from '@/app/lib/fechas'
 import { Cliente, Pago, Transaccion } from '@/app/lib/types/cobranzas'
-import { Search, CreditCard, Calendar, DollarSign, Check, AlertTriangle, Filter } from 'lucide-react'
+import { Search, CreditCard, Calendar, DollarSign, Check, AlertTriangle, Filter, X } from 'lucide-react'
+import EstadoBadge from '@/app/components/ui/EstadoBadge'
 
 // Definir PagoExtendido sin extender Pago para evitar conflictos de tipos
 interface PagoExtendido {
@@ -54,7 +56,7 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
   
   // Datos del formulario de pago
   const [montoPago, setMontoPago] = useState('')
-  const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0])
+  const [fechaPago, setFechaPago] = useState(hoyISO())
   const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | 'cheque' | 'tarjeta'>('efectivo')
   const [observaciones, setObservaciones] = useState('')
 
@@ -203,7 +205,7 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
     // Usar la función helper para obtener el monto correcto
     const montoRestante = obtenerMontoCuota(pago) - (pago.monto_pagado || 0)
     setMontoPago(montoRestante.toString())
-    setFechaPago(new Date().toISOString().split('T')[0])
+    setFechaPago(hoyISO())
     setObservaciones('')
     setMostrarModal(true)
   }
@@ -260,73 +262,84 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
   const pagosFiltrados = filtrarPagos()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {toast && (
-        <div className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium ${
-          toast.tipo === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'
-        }`}>
+        <div className={toast.tipo === 'success' ? 'alert-success' : 'alert-danger'} role="status">
           {toast.tipo === 'success' ? <Check className="w-4 h-4 flex-shrink-0" /> : <AlertTriangle className="w-4 h-4 flex-shrink-0" />}
           {toast.texto}
         </div>
       )}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-            <CreditCard className="w-6 h-6 mr-2" />
-            Gestión de Pagos
-          </h2>
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h2 className="section-title">
+              <CreditCard className="w-5 h-5 text-primary" />
+              Registrar pago
+            </h2>
+            <p className="text-xs text-muted mt-0.5">Elegí la cuota que te pagaron y cargá el cobro.</p>
+          </div>
         </div>
 
         {/* Filtros y búsqueda */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+        <div className="card-body border-b border-line grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="relative md:col-span-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
             <input
               type="text"
-              placeholder="Buscar cliente o producto..."
+              placeholder="Buscar por cliente o producto"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input input-icon"
+              aria-label="Buscar por cliente o producto"
             />
           </div>
 
           <select
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input"
+            aria-label="Filtrar por estado"
           >
             <option value="todos">Todos los estados</option>
             <option value="pendiente">Pendientes</option>
-            <option value="parcial">Pagos parciales</option>
-            <option value="vencido">Vencidos</option>
+            <option value="parcial">Con pago parcial</option>
+            <option value="vencido">Vencidas</option>
           </select>
 
           <select
             value={filtroFecha}
             onChange={(e) => setFiltroFecha(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input"
+            aria-label="Filtrar por fecha de vencimiento"
           >
-            <option value="todos">Todas las fechas</option>
-            <option value="vencidos">Vencidos</option>
+            <option value="todos">Cualquier fecha</option>
+            <option value="vencidos">Ya vencidas</option>
             <option value="hoy">Vencen hoy</option>
             <option value="semana">Próximos 7 días</option>
-            <option value="mes">Próximo mes</option>
+            <option value="mes">Próximos 30 días</option>
           </select>
 
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-600">
-              {pagosFiltrados.length} de {pagosPendientes.length} pagos
-            </span>
-          </div>
+          <p className="md:col-span-4 flex items-center gap-2 text-xs text-muted num">
+            <Filter className="w-4 h-4" />
+            Mostrando {pagosFiltrados.length} de {pagosPendientes.length} cuotas
+          </p>
         </div>
 
         {/* Lista de pagos */}
-        <div className="space-y-3">
+        <div className="divide-y divide-line">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">Cargando pagos...</span>
+            <div className="p-4 space-y-4" role="status" aria-live="polite">
+              <span className="sr-only">Cargando cuotas…</span>
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="flex-1 space-y-2">
+                    <div className="skeleton h-4 w-1/3" />
+                    <div className="skeleton h-3 w-1/4" />
+                  </div>
+                  <div className="skeleton h-5 w-24" />
+                  <div className="skeleton h-10 w-36" />
+                </div>
+              ))}
             </div>
           ) : pagosFiltrados.length > 0 ? (
             pagosFiltrados.map((pago) => {
@@ -338,85 +351,77 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
               return (
                 <div
                   key={pago.id}
-                  className={`border rounded-lg p-4 transition-all hover:shadow-md ${
-                    estadoVencimiento.estado === 'vencido' ? 'border-red-200 bg-red-50' :
-                    estadoVencimiento.estado === 'hoy' ? 'border-orange-200 bg-orange-50' :
-                    'border-gray-200 bg-white'
+                  className={`p-4 sm:px-5 transition-colors border-l-4 ${
+                    estadoVencimiento.estado === 'vencido' ? 'border-l-danger bg-danger-soft/20' :
+                    estadoVencimiento.estado === 'hoy' ? 'border-l-warning bg-warning-soft/20' :
+                    'border-l-transparent hover:bg-surface-2'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <h3 className="font-medium text-gray-900">
-                            {pago.transaccion.cliente.nombre} {pago.transaccion.cliente.apellido || ''}
-                          </h3>
-                          <p className="text-sm text-gray-600">
-                            {obtenerNombreTransaccion(pago.transaccion)} - Cuota {pago.numero_cuota}
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-fg truncate">
+                        {pago.transaccion.cliente.nombre} {pago.transaccion.cliente.apellido || ''}
+                      </h3>
+                      <p className="text-sm text-muted truncate">
+                        {obtenerNombreTransaccion(pago.transaccion)} · Cuota {pago.numero_cuota}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-3 lg:flex lg:items-center gap-3 lg:gap-6">
+                      <div className="lg:text-right lg:w-32">
+                        <p className="text-xs text-muted">A cobrar</p>
+                        <p className="font-semibold text-fg num whitespace-nowrap">
+                          {formatearMoneda(montoRestante)}
+                        </p>
+                        {montoPagado > 0 && (
+                          <p className="text-xs text-success-text num whitespace-nowrap">
+                            Ya pagó {formatearMoneda(montoPagado)}
                           </p>
-                        </div>
-                        
-                        <div className="text-center">
-                          <div className="text-sm text-gray-500">Monto</div>
-                          <div className="font-semibold">
-                            {formatearMoneda(montoRestante)}
-                          </div>
-                          {montoPagado > 0 && (
-                            <div className="text-xs text-green-600">
-                              Pagado: {formatearMoneda(montoPagado)}
-                            </div>
-                          )}
-                        </div>
+                        )}
+                      </div>
 
-                        <div className="text-center">
-                          <div className="text-sm text-gray-500">Vencimiento</div>
-                          <div className="font-medium">
-                            {formatearFecha(pago.fecha_vencimiento)}
-                          </div>
-                          <div className={`text-xs ${
-                            estadoVencimiento.estado === 'vencido' ? 'text-red-600' :
-                            estadoVencimiento.estado === 'hoy' ? 'text-orange-600' :
-                            'text-gray-500'
-                          }`}>
-                            {estadoVencimiento.texto}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center">
+                      <div className="lg:w-36">
+                        <p className="text-xs text-muted">Vencimiento</p>
+                        <p className="font-medium text-fg num">
+                          {formatearFecha(pago.fecha_vencimiento)}
+                        </p>
+                        <p className={`text-xs font-medium flex items-center gap-1 ${
+                          estadoVencimiento.estado === 'vencido' ? 'text-danger-text' :
+                          estadoVencimiento.estado === 'hoy' ? 'text-warning-text' :
+                          'text-muted'
+                        }`}>
                           {estadoVencimiento.estado === 'vencido' && (
-                            <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
+                            <AlertTriangle className="w-3.5 h-3.5" />
                           )}
                           {estadoVencimiento.estado === 'hoy' && (
-                            <Calendar className="w-5 h-5 text-orange-500 mr-2" />
+                            <Calendar className="w-3.5 h-3.5" />
                           )}
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            pago.estado === 'pendiente' ? 'bg-red-100 text-red-800' :
-                            pago.estado === 'parcial' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
-                            {pago.estado === 'pendiente' ? 'Pendiente' :
-                             pago.estado === 'parcial' ? 'Parcial' : 'Pagado'}
-                          </span>
-                        </div>
+                          {estadoVencimiento.texto}
+                        </p>
+                      </div>
+
+                      <div className="flex items-start lg:items-center">
+                        {pago.estado === 'pendiente' ? <EstadoBadge estado="pendiente" /> :
+                         pago.estado === 'parcial' ? <EstadoBadge estado="parcial" /> : <EstadoBadge estado="pagado" />}
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => abrirModalPago(pago)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                      >
-                        <DollarSign className="w-4 h-4" />
-                        <span>Registrar Pago</span>
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => abrirModalPago(pago)}
+                      className="btn-accent w-full lg:w-auto"
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      <span>Registrar pago</span>
+                    </button>
                   </div>
                 </div>
               )
             })
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              No se encontraron pagos pendientes con los filtros aplicados
+            <div className="empty-state">
+              <Check className="w-10 h-10 text-success mb-2" />
+              <p className="text-sm font-medium text-fg">No hay cuotas para mostrar</p>
+              <p className="text-xs mt-1">Probá cambiando la búsqueda o los filtros.</p>
             </div>
           )}
         </div>
@@ -424,132 +429,151 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
 
       {/* Modal de registro de pago */}
       {mostrarModal && pagoSeleccionado && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Registrar Pago</h3>
+        <div className="modal-backdrop">
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-registrar-pago">
+            <div className="modal-header justify-between">
+              <h3 id="titulo-registrar-pago" className="text-base font-semibold text-fg">Registrar pago</h3>
               <button
                 onClick={() => setMostrarModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="btn-icon"
+                aria-label="Cerrar"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="modal-body">
               {/* Información del pago */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-2">Cliente:</div>
-                <div className="font-medium">
-                  {pagoSeleccionado.transaccion.cliente.nombre} {pagoSeleccionado.transaccion.cliente.apellido || ''}
+              <dl className="rounded-lg bg-surface-2 p-4 text-sm space-y-3">
+                <div>
+                  <dt className="text-xs text-muted">Cliente</dt>
+                  <dd className="font-medium text-fg">
+                    {pagoSeleccionado.transaccion.cliente.nombre} {pagoSeleccionado.transaccion.cliente.apellido || ''}
+                  </dd>
                 </div>
-                
-                <div className="text-sm text-gray-600 mb-2 mt-3">Concepto:</div>
-                <div className="font-medium">{obtenerNombreTransaccion(pagoSeleccionado.transaccion)}</div>
-                
-                <div className="flex justify-between mt-3">
+
+                <div>
+                  <dt className="text-xs text-muted">Concepto</dt>
+                  <dd className="font-medium text-fg">{obtenerNombreTransaccion(pagoSeleccionado.transaccion)}</dd>
+                </div>
+
+                <div className="flex justify-between">
                   <div>
-                    <div className="text-sm text-gray-600">Cuota:</div>
-                    <div className="font-medium">{pagoSeleccionado.numero_cuota}</div>
+                    <dt className="text-xs text-muted">Cuota</dt>
+                    <dd className="font-medium text-fg num">{pagoSeleccionado.numero_cuota}</dd>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-gray-600">Monto total:</div>
-                    <div className="font-bold">{formatearMoneda(obtenerMontoCuota(pagoSeleccionado))}</div>
+                    <dt className="text-xs text-muted">Importe de la cuota</dt>
+                    <dd className="font-bold text-fg num">{formatearMoneda(obtenerMontoCuota(pagoSeleccionado))}</dd>
                   </div>
                 </div>
-                
+
                 {(pagoSeleccionado.monto_pagado || 0) > 0 && (
-                  <div className="mt-2 text-right">
-                    <div className="text-sm text-gray-600">Pagado anteriormente:</div>
-                    <div className="text-green-600 font-medium">
-                      {formatearMoneda(pagoSeleccionado.monto_pagado || 0)}
+                  <div className="flex justify-between pt-3 border-t border-line">
+                    <div>
+                      <dt className="text-xs text-muted">Ya pagó</dt>
+                      <dd className="text-success-text font-medium num">
+                        {formatearMoneda(pagoSeleccionado.monto_pagado || 0)}
+                      </dd>
                     </div>
-                    <div className="text-sm text-gray-600">Restante:</div>
-                    <div className="font-bold text-red-600">
-                      {formatearMoneda(obtenerMontoCuota(pagoSeleccionado) - (pagoSeleccionado.monto_pagado || 0))}
+                    <div className="text-right">
+                      <dt className="text-xs text-muted">Falta pagar</dt>
+                      <dd className="font-bold text-danger-text num">
+                        {formatearMoneda(obtenerMontoCuota(pagoSeleccionado) - (pagoSeleccionado.monto_pagado || 0))}
+                      </dd>
                     </div>
                   </div>
                 )}
-              </div>
+              </dl>
 
               {/* Formulario de pago */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Monto a pagar
+                <label htmlFor="gp-monto" className="label">
+                  Monto recibido
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={montoPago}
-                  onChange={(e) => setMontoPago(e.target.value)}
-                  max={obtenerMontoCuota(pagoSeleccionado) - (pagoSeleccionado.monto_pagado || 0)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-medium pointer-events-none">$</span>
+                  <input
+                    id="gp-monto"
+                    type="number"
+                    step="0.01"
+                    value={montoPago}
+                    onChange={(e) => setMontoPago(e.target.value)}
+                    max={obtenerMontoCuota(pagoSeleccionado) - (pagoSeleccionado.monto_pagado || 0)}
+                    className="input pl-8 num"
+                  />
+                </div>
+                <p className="help">Si es menor al saldo de la cuota, queda registrado como pago parcial.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="gp-fecha" className="label">
+                    Fecha del pago
+                  </label>
+                  <input
+                    id="gp-fecha"
+                    type="date"
+                    value={fechaPago}
+                    onChange={(e) => setFechaPago(e.target.value)}
+                    className="input"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="gp-metodo" className="label">
+                    Medio de pago
+                  </label>
+                  <select
+                    id="gp-metodo"
+                    value={metodoPago}
+                    onChange={(e) => setMetodoPago(e.target.value as any)}
+                    className="input"
+                  >
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="tarjeta">Tarjeta</option>
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fecha de pago
-                </label>
-                <input
-                  type="date"
-                  value={fechaPago}
-                  onChange={(e) => setFechaPago(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Método de pago
-                </label>
-                <select
-                  value={metodoPago}
-                  onChange={(e) => setMetodoPago(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="tarjeta">Tarjeta</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Observaciones (opcional)
+                <label htmlFor="gp-observaciones" className="label">
+                  Observaciones <span className="font-normal text-muted">(opcional)</span>
                 </label>
                 <textarea
+                  id="gp-observaciones"
                   value={observaciones}
                   onChange={(e) => setObservaciones(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  placeholder="Observaciones adicionales..."
+                  className="input resize-none"
+                  placeholder="Ej: Pagó con billetes de $1.000"
                 />
               </div>
             </div>
 
-            <div className="flex space-x-3 mt-6">
+            <div className="modal-footer">
               <button
                 onClick={() => setMostrarModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                className="btn-secondary flex-1 sm:flex-none"
               >
                 Cancelar
               </button>
               <button
                 onClick={registrarPago}
                 disabled={loading || !montoPago || parseFloat(montoPago) <= 0}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                className="btn-accent flex-1 sm:flex-none"
               >
                 {loading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Procesando...</span>
+                    <span className="spinner" />
+                    <span>Guardando…</span>
                   </>
                 ) : (
                   <>
                     <Check className="w-4 h-4" />
-                    <span>Confirmar Pago</span>
+                    <span>Confirmar pago</span>
                   </>
                 )}
               </button>

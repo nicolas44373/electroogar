@@ -152,7 +152,7 @@ export default function ComprobanteTransaccion({
         .comprobante-ultra-compacto {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           line-height: 1.3;
-          color: #1f2937;
+          color: #1E293B;
         }
 
         .comprobante-ultra-compacto .comprobante-wrapper {
@@ -215,7 +215,7 @@ export default function ComprobanteTransaccion({
 
         /* ===== INFO BOXES ===== */
         .comprobante-ultra-compacto .info-box {
-          background: #f9fafb;
+          background: #F5F7FA;
           border-left: 3px solid ${colorPrincipal};
           padding: 8px 10px;
           border-radius: 3px;
@@ -234,7 +234,7 @@ export default function ComprobanteTransaccion({
 
         .comprobante-ultra-compacto .info-label {
           font-size: 8px;
-          color: #6b7280;
+          color: #64748B;
           font-weight: 600;
           text-transform: uppercase;
           margin-bottom: 2px;
@@ -242,7 +242,7 @@ export default function ComprobanteTransaccion({
 
         .comprobante-ultra-compacto .info-value {
           font-size: 11px;
-          color: #111827;
+          color: #1E293B;
           font-weight: 600;
         }
 
@@ -269,13 +269,13 @@ export default function ComprobanteTransaccion({
 
         .comprobante-ultra-compacto .detalle-label {
           font-size: 10px;
-          color: #374151;
+          color: #334155;
           font-weight: 500;
         }
 
         .comprobante-ultra-compacto .detalle-value {
           font-size: 10px;
-          color: #111827;
+          color: #1E293B;
           font-weight: 700;
           text-align: right;
         }
@@ -298,7 +298,7 @@ export default function ComprobanteTransaccion({
           display: grid;
           grid-template-columns: repeat(3, 1fr);
           gap: 8px;
-          background: #f9fafb;
+          background: #F5F7FA;
           padding: 8px;
           border-radius: 4px;
           margin: 8px 0;
@@ -311,7 +311,7 @@ export default function ComprobanteTransaccion({
 
         .comprobante-ultra-compacto .plan-item-label {
           font-size: 7px;
-          color: #6b7280;
+          color: #64748B;
           text-transform: uppercase;
           font-weight: 600;
           margin-bottom: 3px;
@@ -319,7 +319,7 @@ export default function ComprobanteTransaccion({
 
         .comprobante-ultra-compacto .plan-item-value {
           font-size: 12px;
-          color: #111827;
+          color: #1E293B;
           font-weight: 700;
         }
 
@@ -349,7 +349,7 @@ export default function ComprobanteTransaccion({
         }
 
         .comprobante-ultra-compacto .tabla-cuotas tbody tr {
-          border-bottom: 1px solid #e5e7eb;
+          border-bottom: 1px solid #E2E8F0;
         }
 
         .comprobante-ultra-compacto .tabla-cuotas td {
@@ -358,7 +358,7 @@ export default function ComprobanteTransaccion({
         }
 
         .comprobante-ultra-compacto .tabla-cuotas tfoot {
-          background: #f3f4f6;
+          background: #F5F7FA;
           font-weight: 700;
         }
 
@@ -382,18 +382,18 @@ export default function ComprobanteTransaccion({
         }
 
         .comprobante-ultra-compacto .badge-pagado {
-          background: #dcfce7;
+          background: #DCFCE7;
           color: #166534;
         }
 
         .comprobante-ultra-compacto .badge-parcial {
-          background: #dbeafe;
-          color: #1e40af;
+          background: #DBEAFE;
+          color: #0B3A63;
         }
 
         .comprobante-ultra-compacto .badge-reprogramado {
-          background: #ede9fe;
-          color: #5b21b6;
+          background: #E0E7FF;
+          color: #3730A3;
         }
 
         .comprobante-ultra-compacto .badge-vencido {
@@ -404,7 +404,7 @@ export default function ComprobanteTransaccion({
         /* ===== TÉRMINOS ===== */
         .comprobante-ultra-compacto .terminos {
           background: #fef9f3;
-          border: 1px solid #fbbf24;
+          border: 1px solid #D97706;
           border-radius: 4px;
           padding: 8px 10px;
           margin-top: 10px;
@@ -456,34 +456,34 @@ export default function ComprobanteTransaccion({
         }
 
         .comprobante-ultra-compacto .firma-linea {
-          border-top: 1.5px solid #111827;
+          border-top: 1.5px solid #1E293B;
           margin: 30px 10px 6px 10px;
         }
 
         .comprobante-ultra-compacto .firma-label {
           font-weight: 700;
-          color: #111827;
+          color: #1E293B;
           font-size: 10px;
           margin-bottom: 2px;
         }
 
         .comprobante-ultra-compacto .firma-nombre {
           font-size: 8px;
-          color: #6b7280;
+          color: #64748B;
         }
 
         /* ===== FOOTER ===== */
         .comprobante-ultra-compacto .footer {
           text-align: center;
           padding: 8px;
-          background: #f9fafb;
-          border-top: 1px solid #e5e7eb;
+          background: #F5F7FA;
+          border-top: 1px solid #E2E8F0;
           margin-top: 12px;
         }
 
         .comprobante-ultra-compacto .footer-text {
           font-size: 7px;
-          color: #6b7280;
+          color: #64748B;
         }
 
         /* ===== PRINT STYLES ===== */
@@ -529,13 +529,13 @@ export default function ComprobanteTransaccion({
 
       <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto comprobante-ultra-compacto">
         {/* Header con acciones */}
-        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-xl flex justify-between items-center print:hidden">
+        <div className="sticky top-0 bg-[#0F4C81] text-white p-6 rounded-t-xl flex justify-between items-center print:hidden">
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <CheckCircle className="w-8 h-8" />
               ¡{tipo === 'venta' ? 'Venta' : 'Préstamo'} Creado Exitosamente!
             </h2>
-            <p className="text-blue-100 text-sm mt-1">
+            <p className="text-white/80 text-sm mt-1">
               Comprobante generado el {formatearFecha(transaccion.fecha)}
             </p>
           </div>
@@ -555,11 +555,11 @@ export default function ComprobanteTransaccion({
         </div>
 
         {/* Botones de acción */}
-        <div className="flex gap-3 p-4 bg-gray-50 border-b print:hidden">
+        <div className="flex flex-wrap gap-3 p-4 bg-surface-2 border-b border-line print:hidden">
           <button
             type="button"
             onClick={handleImprimir}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors"
+            className="btn-secondary"
           >
             <Printer className="w-4 h-4" />
             Imprimir
@@ -569,7 +569,7 @@ export default function ComprobanteTransaccion({
             type="button"
             onClick={handleDescargar}
             disabled={generando}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="btn-primary"
           >
             <Download className="w-4 h-4" />
             {generando ? 'Generando...' : 'Descargar PDF'}
@@ -642,7 +642,7 @@ export default function ComprobanteTransaccion({
                 {transaccion.interes > 0 && (
                   <div className="detalle-row">
                     <span className="detalle-label">Interés ({transaccion.interes}%):</span>
-                    <span className="detalle-value" style={{ color: '#ea580c' }}>
+                    <span className="detalle-value" style={{ color: '#D97706' }}>
                       + {formatearMoneda(transaccion.montoTotal - transaccion.montoOriginal)}
                     </span>
                   </div>
@@ -674,7 +674,7 @@ export default function ComprobanteTransaccion({
                   <div className="plan-item-label">Valor Cuota</div>
                   <div
                     className="plan-item-value"
-                    style={{ color: tipo === 'venta' ? '#2563eb' : '#059669', fontSize: '11px' }}
+                    style={{ color: tipo === 'venta' ? '#0F4C81' : '#16A34A', fontSize: '11px' }}
                   >
                     {formatearMoneda(transaccion.montoCuota)}
                   </div>
@@ -731,7 +731,7 @@ export default function ComprobanteTransaccion({
                         <td>
                           {formatearFecha(cuota.fechaVencimiento)}
                           {cuota.fechaReprogramacion && (
-                            <div style={{ fontSize: '7px', color: '#7c3aed' }}>
+                            <div style={{ fontSize: '7px', color: '#4F46E5' }}>
                               Reprog: {formatearFecha(cuota.fechaReprogramacion)}
                             </div>
                           )}
@@ -739,13 +739,13 @@ export default function ComprobanteTransaccion({
                         <td style={{ textAlign: 'right' }}>
                           {formatearMoneda(cuota.monto)}
                         </td>
-                        <td style={{ textAlign: 'right', color: mora > 0 ? '#dc2626' : '#9ca3af' }}>
+                        <td style={{ textAlign: 'right', color: mora > 0 ? '#dc2626' : '#94A3B8' }}>
                           {mora > 0 ? formatearMoneda(mora) : '—'}
                         </td>
                         <td style={{ textAlign: 'right', fontWeight: 700 }}>
                           {formatearMoneda(totalCuota)}
                           {(cuota.montoPagado || 0) > 0 && estadoEfectivo !== 'pagado' && (
-                            <div style={{ fontSize: '8px', color: '#16a34a', fontWeight: 400 }}>
+                            <div style={{ fontSize: '8px', color: '#16A34A', fontWeight: 400 }}>
                               Abonado: {formatearMoneda(cuota.montoPagado || 0)}
                             </div>
                           )}
@@ -753,7 +753,7 @@ export default function ComprobanteTransaccion({
                         <td style={{ textAlign: 'center' }}>
                           <span className={`badge ${badgeClass}`}>{estadoLabel}</span>
                           {cuota.fechaPago && (
-                            <div style={{ fontSize: '7px', color: '#6b7280', marginTop: 2 }}>
+                            <div style={{ fontSize: '7px', color: '#64748B', marginTop: 2 }}>
                               {formatearFecha(cuota.fechaPago)}
                             </div>
                           )}
@@ -775,7 +775,7 @@ export default function ComprobanteTransaccion({
                     <td
                       style={{
                         textAlign: 'right',
-                        color: tipo === 'venta' ? '#2563eb' : '#059669'
+                        color: tipo === 'venta' ? '#0F4C81' : '#16A34A'
                       }}
                     >
                       {formatearMoneda(cuotas.reduce((s, c) => s + c.monto + (c.interesesMora || 0), 0))}
@@ -820,7 +820,7 @@ export default function ComprobanteTransaccion({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-gray-50 border-t flex justify-end print:hidden">
+        <div className="p-4 bg-surface-2 border-t border-line flex justify-end print:hidden">
           <button
             type="button"
             onClick={(e) => {
@@ -828,7 +828,7 @@ export default function ComprobanteTransaccion({
               e.stopPropagation()
               onCerrar()
             }}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="btn-primary"
           >
             Cerrar Comprobante
           </button>

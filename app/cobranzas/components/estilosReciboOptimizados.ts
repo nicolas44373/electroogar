@@ -4,7 +4,7 @@ const estilosReciboOptimizados = `
   .recibo-optimizado {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.4;
-    color: #1f2937;
+    color: #1E293B;
     font-size: 12px;
   }
 
@@ -20,13 +20,13 @@ const estilosReciboOptimizados = `
     text-align: center;
     margin-bottom: 15px;
     padding-bottom: 12px;
-    border-bottom: 2px solid #e5e7eb;
+    border-bottom: 2px solid #E2E8F0;
   }
 
   .recibo-optimizado .titulo-recibo {
     font-size: 20px;
     font-weight: 700;
-    color: #111827;
+    color: #1E293B;
     margin-bottom: 6px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -35,13 +35,13 @@ const estilosReciboOptimizados = `
   .recibo-optimizado .numero-recibo {
     font-size: 14px;
     font-weight: 600;
-    color: #2563eb;
+    color: #0F4C81;
     margin-bottom: 4px;
   }
 
   /* ===== DATOS DEL COMERCIO ===== */
   .recibo-optimizado .datos-comercio {
-    background: #f9fafb;
+    background: #F5F7FA;
     border-radius: 6px;
     padding: 12px 15px;
     margin-bottom: 15px;
@@ -50,7 +50,7 @@ const estilosReciboOptimizados = `
   .recibo-optimizado .titulo-seccion {
     font-size: 11px;
     font-weight: 700;
-    color: #374151;
+    color: #334155;
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -58,7 +58,7 @@ const estilosReciboOptimizados = `
 
   .recibo-optimizado .info-comercio {
     font-size: 10px;
-    color: #4b5563;
+    color: #64748B;
     line-height: 1.5;
   }
 
@@ -76,7 +76,7 @@ const estilosReciboOptimizados = `
 
   .recibo-optimizado .bloque-info {
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #E2E8F0;
     border-radius: 6px;
     padding: 12px;
   }
@@ -92,11 +92,11 @@ const estilosReciboOptimizados = `
 
   .recibo-optimizado .label-info {
     font-weight: 600;
-    color: #374151;
+    color: #334155;
   }
 
   .recibo-optimizado .valor-info {
-    color: #111827;
+    color: #1E293B;
   }
 
   /* ===== TABLA DE DETALLE ===== */
@@ -104,13 +104,13 @@ const estilosReciboOptimizados = `
     width: 100%;
     border-collapse: collapse;
     margin: 15px 0;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #E2E8F0;
     border-radius: 6px;
     overflow: hidden;
   }
 
   .recibo-optimizado .tabla-detalle thead {
-    background: #f3f4f6;
+    background: #F5F7FA;
   }
 
   .recibo-optimizado .tabla-detalle th {
@@ -118,15 +118,15 @@ const estilosReciboOptimizados = `
     text-align: left;
     font-size: 10px;
     font-weight: 700;
-    color: #374151;
+    color: #334155;
     text-transform: uppercase;
-    border-bottom: 2px solid #e5e7eb;
+    border-bottom: 2px solid #E2E8F0;
   }
 
   .recibo-optimizado .tabla-detalle td {
     padding: 10px;
     font-size: 10px;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid #F5F7FA;
   }
 
   .recibo-optimizado .tabla-detalle tbody tr:last-child td {
@@ -135,15 +135,15 @@ const estilosReciboOptimizados = `
 
   .recibo-optimizado .descripcion-concepto {
     font-size: 9px;
-    color: #6b7280;
+    color: #64748B;
     margin-top: 3px;
   }
 
   /* ===== ALERTA DE PAGO PARCIAL ===== */
   .recibo-optimizado .alerta-parcial {
     background: #fffbeb;
-    border: 1px solid #fbbf24;
-    border-left: 4px solid #f59e0b;
+    border: 1px solid #D97706;
+    border-left: 4px solid #D97706;
     border-radius: 6px;
     padding: 12px;
     margin: 15px 0;
@@ -180,8 +180,8 @@ const estilosReciboOptimizados = `
   }
 
   .recibo-optimizado .caja-total {
-    background: #dbeafe;
-    border: 2px solid #2563eb;
+    background: #DBEAFE;
+    border: 2px solid #0F4C81;
     border-radius: 6px;
     padding: 12px 18px;
     min-width: 200px;
@@ -190,19 +190,19 @@ const estilosReciboOptimizados = `
 
   .recibo-optimizado .caja-total.parcial {
     background: #fef3c7;
-    border-color: #f59e0b;
+    border-color: #D97706;
   }
 
   .recibo-optimizado .label-total {
     font-size: 10px;
-    color: #6b7280;
+    color: #64748B;
     margin-bottom: 4px;
   }
 
   .recibo-optimizado .monto-total {
     font-size: 20px;
     font-weight: 700;
-    color: #2563eb;
+    color: #0F4C81;
   }
 
   .recibo-optimizado .caja-total.parcial .monto-total {
@@ -211,7 +211,7 @@ const estilosReciboOptimizados = `
 
   .recibo-optimizado .estado-pago {
     font-size: 9px;
-    color: #6b7280;
+    color: #64748B;
     margin-top: 4px;
   }
 
@@ -222,8 +222,8 @@ const estilosReciboOptimizados = `
 
   /* ===== OBSERVACIONES ===== */
   .recibo-optimizado .observaciones {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
+    background: #F5F7FA;
+    border: 1px solid #E2E8F0;
     border-radius: 6px;
     padding: 12px;
     margin: 15px 0;
@@ -231,7 +231,7 @@ const estilosReciboOptimizados = `
 
   .recibo-optimizado .observaciones-texto {
     font-size: 10px;
-    color: #4b5563;
+    color: #64748B;
     line-height: 1.5;
     word-wrap: break-word;
   }
@@ -241,12 +241,12 @@ const estilosReciboOptimizados = `
     text-align: center;
     margin-top: 20px;
     padding-top: 12px;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid #E2E8F0;
   }
 
   .recibo-optimizado .footer-texto {
     font-size: 9px;
-    color: #9ca3af;
+    color: #94A3B8;
     line-height: 1.4;
   }
 

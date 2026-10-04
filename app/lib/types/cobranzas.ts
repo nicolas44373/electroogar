@@ -6,6 +6,10 @@
   email?: string
   documento?: string
   direccion?: string
+  observaciones?: string | null
+  latitud?: number | null
+  longitud?: number | null
+  ubicacion_actualizada?: string | null
   created_at?: string
 }
 

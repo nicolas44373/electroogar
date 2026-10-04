@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { Transaccion, Pago } from '@/app/lib/types/cobranzas'
 import { supabase } from '@/app/lib/supabase'
+import { hoyISO } from '@/app/lib/fechas'
 
 interface ToastMsg { tipo: 'success' | 'error'; texto: string }
 
@@ -167,7 +168,7 @@ export default function CuentaCorriente({
   const abrirModalPago = (mov: MovimientoCuentaCorriente) => {
     setVentaSeleccionada(mov)
     setMontoPago('') // vacío para que el usuario lo escriba
-    setFechaPago(new Date().toISOString().split('T')[0])
+    setFechaPago(hoyISO())
     setModalPagoAbierto(true)
   }
   const cerrarModalPago = () => {
@@ -313,358 +314,316 @@ export default function CuentaCorriente({
   return (
     <div className="w-full max-w-full">
       {toast && (
-        <div className={`mb-3 flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium ${
-          toast.tipo === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'
-        }`}>
+        <div className={`mb-3 ${toast.tipo === 'success' ? 'alert-success' : 'alert-danger'}`} role="status">
           {toast.tipo === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
           {toast.texto}
         </div>
       )}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+      <div className="card overflow-hidden">
         {/* Header */}
-        <div className="p-4 sm:p-6 border-b">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-gray-700" />
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
-                Cuenta Corriente
-              </h3>
-            </div>
-            {/* resumen rapido (oculto en xs para dar espacio) */}
-            <div className="hidden sm:flex items-center gap-3">
-              <div className="text-xs text-gray-500">Cliente</div>
-              <div className="text-sm font-medium text-gray-800">{clienteId}</div>
-            </div>
-          </div>
+        <div className="p-4 sm:p-5 border-b border-line">
+          <h3 className="section-title">
+            <FileText className="w-5 h-5 text-primary" />
+            Cuenta corriente
+          </h3>
 
           {/* Resumen (tarjetas) - mobile first */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-            <div className="p-3 bg-blue-50 rounded-lg flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-md">
-                  <TrendingUp className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <div className="text-xs text-blue-600 font-medium">Total Ventas</div>
-                  <div className="text-sm font-bold text-blue-700">
-                    {formatearMoneda(totalVentas)}
-                  </div>
-                </div>
-              </div>
+          <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+            <div className="p-3 rounded-lg bg-surface-2">
+              <dt className="text-xs text-muted font-medium flex items-center gap-1.5">
+                <TrendingUp className="w-4 h-4" /> Total vendido y prestado
+              </dt>
+              <dd className="text-base font-semibold text-fg num mt-1">
+                {formatearMoneda(totalVentas)}
+              </dd>
             </div>
 
-            <div className="p-3 bg-green-50 rounded-lg flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-md">
-                  <TrendingDown className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <div className="text-xs text-green-600 font-medium">Total Pagos</div>
-                  <div className="text-sm font-bold text-green-700">
-                    {formatearMoneda(totalPagos)}
-                  </div>
-                </div>
-              </div>
+            <div className="p-3 rounded-lg bg-surface-2">
+              <dt className="text-xs text-muted font-medium flex items-center gap-1.5">
+                <TrendingDown className="w-4 h-4" /> Total pagado
+              </dt>
+              <dd className="text-base font-semibold text-success-text num mt-1">
+                {formatearMoneda(totalPagos)}
+              </dd>
             </div>
 
-            <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-100 rounded-md">
-                  <DollarSign className="w-4 h-4 text-gray-600" />
-                </div>
-                <div>
-                  <div className="text-xs text-gray-600 font-medium">Saldo Actual</div>
-                  <div
-                    className={`text-sm font-bold ${
-                      saldoActual > 0
-                        ? 'text-red-600'
-                        : saldoActual < 0
-                        ? 'text-green-600'
-                        : 'text-gray-700'
-                    }`}
-                  >
-                    {formatearMoneda(Math.abs(saldoActual))}
-                    <span className="text-xs ml-1">
-                      {saldoActual > 0 ? ' (Debe)' : saldoActual < 0 ? ' (Favor)' : ' (Saldada)'}
-                    </span>
-                  </div>
-                </div>
-              </div>
+            <div className={`p-3 rounded-lg ${
+              saldoActual > 0 ? 'bg-danger-soft' : saldoActual < 0 ? 'bg-success-soft' : 'bg-surface-2'
+            }`}>
+              <dt className="text-xs text-muted font-medium flex items-center gap-1.5">
+                <DollarSign className="w-4 h-4" /> Saldo actual
+              </dt>
+              <dd
+                className={`text-base font-bold num mt-1 ${
+                  saldoActual > 0
+                    ? 'text-danger-text'
+                    : saldoActual < 0
+                    ? 'text-success-text'
+                    : 'text-fg'
+                }`}
+              >
+                {formatearMoneda(Math.abs(saldoActual))}
+                <span className="text-xs font-medium ml-1">
+                  {saldoActual > 0 ? ' (Debe)' : saldoActual < 0 ? ' (Favor)' : ' (Saldada)'}
+                </span>
+              </dd>
             </div>
-          </div>
+          </dl>
 
           {/* filtros - mobile friendly */}
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Tipo</label>
+              <label htmlFor="cc-tipo" className="label">Mostrar</label>
               <select
+                id="cc-tipo"
                 value={filtroTipo}
                 onChange={(e) => setFiltroTipo(e.target.value as any)}
-                className="w-full px-3 py-2 border rounded-md text-sm"
+                className="input"
               >
-                <option value="todos">Todos</option>
-                <option value="ventas">Ventas</option>
-                <option value="pagos">Pagos</option>
+                <option value="todos">Todos los movimientos</option>
+                <option value="ventas">Solo ventas y préstamos</option>
+                <option value="pagos">Solo pagos</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Desde</label>
+              <label htmlFor="cc-desde" className="label">Desde</label>
               <input
+                id="cc-desde"
                 type="date"
                 value={fechaDesde}
                 onChange={(e) => setFechaDesde(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md text-sm"
+                className="input"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Hasta</label>
+              <label htmlFor="cc-hasta" className="label">Hasta</label>
               <input
+                id="cc-hasta"
                 type="date"
                 value={fechaHasta}
                 onChange={(e) => setFechaHasta(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md text-sm"
+                className="input"
               />
             </div>
 
-            <div className="flex items-end gap-2">
+            <div className="flex items-end">
               <button
                 onClick={() => {
                   setFechaDesde('')
                   setFechaHasta('')
                   setFiltroTipo('todos')
                 }}
-                className="text-sm text-gray-600 underline"
+                className="btn-ghost w-full sm:w-auto"
               >
-                Limpiar
+                <X className="w-4 h-4" />
+                Quitar filtros
               </button>
             </div>
           </div>
         </div>
 
         {/* Contenido principal: Lista móvil (xs) y Tabla en sm+ */}
-        <div className="p-3 sm:p-4">
+        <div>
           {/* MOBILE: tarjetas lista (visible en xs, oculto en sm+) */}
-          <div className="space-y-3 sm:hidden">
+          <div className="sm:hidden divide-y divide-line">
             {movimientosFiltrados.length > 0 ? (
               movimientosFiltrados.map((mov) => (
-                <article key={mov.id} className="bg-white border rounded-lg p-3 shadow-sm">
+                <article key={mov.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <div className="text-sm font-medium text-gray-800">
-                          {formatearFecha(mov.fecha)}
-                        </div>
-                      </div>
-
-                      <div className="mt-2">
-                        <div className="text-sm font-medium">{mov.descripcion}</div>
-
-                        {/* Mostrar descripción de la transacción si existe */}
-                        {mov.descripcionTransaccion && (
-                          <div className="mt-1 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded">
-                            <p className="text-xs text-gray-700">
-                              <span className="font-medium">📝</span>{' '}
-                              {mov.descripcionTransaccion}
-                            </p>
-                          </div>
+                        {mov.tipo === 'venta' ? (
+                          <span className="badge-primary">
+                            <TrendingUp className="w-3.5 h-3.5" /> Venta
+                          </span>
+                        ) : (
+                          <span className="badge-success">
+                            <TrendingDown className="w-3.5 h-3.5" /> Pago
+                          </span>
                         )}
-
-                        <div className="flex items-center gap-2 mt-1 text-xs">
-                          {mov.tipo === 'venta' ? (
-                            <div className="text-blue-600 flex items-center gap-1">
-                              <TrendingUp className="w-3 h-3" /> Venta
-                            </div>
-                          ) : (
-                            <div className="text-green-600 flex items-center gap-1">
-                              <TrendingDown className="w-3 h-3" /> Pago
-                            </div>
-                          )}
-                          <div className="text-gray-500">• {mov.referencia}</div>
-                        </div>
+                        <span className="text-xs text-muted num">{formatearFecha(mov.fecha)}</span>
                       </div>
+
+                      <p className="text-sm font-medium text-fg mt-2">{mov.descripcion}</p>
+
+                      {/* Mostrar descripción de la transacción si existe */}
+                      {mov.descripcionTransaccion && (
+                        <p className="mt-1 text-xs text-muted border-l-2 border-primary/40 pl-2">
+                          {mov.descripcionTransaccion}
+                        </p>
+                      )}
+
+                      <p className="text-xs text-muted mt-1">{mov.referencia}</p>
                     </div>
 
-                    <div className="flex flex-col items-end justify-between">
-                      <div className="text-sm font-semibold">
-                        {mov.debe > 0 ? (
-                          <span className="text-red-600">{formatearMoneda(mov.debe)}</span>
-                        ) : null}
-                        {mov.haber > 0 ? (
-                          <span className="text-green-600">{formatearMoneda(mov.haber)}</span>
-                        ) : null}
-                      </div>
-                      <div className="text-xs mt-2 text-gray-600">
+                    <div className="text-right">
+                      {mov.debe > 0 ? (
+                        <p className="text-sm font-semibold text-danger-text num whitespace-nowrap">{formatearMoneda(mov.debe)}</p>
+                      ) : null}
+                      {mov.haber > 0 ? (
+                        <p className="text-sm font-semibold text-success-text num whitespace-nowrap">{formatearMoneda(mov.haber)}</p>
+                      ) : null}
+                      <p className="text-xs text-muted mt-1 num whitespace-nowrap">
                         Saldo {formatearMoneda(mov.saldo)}
-                      </div>
-
-                      <div className="flex gap-2 mt-3">
-                        {mov.tipo === 'venta' && (
-                          <button
-                            onClick={() => abrirModalPago(mov)}
-                            className="flex items-center gap-1 px-3 py-2 rounded bg-green-600 text-white text-xs"
-                          >
-                            <DollarSign className="w-3 h-3" /> Pagar
-                          </button>
-                        )}
-                        <button
-                          onClick={() => abrirModalEliminar(mov)}
-                          className="flex items-center gap-1 px-3 py-2 rounded bg-red-600 text-white text-xs"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
+                      </p>
                     </div>
+                  </div>
+
+                  <div className="flex gap-2 mt-3">
+                    {mov.tipo === 'venta' && (
+                      <button
+                        onClick={() => abrirModalPago(mov)}
+                        className="btn-accent btn-sm flex-1"
+                      >
+                        <DollarSign className="w-4 h-4" /> Registrar pago
+                      </button>
+                    )}
+                    <button
+                      onClick={() => abrirModalEliminar(mov)}
+                      className="btn-secondary btn-sm text-danger-text"
+                      aria-label={mov.tipo === 'venta' ? 'Eliminar venta' : 'Anular pago'}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </article>
               ))
             ) : (
-              <div className="text-center py-6 text-gray-500">No hay movimientos</div>
+              <div className="empty-state py-8">
+                <FileText className="w-8 h-8 text-muted/60 mb-2" />
+                <p className="text-sm">No hay movimientos con estos filtros.</p>
+              </div>
             )}
           </div>
 
           {/* TABLE for sm+ (hidden on xs) */}
-          <div className="hidden sm:block">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Fecha</th>
-                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">
-                      Descripción
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">
-                      Referencia
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase">Debe</th>
-                    <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase">
-                      Haber
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase">
-                      Saldo
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs text-gray-500 uppercase">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {movimientosFiltrados.length > 0 ? (
-                    movimientosFiltrados.map((mov, i) => (
-                      <tr key={mov.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            <span>{formatearFecha(mov.fecha)}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="font-medium">{mov.descripcion}</div>
-
-                          {/* Mostrar descripción de la transacción si existe */}
-                          {mov.descripcionTransaccion && (
-                            <div className="mt-1 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded text-xs text-gray-700">
-                              📝 {mov.descripcionTransaccion}
-                            </div>
-                          )}
-
-                          <div className="text-xs text-gray-500 mt-1">
-                            {mov.tipo === 'venta' ? (
-                              <span className="text-blue-600 inline-flex items-center gap-1">
-                                <TrendingUp className="w-3 h-3" />
-                                Venta
-                              </span>
-                            ) : (
-                              <span className="text-green-600 inline-flex items-center gap-1">
-                                <TrendingDown className="w-3 h-3" />
-                                Pago
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-500">{mov.referencia}</td>
-                        <td className="px-4 py-3 text-right">
-                          {mov.debe > 0 ? (
-                            <span className="text-red-600 font-medium">
-                              {formatearMoneda(mov.debe)}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="data-table min-w-[720px]">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Detalle</th>
+                  <th>Comprobante</th>
+                  <th className="!text-right">Debe</th>
+                  <th className="!text-right">Haber</th>
+                  <th className="!text-right">Saldo</th>
+                  <th className="!text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movimientosFiltrados.length > 0 ? (
+                  movimientosFiltrados.map((mov) => (
+                    <tr key={mov.id}>
+                      <td className="whitespace-nowrap text-muted num">
+                        {formatearFecha(mov.fecha)}
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          {mov.tipo === 'venta' ? (
+                            <span className="badge-primary">
+                              <TrendingUp className="w-3.5 h-3.5" />
+                              Venta
                             </span>
                           ) : (
-                            '-'
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {mov.haber > 0 ? (
-                            <span className="text-green-600 font-medium">
-                              {formatearMoneda(mov.haber)}
+                            <span className="badge-success">
+                              <TrendingDown className="w-3.5 h-3.5" />
+                              Pago
                             </span>
-                          ) : (
-                            '-'
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-right font-medium">
-                          {formatearMoneda(mov.saldo)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="inline-flex items-center gap-2">
-                            {mov.tipo === 'venta' && (
-                              <button
-                                onClick={() => abrirModalPago(mov)}
-                                className="px-2 py-1 rounded bg-green-600 text-white text-xs"
-                              >
-                                <DollarSign className="w-3 h-3 inline" /> Pagar
-                              </button>
-                            )}
+                        </div>
+                        <p className="font-medium text-fg mt-1">{mov.descripcion}</p>
+
+                        {/* Mostrar descripción de la transacción si existe */}
+                        {mov.descripcionTransaccion && (
+                          <p className="mt-1 text-xs text-muted border-l-2 border-primary/40 pl-2">
+                            {mov.descripcionTransaccion}
+                          </p>
+                        )}
+                      </td>
+                      <td className="text-muted text-xs">{mov.referencia}</td>
+                      <td className="text-right num whitespace-nowrap">
+                        {mov.debe > 0 ? (
+                          <span className="text-danger-text font-medium">
+                            {formatearMoneda(mov.debe)}
+                          </span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="text-right num whitespace-nowrap">
+                        {mov.haber > 0 ? (
+                          <span className="text-success-text font-medium">
+                            {formatearMoneda(mov.haber)}
+                          </span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="text-right font-semibold text-fg num whitespace-nowrap">
+                        {formatearMoneda(mov.saldo)}
+                      </td>
+                      <td>
+                        <div className="flex items-center justify-end gap-1">
+                          {mov.tipo === 'venta' && (
                             <button
-                              onClick={() => abrirModalEliminar(mov)}
-                              className="px-2 py-1 rounded bg-red-600 text-white text-xs"
+                              onClick={() => abrirModalPago(mov)}
+                              className="btn-accent btn-sm"
                             >
-                              <Trash2 className="w-3 h-3 inline" />
+                              <DollarSign className="w-3.5 h-3.5" /> Registrar pago
                             </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={7} className="text-center py-6 text-gray-500">
-                        No hay movimientos para mostrar
+                          )}
+                          <button
+                            onClick={() => abrirModalEliminar(mov)}
+                            className="btn-icon hover:!text-danger hover:!bg-danger-soft"
+                            title={mov.tipo === 'venta' ? 'Eliminar venta' : 'Anular pago'}
+                            aria-label={mov.tipo === 'venta' ? 'Eliminar venta' : 'Anular pago'}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="text-center !py-10 text-muted">
+                      No hay movimientos con estos filtros.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
         {/* Footer resumen */}
-        <div className="p-3 sm:p-4 border-t bg-gray-50">
+        <div className="p-4 sm:px-5 border-t border-line bg-surface-2">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="text-sm text-gray-600">
-              Total de movimientos: {movimientosFiltrados.length}
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-gray-600">Saldo Final</div>
-              <div
-                className={`text-base font-bold ${
+            <p className="text-sm text-muted num">
+              {movimientosFiltrados.length} movimiento{movimientosFiltrados.length !== 1 ? 's' : ''}
+            </p>
+            <div className="sm:text-right">
+              <p className="text-xs text-muted">Saldo final</p>
+              <p
+                className={`text-lg font-bold num ${
                   saldoActual > 0
-                    ? 'text-red-600'
+                    ? 'text-danger-text'
                     : saldoActual < 0
-                    ? 'text-green-600'
-                    : 'text-gray-700'
+                    ? 'text-success-text'
+                    : 'text-fg'
                 }`}
               >
                 {formatearMoneda(Math.abs(saldoActual))}
-                <span className="text-xs ml-1">
+                <span className="text-xs font-medium ml-1">
                   {saldoActual > 0
-                    ? '(A favor del comercio)'
+                    ? '(a cobrar al cliente)'
                     : saldoActual < 0
-                    ? '(A favor del cliente)'
-                    : '(Cuenta saldada)'}
+                    ? '(a favor del cliente)'
+                    : '(cuenta saldada)'}
                 </span>
-              </div>
+              </p>
             </div>
           </div>
         </div>
@@ -676,65 +635,69 @@ export default function CuentaCorriente({
 
       {/* Modal Pago - bottom sheet en móviles, modal centrado en sm+ */}
       {modalPagoAbierto && ventaSeleccionada && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" aria-modal="true" role="dialog">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" aria-modal="true" role="dialog" aria-labelledby="cc-titulo-pago">
           {/* overlay */}
-          <div className="absolute inset-0 bg-black opacity-40" onClick={cerrarModalPago}></div>
+          <div className="absolute inset-0 bg-slate-950/50" onClick={cerrarModalPago}></div>
 
           {/* modal panel */}
-          <div className="relative w-full sm:max-w-md bg-white rounded-t-xl sm:rounded-xl p-4 sm:p-6 shadow-lg transform-gpu">
+          <div className="relative w-full sm:max-w-md bg-surface border border-line rounded-t-xl sm:rounded-xl shadow-e3">
             {/* header */}
-            <div className="flex items-center justify-between">
-              <h4 className="text-base font-semibold">Registrar pago</h4>
-              <button onClick={cerrarModalPago} className="p-2 rounded-md">
-                <X className="w-4 h-4 text-gray-600" />
+            <div className="modal-header justify-between">
+              <h4 id="cc-titulo-pago" className="text-base font-semibold text-fg">Registrar pago</h4>
+              <button onClick={cerrarModalPago} className="btn-icon" aria-label="Cerrar">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="mt-3 space-y-3">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Venta</label>
-                <div className="text-sm font-medium text-gray-800">{ventaSeleccionada.descripcion}</div>
-                <div className="text-xs text-gray-500 mt-1">{ventaSeleccionada.referencia}</div>
+            <div className="modal-body">
+              <div className="rounded-lg bg-surface-2 p-3">
+                <p className="text-xs text-muted">Venta o préstamo</p>
+                <p className="text-sm font-medium text-fg">{ventaSeleccionada.descripcion}</p>
+                <p className="text-xs text-muted mt-0.5">{ventaSeleccionada.referencia}</p>
 
                 {/* Mostrar descripción de la transacción si existe */}
                 {ventaSeleccionada.descripcionTransaccion && (
-                  <div className="mt-2 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded">
-                    <p className="text-xs text-gray-700">
-                      <span className="font-medium">📝</span> {ventaSeleccionada.descripcionTransaccion}
-                    </p>
-                  </div>
+                  <p className="mt-2 text-xs text-muted border-l-2 border-primary/40 pl-2">
+                    {ventaSeleccionada.descripcionTransaccion}
+                  </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Monto</label>
-                <input
-                  inputMode="decimal"
-                  value={montoPago}
-                  onChange={(e) => montoInputOnChange(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-3 py-2 border rounded-md text-sm"
-                />
+                <label htmlFor="cc-monto" className="label">Monto recibido</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-medium pointer-events-none">$</span>
+                  <input
+                    id="cc-monto"
+                    inputMode="decimal"
+                    value={montoPago}
+                    onChange={(e) => montoInputOnChange(e.target.value)}
+                    placeholder="0,00"
+                    className="input pl-8 num"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Fecha</label>
+                <label htmlFor="cc-fecha" className="label">Fecha del pago</label>
                 <input
+                  id="cc-fecha"
                   type="date"
                   value={fechaPago}
                   onChange={(e) => setFechaPago(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md text-sm"
+                  className="input"
                 />
               </div>
+            </div>
 
-              <div className="flex justify-end gap-2 mt-1">
-                <button onClick={cerrarModalPago} className="px-3 py-2 rounded bg-gray-200 text-sm">
-                  Cancelar
-                </button>
-                <button onClick={registrarPago} className="px-3 py-2 rounded bg-green-600 text-white text-sm">
-                  Registrar
-                </button>
-              </div>
+            <div className="modal-footer">
+              <button onClick={cerrarModalPago} className="btn-secondary">
+                Cancelar
+              </button>
+              <button onClick={registrarPago} className="btn-accent">
+                <CheckCircle className="w-4 h-4" />
+                Registrar pago
+              </button>
             </div>
           </div>
         </div>
@@ -742,74 +705,66 @@ export default function CuentaCorriente({
 
       {/* Modal eliminar - same pattern bottom sheet mobile / centered on sm+ */}
       {modalEliminarAbierto && movimientoAEliminar && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black opacity-40" onClick={cerrarModalEliminar}></div>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="cc-titulo-eliminar">
+          <div className="absolute inset-0 bg-slate-950/50" onClick={cerrarModalEliminar}></div>
 
-          <div className="relative w-full sm:max-w-lg bg-white rounded-t-xl sm:rounded-xl p-4 sm:p-6 shadow-lg">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-6 h-6 text-orange-600" />
-              <div className="flex-1">
-                <h4 className="text-base font-semibold">Confirmar reversión</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  ¿Estás seguro de que deseas {movimientoAEliminar.tipo === 'venta' ? 'eliminar esta venta' : 'revertir este pago'}?
+          <div className="relative w-full sm:max-w-lg bg-surface border border-line rounded-t-xl sm:rounded-xl shadow-e3">
+            <div className="modal-body">
+              <div className="flex items-start gap-3">
+                <div className="icon-tile bg-warning-soft text-warning-text">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h4 id="cc-titulo-eliminar" className="text-base font-semibold text-fg">
+                    {movimientoAEliminar.tipo === 'venta' ? '¿Eliminar esta venta?' : '¿Anular este pago?'}
+                  </h4>
+                  <p className="text-sm text-muted mt-1">
+                    Revisá los datos antes de confirmar.
+                  </p>
+                </div>
+                <button onClick={cerrarModalEliminar} className="btn-icon -mt-2 -mr-2" aria-label="Cerrar">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="rounded-lg bg-surface-2 p-3 text-sm">
+                <p className="font-medium text-fg">{movimientoAEliminar.descripcion}</p>
+
+                {/* Mostrar descripción de la transacción si existe */}
+                {movimientoAEliminar.descripcionTransaccion && (
+                  <p className="mt-1 text-xs text-muted border-l-2 border-primary/40 pl-2">{movimientoAEliminar.descripcionTransaccion}</p>
+                )}
+
+                <p className="text-xs text-muted mt-2 num">Fecha: {formatearFecha(movimientoAEliminar.fecha)}</p>
+                <p className="text-xs text-muted mt-0.5 num">
+                  Monto: {formatearMoneda(movimientoAEliminar.debe || movimientoAEliminar.haber)}
                 </p>
               </div>
-              <button onClick={cerrarModalEliminar} className="p-1 rounded-md">
-                <X className="w-4 h-4 text-gray-600" />
-              </button>
-            </div>
 
-            <div className="mt-4 bg-gray-50 rounded p-3">
-              <div className="text-sm font-medium text-gray-700">{movimientoAEliminar.descripcion}</div>
-
-              {/* Mostrar descripción de la transacción si existe */}
-              {movimientoAEliminar.descripcionTransaccion && (
-                <div className="mt-2 bg-blue-50 border-l-2 border-blue-400 px-2 py-1 rounded">
-                  <p className="text-xs text-gray-700">📝 {movimientoAEliminar.descripcionTransaccion}</p>
+              {movimientoAEliminar.tipo === 'venta' ? (
+                <div className="alert-warning">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>Se elimina la venta de forma permanente y los pagos que tenía vuelven a quedar pendientes.</span>
+                </div>
+              ) : (
+                <div className="alert-info">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>La cuota vuelve a quedar pendiente. Vas a poder registrar el pago de nuevo más adelante.</span>
                 </div>
               )}
-
-              <div className="text-xs text-gray-500 mt-1">Fecha: {formatearFecha(movimientoAEliminar.fecha)}</div>
-              <div className="text-xs text-gray-500 mt-1">
-                Monto: {formatearMoneda(movimientoAEliminar.debe || movimientoAEliminar.haber)}
-              </div>
             </div>
 
-            {movimientoAEliminar.tipo === 'venta' ? (
-              <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-                <strong>Advertencia:</strong> Al eliminar la venta, todos los pagos asociados volverán a estado "pendiente" y la venta se eliminará permanentemente.
-              </div>
-            ) : (
-              <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
-                <strong>Información:</strong> Este pago volverá a estado "pendiente". La cuota seguirá existiendo y podrás registrar el pago más adelante.
-              </div>
-            )}
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={cerrarModalEliminar} className="px-4 py-2 bg-gray-200 rounded text-sm" disabled={eliminando}>
+            <div className="modal-footer">
+              <button onClick={cerrarModalEliminar} className="btn-secondary" disabled={eliminando}>
                 Cancelar
               </button>
               <button
                 onClick={eliminarMovimiento}
-                className="px-4 py-2 bg-orange-600 text-white rounded text-sm flex items-center gap-2"
+                className="btn-danger"
                 disabled={eliminando}
               >
-                {eliminando ? (
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    ></path>
-                  </svg>
-                ) : null}
-                {movimientoAEliminar.tipo === 'pago' ? 'Revertir Pago' : 'Eliminar Venta'}
+                {eliminando ? <span className="spinner" /> : <Trash2 className="w-4 h-4" />}
+                {movimientoAEliminar.tipo === 'pago' ? 'Anular pago' : 'Eliminar venta'}
               </button>
             </div>
           </div>

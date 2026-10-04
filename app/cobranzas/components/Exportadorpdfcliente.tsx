@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { Cliente, Transaccion, Pago } from '@/app/lib/types/cobranzas'
+import { hoyISO } from '@/app/lib/fechas'
 import { FileText, Download, Phone, X, Eye, CheckCircle, AlertTriangle } from 'lucide-react'
 
 interface ExportadorPDFClienteProps {
@@ -116,7 +117,7 @@ export default function ExportadorPDFCliente({
     try {
       const blob = await generarPDF()
       if (!blob) throw new Error('No se pudo generar el PDF')
-      const fileName = `Estado_Cuenta_${cliente.nombre}_${cliente.apellido}_${new Date().toISOString().split('T')[0]}.pdf`
+      const fileName = `Estado_Cuenta_${cliente.nombre}_${cliente.apellido}_${hoyISO()}.pdf`
       const blobUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = blobUrl
@@ -145,7 +146,7 @@ export default function ExportadorPDFCliente({
     try {
       const blob = await generarPDF()
       if (!blob) throw new Error('No se pudo generar el PDF')
-      const fileName = `Estado_Cuenta_${cliente.nombre}_${cliente.apellido}_${new Date().toISOString().split('T')[0]}.pdf`
+      const fileName = `Estado_Cuenta_${cliente.nombre}_${cliente.apellido}_${hoyISO()}.pdf`
       const blobUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = blobUrl
@@ -182,29 +183,29 @@ export default function ExportadorPDFCliente({
   return (
     <>
       {toast && (
-        <div className={`mb-3 flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium ${toast.tipo === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'}`}>
-          {toast.tipo === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0 text-green-600" /> : <AlertTriangle className="w-4 h-4 flex-shrink-0 text-red-600" />}
+        <div className={`mb-3 ${toast.tipo === 'success' ? 'alert-success' : 'alert-danger'}`}>
+          {toast.tipo === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertTriangle className="w-4 h-4 flex-shrink-0" />}
           {toast.texto}
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
-        <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-800">
-          <FileText className="w-5 h-5 text-blue-600" />
+      <div className="card card-body">
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-fg">
+          <FileText className="w-5 h-5 text-primary" />
           Exportar Estado de Cuenta
         </h3>
         <div className="flex flex-wrap gap-3">
-          <button onClick={() => setMostrarPreview(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
+          <button onClick={() => setMostrarPreview(true)} className="btn-secondary">
             <Eye className="w-4 h-4" />
             Vista previa
           </button>
-          <button onClick={descargarPDF} disabled={generando} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-sm font-medium">
-            {generando ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Download className="w-4 h-4" />}
+          <button onClick={descargarPDF} disabled={generando} className="btn-primary">
+            {generando ? <span className="spinner" /> : <Download className="w-4 h-4" />}
             {generando ? 'Generando PDF...' : 'Descargar PDF'}
           </button>
           {cliente.telefono && (
-            <button onClick={enviarPorWhatsApp} disabled={generando} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-sm font-medium">
-              {generando ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Phone className="w-4 h-4" />}
+            <button onClick={enviarPorWhatsApp} disabled={generando} className="btn-secondary">
+              {generando ? <span className="spinner" /> : <Phone className="w-4 h-4" />}
               WhatsApp
             </button>
           )}
@@ -212,42 +213,42 @@ export default function ExportadorPDFCliente({
       </div>
 
       {mostrarPreview && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-4">
-            <div className="sticky top-0 bg-white rounded-t-xl border-b flex items-center justify-between px-5 py-3 z-10">
-              <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-600" />
+        <div className="fixed inset-0 bg-slate-950/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-surface border border-line rounded-xl shadow-e3 w-full max-w-4xl my-4">
+            <div className="sticky top-0 bg-surface rounded-t-xl border-b border-line flex items-center justify-between px-5 py-3 z-10">
+              <h3 className="font-semibold text-fg flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
                 Estado de Cuenta
               </h3>
               <div className="flex items-center gap-2">
-                <button onClick={descargarPDF} disabled={generando} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors text-sm font-medium">
-                  {generando ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Download className="w-4 h-4" />}
+                <button onClick={descargarPDF} disabled={generando} className="btn-primary">
+                  {generando ? <span className="spinner" /> : <Download className="w-4 h-4" />}
                   {generando ? 'Generando...' : 'Descargar PDF'}
                 </button>
-                <button onClick={() => setMostrarPreview(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <button onClick={() => setMostrarPreview(false)} className="btn-icon">
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            <div ref={contenidoRef} className="bg-white p-8" style={{ fontFamily: 'Arial, sans-serif' }}>
-              <div style={{ textAlign: 'center', marginBottom: 24, paddingBottom: 16, borderBottom: '3px solid #2563eb' }}>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#1e40af', marginBottom: 6 }}>ESTADO DE CUENTA</div>
+            <div ref={contenidoRef} className="bg-white p-8" style={{ fontFamily: 'var(--font-inter), Arial, sans-serif' }}>
+              <div style={{ textAlign: 'center', marginBottom: 24, paddingBottom: 16, borderBottom: '3px solid #0F4C81' }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#0B3A63', marginBottom: 6 }}>ESTADO DE CUENTA</div>
                 <div style={{ fontSize: 11, color: '#64748b' }}>Generado el {fechaActual}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginTop: 4 }}>ELECTRO HOGAR</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginTop: 4 }}>ELECTRO HOGAR</div>
               </div>
 
-              <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, borderLeft: '4px solid #2563eb', marginBottom: 20 }}>
-                <div style={{ fontWeight: 700, color: '#1e40af', marginBottom: 8, fontSize: 13 }}>Informacion del Cliente</div>
+              <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, borderLeft: '4px solid #0F4C81', marginBottom: 20 }}>
+                <div style={{ fontWeight: 700, color: '#0B3A63', marginBottom: 8, fontSize: 13 }}>Informacion del Cliente</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 12 }}>
-                  <div><span style={{ color: '#6b7280', fontWeight: 600 }}>Nombre: </span><span style={{ color: '#111827' }}>{cliente.nombre} {cliente.apellido || ''}</span></div>
-                  {cliente.documento && <div><span style={{ color: '#6b7280', fontWeight: 600 }}>Documento: </span><span style={{ color: '#111827' }}>{cliente.documento}</span></div>}
-                  {cliente.telefono && <div><span style={{ color: '#6b7280', fontWeight: 600 }}>Telefono: </span><span style={{ color: '#111827' }}>{cliente.telefono}</span></div>}
-                  {cliente.email && <div><span style={{ color: '#6b7280', fontWeight: 600 }}>Email: </span><span style={{ color: '#111827' }}>{cliente.email}</span></div>}
+                  <div><span style={{ color: '#64748B', fontWeight: 600 }}>Nombre: </span><span style={{ color: '#1E293B' }}>{cliente.nombre} {cliente.apellido || ''}</span></div>
+                  {cliente.documento && <div><span style={{ color: '#64748B', fontWeight: 600 }}>Documento: </span><span style={{ color: '#1E293B' }}>{cliente.documento}</span></div>}
+                  {cliente.telefono && <div><span style={{ color: '#64748B', fontWeight: 600 }}>Telefono: </span><span style={{ color: '#1E293B' }}>{cliente.telefono}</span></div>}
+                  {cliente.email && <div><span style={{ color: '#64748B', fontWeight: 600 }}>Email: </span><span style={{ color: '#1E293B' }}>{cliente.email}</span></div>}
                 </div>
               </div>
 
-              <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #4f46e5 100%)', color: 'white', padding: 16, borderRadius: 8, marginBottom: 20 }}>
+              <div style={{ background: 'linear-gradient(135deg, #0B3A63 0%, #4f46e5 100%)', color: 'white', padding: 16, borderRadius: 8, marginBottom: 20 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12, textAlign: 'center' }}>Resumen General de la Cuenta</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                   {[
@@ -282,17 +283,17 @@ export default function ExportadorPDFCliente({
 
                 return (
                   <div key={trans.id} style={{ marginBottom: 28, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-                    <div style={{ background: '#f1f5f9', padding: '12px 16px', borderLeft: '4px solid #7c3aed' }}>
+                    <div style={{ background: '#f1f5f9', padding: '12px 16px', borderLeft: '4px solid #4F46E5' }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>
                         {trans.tipo_transaccion === 'venta' ? 'Venta:' : 'Prestamo:'} {tituloTransaccion(trans)}
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px 12px', fontSize: 11 }}>
-                        <div><span style={{ color: '#6b7280' }}>Monto total: </span><strong>{fmt(trans.monto_total)}</strong></div>
-                        <div><span style={{ color: '#6b7280' }}>Plan: </span><strong style={{ textTransform: 'capitalize' }}>{trans.tipo_pago}</strong></div>
-                        <div><span style={{ color: '#6b7280' }}>Inicio: </span><strong>{fmtFecha(trans.fecha_inicio)}</strong></div>
-                        <div><span style={{ color: '#6b7280' }}>Cuotas: </span><strong>{cuotasPagas}/{trans.numero_cuotas}</strong></div>
-                        <div><span style={{ color: '#6b7280' }}>Valor cuota: </span><strong>{fmt(trans.monto_cuota)}</strong></div>
-                        <div><span style={{ color: '#6b7280' }}>Progreso: </span><strong>{progreso.toFixed(0)}%</strong></div>
+                        <div><span style={{ color: '#64748B' }}>Monto total: </span><strong>{fmt(trans.monto_total)}</strong></div>
+                        <div><span style={{ color: '#64748B' }}>Plan: </span><strong style={{ textTransform: 'capitalize' }}>{trans.tipo_pago}</strong></div>
+                        <div><span style={{ color: '#64748B' }}>Inicio: </span><strong>{fmtFecha(trans.fecha_inicio)}</strong></div>
+                        <div><span style={{ color: '#64748B' }}>Cuotas: </span><strong>{cuotasPagas}/{trans.numero_cuotas}</strong></div>
+                        <div><span style={{ color: '#64748B' }}>Valor cuota: </span><strong>{fmt(trans.monto_cuota)}</strong></div>
+                        <div><span style={{ color: '#64748B' }}>Progreso: </span><strong>{progreso.toFixed(0)}%</strong></div>
                       </div>
                       {saldoTrans > 0 && (
                         <div style={{ marginTop: 8, padding: '6px 10px', background: 'rgba(220,38,38,0.08)', borderRadius: 4, fontSize: 12 }}>
@@ -317,26 +318,26 @@ export default function ExportadorPDFCliente({
                           const cuota = (pago.monto_cuota || trans.monto_cuota) + (pago.intereses_mora || 0)
                           const restante = cuota - (pago.monto_pagado || 0)
                           const estadoLabel = pago.estado === 'pagado' ? 'Pagado' : pago.estado === 'reprogramado' ? 'Reprog.' : vencido ? 'Vencido' : 'Pendiente'
-                          const estadoColor = pago.estado === 'pagado' ? { bg: '#dcfce7', text: '#166534' } : pago.estado === 'reprogramado' ? { bg: '#dbeafe', text: '#1e40af' } : vencido ? { bg: '#fee2e2', text: '#991b1b' } : { bg: '#fef3c7', text: '#854d0e' }
+                          const estadoColor = pago.estado === 'pagado' ? { bg: '#DCFCE7', text: '#166534' } : pago.estado === 'reprogramado' ? { bg: '#DBEAFE', text: '#0B3A63' } : vencido ? { bg: '#fee2e2', text: '#991b1b' } : { bg: '#fef3c7', text: '#854d0e' }
                           const diasLabel = pago.estado === 'pagado' ? 'OK' : vencido ? `Hace ${Math.abs(dv)}d` : dv === 0 ? 'Hoy' : `En ${dv}d`
-                          const diasColor = pago.estado === 'pagado' ? '#16a34a' : vencido ? '#dc2626' : dv === 0 ? '#ea580c' : dv <= 7 ? '#ca8a04' : '#374151'
+                          const diasColor = pago.estado === 'pagado' ? '#16A34A' : vencido ? '#dc2626' : dv === 0 ? '#D97706' : dv <= 7 ? '#ca8a04' : '#334155'
 
                           return (
                             <tr key={pago.id} style={{ background: vencido ? '#fef2f2' : 'white', borderBottom: '1px solid #e2e8f0' }}>
                               <td style={{ padding: '7px 10px', fontWeight: 600 }}>#{pago.numero_cuota}</td>
                               <td style={{ padding: '7px 10px' }}>
                                 {fmtFecha(pago.fecha_vencimiento)}
-                                {pago.fecha_reprogramacion && <div style={{ fontSize: 10, color: '#2563eb' }}>Rep: {fmtFecha(pago.fecha_reprogramacion)}</div>}
+                                {pago.fecha_reprogramacion && <div style={{ fontSize: 10, color: '#0F4C81' }}>Rep: {fmtFecha(pago.fecha_reprogramacion)}</div>}
                               </td>
-                              <td style={{ padding: '7px 10px', fontWeight: 600, color: '#1e40af' }}>
+                              <td style={{ padding: '7px 10px', fontWeight: 600, color: '#0B3A63' }}>
                                 {fmt(cuota)}
                                 {(pago.intereses_mora || 0) > 0 && <div style={{ fontSize: 10, color: '#dc2626' }}>+{fmt(pago.intereses_mora || 0)} mora</div>}
                               </td>
-                              <td style={{ padding: '7px 10px', color: '#16a34a', fontWeight: 600 }}>
+                              <td style={{ padding: '7px 10px', color: '#16A34A', fontWeight: 600 }}>
                                 {fmt(pago.monto_pagado || 0)}
-                                {pago.fecha_pago && <div style={{ fontSize: 10, color: '#6b7280' }}>{fmtFecha(pago.fecha_pago)}</div>}
+                                {pago.fecha_pago && <div style={{ fontSize: 10, color: '#64748B' }}>{fmtFecha(pago.fecha_pago)}</div>}
                               </td>
-                              <td style={{ padding: '7px 10px', fontWeight: 600, color: restante > 0 ? '#dc2626' : '#16a34a' }}>{fmt(Math.max(0, restante))}</td>
+                              <td style={{ padding: '7px 10px', fontWeight: 600, color: restante > 0 ? '#dc2626' : '#16A34A' }}>{fmt(Math.max(0, restante))}</td>
                               <td style={{ padding: '7px 10px' }}>
                                 <span style={{ background: estadoColor.bg, color: estadoColor.text, padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600 }}>{estadoLabel}</span>
                               </td>
@@ -350,23 +351,23 @@ export default function ExportadorPDFCliente({
                 )
               })}
 
-              <div style={{ marginTop: 32, paddingTop: 16, borderTop: '2px solid #e2e8f0', textAlign: 'center', fontSize: 10, color: '#6b7280' }}>
+              <div style={{ marginTop: 32, paddingTop: 16, borderTop: '2px solid #e2e8f0', textAlign: 'center', fontSize: 10, color: '#64748B' }}>
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>Estado de Cuenta generado por Sistema Electro Hogar</div>
                 <div>Fecha de generacion: {fechaActual}</div>
               </div>
             </div>
 
-            <div className="border-t bg-gray-50 px-5 py-3 flex justify-between items-center rounded-b-xl">
-              <p className="text-xs text-gray-500">El PDF se genera a partir de esta vista previa.</p>
+            <div className="border-t border-line bg-surface-2 px-5 py-3 flex flex-wrap gap-3 justify-between items-center rounded-b-xl">
+              <p className="text-xs text-muted">El PDF se genera a partir de esta vista previa.</p>
               <div className="flex gap-2">
                 {cliente.telefono && (
-                  <button onClick={enviarPorWhatsApp} disabled={generando} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60 transition-colors text-sm font-medium">
+                  <button onClick={enviarPorWhatsApp} disabled={generando} className="btn-secondary">
                     <Phone className="w-4 h-4" />
                     WhatsApp
                   </button>
                 )}
-                <button onClick={descargarPDF} disabled={generando} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors text-sm font-medium">
-                  {generando ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Download className="w-4 h-4" />}
+                <button onClick={descargarPDF} disabled={generando} className="btn-primary">
+                  {generando ? <span className="spinner" /> : <Download className="w-4 h-4" />}
                   {generando ? 'Generando...' : 'Descargar PDF'}
                 </button>
               </div>

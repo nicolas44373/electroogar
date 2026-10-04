@@ -11,7 +11,9 @@ import {
   User, 
   Phone, 
   Mail, 
-  MapPin, 
+  MapPin,
+  Navigation,
+  NotebookPen,
   FileText,
   AlertTriangle,
   Check,
@@ -28,6 +30,9 @@ interface Cliente {
   telefono: string
   direccion: string
   email: string
+  observaciones?: string | null
+  latitud?: number | null
+  longitud?: number | null
   created_at?: string
 }
 
@@ -44,7 +49,11 @@ export default function ClientesPage() {
   const [clienteAEliminar, setClienteAEliminar] = useState<Cliente | null>(null)
   
   const [mensaje, setMensaje] = useState<{tipo: 'exito' | 'error', texto: string} | null>(null)
-  
+
+  const [clienteNotas, setClienteNotas] = useState<Cliente | null>(null)
+  const [textoNotas, setTextoNotas] = useState('')
+  const [guardandoNotas, setGuardandoNotas] = useState(false)
+
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -237,6 +246,32 @@ export default function ClientesPage() {
     }
   }
 
+  const abrirNotas = (cliente: Cliente) => {
+    setClienteNotas(cliente)
+    setTextoNotas(cliente.observaciones || '')
+  }
+
+  const guardarNotas = async () => {
+    if (!clienteNotas) return
+
+    setGuardandoNotas(true)
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .update({ observaciones: textoNotas.trim() ? textoNotas : null })
+        .eq('id', clienteNotas.id)
+
+      if (error) throw error
+      setMensaje({ tipo: 'exito', texto: 'Notas guardadas' })
+      setClienteNotas(null)
+      cargarClientes()
+    } catch (error: any) {
+      setMensaje({ tipo: 'error', texto: 'Error al guardar las notas: ' + error.message })
+    } finally {
+      setGuardandoNotas(false)
+    }
+  }
+
   const formatearFecha = (fecha?: string) => {
     if (!fecha) return ''
     return new Date(fecha).toLocaleDateString('es-AR', {
@@ -247,375 +282,435 @@ export default function ClientesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 relative overflow-hidden">
-      {/* Animated background pattern */}
-      <div className="absolute inset-0 overflow-hidden opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }}></div>
-      </div>
-
-      {/* Floating shapes */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-20 left-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse animation-delay-2000"></div>
-        <div className="absolute top-1/2 right-1/3 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse animation-delay-4000"></div>
-      </div>
-
-      <div className="relative max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="page">
+      <div className="page-container">
         {/* Header */}
-        <div className="backdrop-blur-xl bg-slate-800/40 rounded-xl border border-slate-700/50 shadow-2xl p-6 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-50"></div>
-                <div className="relative bg-gradient-to-br from-blue-600 to-purple-600 p-4 rounded-xl">
-                  <Users className="w-8 h-8 text-white" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white">Gestión de Clientes</h1>
-                <p className="text-slate-300 mt-1">
-                  Total: {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
-            
-            <button
-              onClick={() => {
-                limpiarFormulario()
-                setMostrarFormulario(!mostrarFormulario)
-              }}
-              className="group relative px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                Nuevo Cliente
-              </div>
-            </button>
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="page-title">Clientes</h1>
+            <p className="page-subtitle num">
+              {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}
+              {busqueda ? ' encontrados' : ' registrados'}
+            </p>
           </div>
 
-          {/* Barra de búsqueda */}
-          <div className="mt-6">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, documento, teléfono o email..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm"
-              />
-            </div>
-          </div>
+          <button
+            onClick={() => {
+              limpiarFormulario()
+              setMostrarFormulario(!mostrarFormulario)
+            }}
+            className="btn-primary"
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo cliente
+          </button>
+        </div>
+
+        {/* Barra de búsqueda */}
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-5 h-5 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, documento, teléfono o email"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="input input-icon bg-surface shadow-e1"
+            aria-label="Buscar clientes"
+          />
         </div>
 
         {/* Mensaje de éxito/error */}
         {mensaje && (
-          <div className={`mb-6 backdrop-blur-xl rounded-xl p-4 flex items-center gap-3 shadow-lg animate-fade-in ${
-            mensaje.tipo === 'exito' 
-              ? 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-100'
-              : 'bg-red-500/20 border border-red-500/50 text-red-100'
-          }`}>
+          <div className={`mb-6 ${mensaje.tipo === 'exito' ? 'alert-success' : 'alert-danger'}`} role="status">
             {mensaje.tipo === 'exito' ? (
               <Check className="w-5 h-5 flex-shrink-0" />
             ) : (
               <AlertTriangle className="w-5 h-5 flex-shrink-0" />
             )}
-            <span className="font-medium">{mensaje.texto}</span>
+            <span>{mensaje.texto}</span>
           </div>
         )}
 
         {/* Formulario */}
         {mostrarFormulario && (
-          <div className="backdrop-blur-xl bg-slate-800/40 rounded-xl border border-slate-700/50 shadow-2xl p-6 mb-6 animate-fade-in">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <User className="w-6 h-6 text-blue-400" />
-                {modoEdicion ? 'Editar Cliente' : 'Nuevo Cliente'}
+          <div className="card mb-6">
+            <div className="card-header">
+              <h2 className="section-title">
+                <User className="w-5 h-5 text-primary" />
+                {modoEdicion ? 'Editar cliente' : 'Nuevo cliente'}
               </h2>
               <button
                 onClick={limpiarFormulario}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+                className="btn-icon"
+                aria-label="Cerrar formulario"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
-            <form onSubmit={guardarCliente} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <form onSubmit={guardarCliente} className="card-body grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Nombre *
+                <label htmlFor="cliente-nombre" className="label">
+                  Nombre <span className="text-danger" aria-hidden="true">*</span>
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4 pointer-events-none" />
                   <input
+                    id="cliente-nombre"
                     type="text"
                     name="nombre"
-                    placeholder="Ingrese el nombre"
+                    placeholder="Ej: María"
                     value={formData.nombre}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input input-icon"
                     required
                   />
                 </div>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Apellido *
+                <label htmlFor="cliente-apellido" className="label">
+                  Apellido <span className="text-danger" aria-hidden="true">*</span>
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4 pointer-events-none" />
                   <input
+                    id="cliente-apellido"
                     type="text"
                     name="apellido"
-                    placeholder="Ingrese el apellido"
+                    placeholder="Ej: González"
                     value={formData.apellido}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input input-icon"
                     required
                   />
                 </div>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Documento *
+                <label htmlFor="cliente-documento" className="label">
+                  Documento <span className="text-danger" aria-hidden="true">*</span>
                 </label>
                 <div className="relative">
-                  <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4 pointer-events-none" />
                   <input
+                    id="cliente-documento"
                     type="text"
                     name="documento"
-                    placeholder="DNI / CUIT / ID"
+                    placeholder="DNI o CUIT"
                     value={formData.documento}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="input input-icon"
                     required
                     disabled={modoEdicion}
                   />
                 </div>
                 {modoEdicion && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    El documento no se puede modificar
+                  <p className="help">
+                    El documento no se puede cambiar una vez creado el cliente.
                   </p>
                 )}
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label htmlFor="cliente-telefono" className="label">
                   Teléfono
                 </label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4 pointer-events-none" />
                   <input
+                    id="cliente-telefono"
                     type="tel"
                     name="telefono"
-                    placeholder="Ej: 11-1234-5678"
+                    placeholder="Ej: 381 555-1234"
                     value={formData.telefono}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input input-icon"
                   />
                 </div>
+                <p className="help">Se usa para enviar recordatorios por WhatsApp.</p>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label htmlFor="cliente-email" className="label">
                   Email
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4 pointer-events-none" />
                   <input
+                    id="cliente-email"
                     type="email"
                     name="email"
                     placeholder="correo@ejemplo.com"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input input-icon"
                   />
                 </div>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label htmlFor="cliente-direccion" className="label">
                   Dirección
                 </label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-3 text-slate-400 w-4 h-4" />
+                  <MapPin className="absolute left-3 top-3 text-muted w-4 h-4 pointer-events-none" />
                   <textarea
+                    id="cliente-direccion"
                     name="direccion"
-                    placeholder="Calle, número, ciudad..."
+                    placeholder="Calle, número, barrio, ciudad"
                     value={formData.direccion}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="input input-icon resize-none"
                     rows={2}
                   />
                 </div>
               </div>
-              
-              <div className="md:col-span-2 flex justify-end gap-3 mt-4">
-                <button
-                  type="button"
-                  onClick={limpiarFormulario}
-                  className="px-6 py-3 border border-slate-600 rounded-xl text-slate-300 hover:bg-slate-700/50 transition-colors font-medium"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      Guardando...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      {modoEdicion ? 'Actualizar' : 'Guardar'}
-                    </>
-                  )}
-                </button>
+
+              <div className="md:col-span-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+                <p className="text-xs text-muted"><span className="text-danger">*</span> Campos obligatorios</p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={limpiarFormulario}
+                    className="btn-secondary"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-primary"
+                  >
+                    {loading ? (
+                      <>
+                        <span className="spinner" />
+                        Guardando…
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        {modoEdicion ? 'Guardar cambios' : 'Crear cliente'}
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         )}
 
         {/* Tabla de clientes */}
-        <div className="backdrop-blur-xl bg-slate-800/40 rounded-xl border border-slate-700/50 shadow-2xl overflow-hidden">
-          <div className="p-4 border-b border-slate-700/50 bg-slate-800/60">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-400" />
-              Lista de Clientes
-            </h2>
-          </div>
-          
+        <div className="card overflow-hidden">
           {loading && clientesFiltrados.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-600 border-t-blue-500 mb-4"></div>
-              <p className="text-slate-300 font-medium">Cargando clientes...</p>
+            <div className="p-4 space-y-3" role="status" aria-live="polite">
+              <span className="sr-only">Cargando clientes…</span>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-4 py-2">
+                  <div className="skeleton h-9 w-9 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <div className="skeleton h-4 w-1/3" />
+                    <div className="skeleton h-3 w-1/4" />
+                  </div>
+                  <div className="skeleton h-8 w-24" />
+                </div>
+              ))}
             </div>
           ) : clientesFiltrados.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-800/60 border-b border-slate-700/50">
-                  <tr>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      Documento
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      Nombre Completo
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider hidden sm:table-cell">
-                      Teléfono
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider hidden md:table-cell">
-                      Email
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider hidden lg:table-cell">
-                      Dirección
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider hidden xl:table-cell">
-                      Registrado
-                    </th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-700/50">
-                  {clientesFiltrados.map((cliente) => (
-                    <tr key={cliente.id} className="hover:bg-slate-700/30 transition-colors">
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-sm bg-slate-700/50 text-blue-300 px-3 py-1 rounded-lg">
-                          {cliente.documento}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div>
-                          <div className="font-semibold text-white">
+            <>
+              {/* Vista de tarjetas (celular) */}
+              <ul className="md:hidden divide-y divide-line">
+                {clientesFiltrados.map((cliente) => (
+                  <li key={cliente.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-fg">
+                          {cliente.nombre} {cliente.apellido}
+                        </p>
+                        <p className="text-xs text-muted mt-0.5 num">DNI {cliente.documento}</p>
+                        {cliente.telefono && (
+                          <p className="text-sm text-muted mt-1 flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5" />
+                            {cliente.telefono}
+                          </p>
+                        )}
+                        {cliente.direccion && (
+                          <p className="text-sm text-muted mt-1 flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="truncate">{cliente.direccion}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {cliente.observaciones && (
+                      <button
+                        onClick={() => abrirNotas(cliente)}
+                        className="mt-2 w-full min-h-[44px] flex items-center gap-2 px-3 py-2 rounded-lg bg-warning-soft text-warning-text text-xs text-left"
+                      >
+                        <NotebookPen className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">{cliente.observaciones}</span>
+                      </button>
+                    )}
+                    <div className="flex items-center gap-1 mt-2 -ml-2">
+                      {cliente.latitud != null && cliente.longitud != null && (
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${cliente.latitud},${cliente.longitud}&travelmode=driving`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-icon text-success-text"
+                          title="Cómo llegar"
+                          aria-label={`Cómo llegar a la casa de ${cliente.nombre}`}
+                        >
+                          <Navigation className="w-5 h-5" />
+                        </a>
+                      )}
+                      <button
+                        onClick={() => abrirNotas(cliente)}
+                        className="btn-icon"
+                        title="Bloc de notas"
+                        aria-label={`Notas de ${cliente.nombre}`}
+                      >
+                        <NotebookPen className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => iniciarEdicion(cliente)}
+                        className="btn-icon"
+                        title="Editar"
+                        aria-label={`Editar a ${cliente.nombre}`}
+                      >
+                        <Edit2 className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => confirmarEliminar(cliente)}
+                        className="btn-icon hover:!text-danger hover:!bg-danger-soft"
+                        title="Eliminar"
+                        aria-label={`Eliminar a ${cliente.nombre}`}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Vista de tabla (tablet y escritorio) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Cliente</th>
+                      <th>Documento</th>
+                      <th>Teléfono</th>
+                      <th className="hidden lg:table-cell">Email</th>
+                      <th className="hidden lg:table-cell">Dirección</th>
+                      <th className="hidden xl:table-cell">Alta</th>
+                      <th className="!text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clientesFiltrados.map((cliente) => (
+                      <tr key={cliente.id}>
+                        <td>
+                          <div className="font-medium text-fg">
                             {cliente.nombre} {cliente.apellido}
                           </div>
-                          <div className="text-sm text-slate-400 sm:hidden">
-                            {cliente.telefono}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        {cliente.telefono ? (
-                          <div className="flex items-center gap-2 text-sm text-slate-300">
-                            <Phone className="w-3 h-3 text-slate-400" />
-                            {cliente.telefono}
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        {cliente.email ? (
-                          <div className="flex items-center gap-2 text-sm text-slate-300">
-                            <Mail className="w-3 h-3 text-slate-400" />
-                            <span className="truncate max-w-xs">{cliente.email}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        {cliente.direccion ? (
-                          <div className="flex items-center gap-2 text-sm text-slate-300">
-                            <MapPin className="w-3 h-3 text-slate-400" />
-                            <span className="truncate max-w-xs" title={cliente.direccion}>
+                          {cliente.observaciones && (
+                            <button
+                              onClick={() => abrirNotas(cliente)}
+                              className="mt-1 flex items-center gap-1 text-xs text-warning-text hover:underline text-left"
+                            >
+                              <NotebookPen className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate max-w-[14rem]">{cliente.observaciones}</span>
+                            </button>
+                          )}
+                        </td>
+                        <td>
+                          <span className="text-muted num whitespace-nowrap">
+                            {cliente.documento}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap">
+                          {cliente.telefono ? (
+                            <span className="text-fg num">{cliente.telefono}</span>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                        <td className="hidden lg:table-cell">
+                          {cliente.email ? (
+                            <span className="block truncate max-w-[14rem] text-muted">{cliente.email}</span>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                        <td className="hidden lg:table-cell">
+                          {cliente.direccion ? (
+                            <span className="block truncate max-w-[14rem] text-muted" title={cliente.direccion}>
                               {cliente.direccion}
                             </span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-400 hidden xl:table-cell">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-3 h-3" />
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                        <td className="text-muted hidden xl:table-cell num whitespace-nowrap">
                           {formatearFecha(cliente.created_at)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => iniciarEdicion(cliente)}
-                            className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
-                            title="Editar"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => confirmarEliminar(cliente)}
-                            className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
-                            title="Eliminar"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        </td>
+                        <td>
+                          <div className="flex items-center justify-end gap-0.5">
+                            {cliente.latitud != null && cliente.longitud != null && (
+                              <a
+                                href={`https://www.google.com/maps/dir/?api=1&destination=${cliente.latitud},${cliente.longitud}&travelmode=driving`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn-icon text-success-text"
+                                title="Cómo llegar"
+                                aria-label={`Cómo llegar a la casa de ${cliente.nombre}`}
+                              >
+                                <Navigation className="w-4 h-4" />
+                              </a>
+                            )}
+                            <button
+                              onClick={() => abrirNotas(cliente)}
+                              className="btn-icon"
+                              title="Bloc de notas"
+                              aria-label={`Notas de ${cliente.nombre}`}
+                            >
+                              <NotebookPen className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => iniciarEdicion(cliente)}
+                              className="btn-icon"
+                              title="Editar"
+                              aria-label={`Editar a ${cliente.nombre}`}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => confirmarEliminar(cliente)}
+                              className="btn-icon hover:!text-danger hover:!bg-danger-soft"
+                              title="Eliminar"
+                              aria-label={`Eliminar a ${cliente.nombre}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           ) : (
-            <div className="p-12 text-center">
-              <Users className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">
-                {busqueda ? 'No se encontraron clientes' : 'No hay clientes registrados'}
+            <div className="empty-state">
+              <Users className="w-10 h-10 text-muted/60 mb-3" />
+              <h3 className="text-base font-semibold text-fg mb-1">
+                {busqueda ? 'No encontramos clientes' : 'Todavía no hay clientes'}
               </h3>
-              <p className="text-slate-400">
-                {busqueda 
-                  ? 'Intenta con otros términos de búsqueda'
-                  : 'Comienza agregando tu primer cliente'
+              <p className="text-sm">
+                {busqueda
+                  ? 'Probá con otro nombre, documento o teléfono.'
+                  : 'Tocá “Nuevo cliente” para cargar el primero.'
                 }
               </p>
             </div>
@@ -623,65 +718,115 @@ export default function ClientesPage() {
         </div>
       </div>
 
+      {/* Modal de bloc de notas */}
+      {clienteNotas && (
+        <div className="modal-backdrop">
+          <div className="modal max-w-lg" role="dialog" aria-modal="true" aria-labelledby="titulo-notas">
+            <div className="modal-header justify-between">
+              <h3 id="titulo-notas" className="text-base font-semibold text-fg flex items-center gap-2">
+                <NotebookPen className="w-5 h-5 text-warning" />
+                Notas de {clienteNotas.nombre} {clienteNotas.apellido}
+              </h3>
+              <button
+                onClick={() => setClienteNotas(null)}
+                className="btn-icon"
+                aria-label="Cerrar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <textarea
+                value={textoNotas}
+                onChange={(e) => setTextoNotas(e.target.value)}
+                rows={8}
+                autoFocus
+                placeholder="Ej: Cobrar después de las 18 hs. Casa con portón verde. Preguntar por la hermana."
+                className="input resize-y"
+                aria-label="Notas del cliente"
+              />
+            </div>
+
+            <div className="modal-footer">
+              <button
+                onClick={() => setClienteNotas(null)}
+                className="btn-secondary"
+                disabled={guardandoNotas}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarNotas}
+                className="btn-primary"
+                disabled={guardandoNotas || textoNotas === (clienteNotas.observaciones || '')}
+              >
+                {guardandoNotas ? (
+                  <span className="spinner" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Guardar notas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de confirmación de eliminación */}
       {mostrarModalEliminar && clienteAEliminar && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="backdrop-blur-xl bg-slate-800/95 border border-slate-700/50 rounded-xl max-w-md w-full p-6 shadow-2xl animate-fade-in">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="flex-shrink-0 w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-white mb-2">
-                  Confirmar eliminación
-                </h3>
-                <p className="text-slate-300 mb-4">
-                  ¿Estás seguro de que deseas eliminar al cliente <strong className="text-white">
-                    {clienteAEliminar.nombre} {clienteAEliminar.apellido}
-                  </strong>?
-                </p>
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-amber-200">
-                    <strong>⚠️ Advertencia:</strong> Esta acción no se puede deshacer.
+        <div className="modal-backdrop">
+          <div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="titulo-eliminar">
+            <div className="modal-body">
+              <div className="flex items-start gap-4">
+                <div className="icon-tile w-11 h-11 bg-danger-soft text-danger-text">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 id="titulo-eliminar" className="text-base font-semibold text-fg">
+                    ¿Eliminar a {clienteAEliminar.nombre} {clienteAEliminar.apellido}?
+                  </h3>
+                  <p className="text-sm text-muted mt-1">
+                    Se va a borrar el cliente de forma permanente. Esta acción no se puede deshacer.
                   </p>
                 </div>
-                <div className="bg-slate-700/50 rounded-lg p-3 space-y-1 text-sm text-slate-300">
-                  <p><strong>Documento:</strong> {clienteAEliminar.documento}</p>
-                  {clienteAEliminar.telefono && (
-                    <p><strong>Teléfono:</strong> {clienteAEliminar.telefono}</p>
-                  )}
-                  {clienteAEliminar.email && (
-                    <p><strong>Email:</strong> {clienteAEliminar.email}</p>
-                  )}
-                </div>
               </div>
+              <dl className="rounded-lg bg-surface-2 p-3 space-y-1 text-sm">
+                <div className="flex gap-2"><dt className="text-muted">Documento:</dt><dd className="text-fg num">{clienteAEliminar.documento}</dd></div>
+                {clienteAEliminar.telefono && (
+                  <div className="flex gap-2"><dt className="text-muted">Teléfono:</dt><dd className="text-fg num">{clienteAEliminar.telefono}</dd></div>
+                )}
+                {clienteAEliminar.email && (
+                  <div className="flex gap-2"><dt className="text-muted">Email:</dt><dd className="text-fg">{clienteAEliminar.email}</dd></div>
+                )}
+              </dl>
             </div>
-            
-            <div className="flex justify-end gap-3">
+
+            <div className="modal-footer">
               <button
                 onClick={() => {
                   setMostrarModalEliminar(false)
                   setClienteAEliminar(null)
                 }}
-                className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700/50 transition-colors"
+                className="btn-secondary"
                 disabled={loading}
               >
                 Cancelar
               </button>
               <button
                 onClick={eliminarCliente}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="btn-danger"
                 disabled={loading}
               >
                 {loading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    Eliminando...
+                    <span className="spinner" />
+                    Eliminando…
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    Eliminar Cliente
+                    Eliminar cliente
                   </>
                 )}
               </button>
@@ -689,32 +834,6 @@ export default function ClientesPage() {
           </div>
         </div>
       )}
-
-      {/* Custom animations */}
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
     </div>
   )
 }

@@ -2,27 +2,252 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Variables de tema */
+/* ==========================================================================
+   Design tokens
+   Los colores se guardan como canales RGB para que Tailwind pueda aplicar
+   opacidad (ej: bg-primary/10). Se usan desde tailwind.config.js.
+   ========================================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --font-sans: 'Arial', Helvetica, sans-serif;
-  --font-mono: monospace;
+  color-scheme: light;
+
+  /* Marca */
+  --primary: 15 76 129;          /* #0F4C81 azul institucional */
+  --primary-hover: 11 58 99;     /* #0B3A63 */
+  --on-primary: 255 255 255;
+  --accent: 20 184 166;          /* #14B8A6 turquesa (decorativo) */
+  --accent-strong: 15 118 110;   /* #0F766E turquesa para botones (contraste AA con blanco) */
+  --on-accent: 255 255 255;
+
+  /* Superficies y texto */
+  --canvas: 245 247 250;         /* #F5F7FA fondo general */
+  --surface: 255 255 255;        /* #FFFFFF cards, modales */
+  --surface-2: 248 250 252;      /* #F8FAFC encabezados de tabla, zonas suaves */
+  --line: 226 232 240;           /* #E2E8F0 bordes */
+  --fg: 30 41 59;                /* #1E293B texto principal */
+  --muted: 100 116 139;          /* #64748B texto secundario */
+
+  /* Estados de cobranza: base (íconos/barras), soft (fondo), text (texto sobre soft, AA) */
+  --success: 22 163 74;    --success-soft: 220 252 231;  --success-text: 22 101 52;
+  --warning: 217 119 6;    --warning-soft: 254 243 199;  --warning-text: 146 64 14;
+  --danger: 220 38 38;     --danger-soft: 254 226 226;   --danger-text: 153 27 27;
+  --info: 37 99 235;       --info-soft: 219 234 254;     --info-text: 30 64 175;
+  --neutral: 107 114 128;  --neutral-soft: 243 244 246;  --neutral-text: 55 65 81;
+  --reprog: 79 70 229;     --reprog-soft: 224 231 255;   --reprog-text: 55 48 163;
+
+  --font-sans: var(--font-inter), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Tema oscuro */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+
+    --primary: 96 165 250;
+    --primary-hover: 147 197 253;
+    --on-primary: 15 23 42;
+    --accent: 45 212 191;
+    --accent-strong: 45 212 191;
+    --on-accent: 4 47 46;
+
+    --canvas: 11 17 32;
+    --surface: 21 30 46;
+    --surface-2: 30 41 59;
+    --line: 51 65 85;
+    --fg: 226 232 240;
+    --muted: 148 163 184;
+
+    --success: 34 197 94;    --success-soft: 20 83 45;   --success-text: 187 247 208;
+    --warning: 245 158 11;   --warning-soft: 120 53 15;  --warning-text: 253 230 138;
+    --danger: 248 113 113;   --danger-soft: 127 29 29;   --danger-text: 254 202 202;
+    --info: 96 165 250;      --info-soft: 30 58 138;     --info-text: 191 219 254;
+    --neutral: 156 163 175;  --neutral-soft: 55 65 81;   --neutral-text: 229 231 235;
+    --reprog: 129 140 248;   --reprog-soft: 49 46 129;   --reprog-text: 224 231 255;
   }
 }
 
-/* Body base */
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  margin: 0;
-  padding: 0;
+/* ==========================================================================
+   Base
+   ========================================================================== */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-canvas text-fg antialiased;
+    font-family: var(--font-sans);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Foco visible en todos los elementos interactivos */
+  :focus-visible {
+    outline: 2px solid rgb(var(--primary));
+    outline-offset: 2px;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-semibold text-fg;
+  }
+}
+
+/* ==========================================================================
+   Componentes base
+   ========================================================================== */
+@layer components {
+  /* ---------- Layout ---------- */
+  .page {
+    @apply min-h-screen bg-canvas;
+  }
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8;
+  }
+  .page-title {
+    @apply text-2xl font-semibold text-fg;
+  }
+  .page-subtitle {
+    @apply text-sm text-muted mt-1;
+  }
+  .section-title {
+    @apply text-lg font-semibold text-fg flex items-center gap-2;
+  }
+
+  /* ---------- Cards ---------- */
+  .card {
+    @apply bg-surface border border-line rounded-xl shadow-e1;
+  }
+  .card-header {
+    @apply px-4 sm:px-5 py-4 border-b border-line flex items-center justify-between gap-3;
+  }
+  .card-body {
+    @apply p-4 sm:p-5;
+  }
+
+  /* ---------- Botones ---------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-lg text-sm font-medium
+      transition-colors select-none disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-sm {
+    @apply min-h-[36px] px-3 text-xs;
+  }
+  .btn-primary {
+    @apply btn bg-primary text-on-primary hover:bg-primary-hover shadow-e1;
+  }
+  .btn-accent {
+    @apply btn bg-accent-strong text-on-accent hover:opacity-90 shadow-e1;
+  }
+  .btn-secondary {
+    @apply btn bg-surface text-fg border border-line hover:bg-surface-2;
+  }
+  .btn-ghost {
+    @apply btn text-muted hover:text-fg hover:bg-surface-2;
+  }
+  .btn-danger {
+    @apply btn bg-danger text-white hover:opacity-90 shadow-e1;
+  }
+  .btn-icon {
+    @apply inline-flex items-center justify-center w-11 h-11 rounded-lg text-muted
+      hover:text-fg hover:bg-surface-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* ---------- Formularios ---------- */
+  .label {
+    @apply block text-sm font-medium text-fg mb-1.5;
+  }
+  .help {
+    @apply text-xs text-muted mt-1.5;
+  }
+  .input {
+    @apply w-full min-h-[44px] px-3 py-2 rounded-lg border border-line bg-surface text-fg text-sm
+      placeholder:text-muted/70 transition-colors
+      focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
+      disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .input-icon {
+    @apply pl-10;
+  }
+
+  /* ---------- Badges de estado ---------- */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap;
+  }
+  .badge-success { @apply badge bg-success-soft text-success-text; }
+  .badge-warning { @apply badge bg-warning-soft text-warning-text; }
+  .badge-danger  { @apply badge bg-danger-soft text-danger-text; }
+  .badge-info    { @apply badge bg-info-soft text-info-text; }
+  .badge-neutral { @apply badge bg-neutral-soft text-neutral-text; }
+  .badge-reprog  { @apply badge bg-reprog-soft text-reprog-text; }
+  .badge-primary { @apply badge bg-primary/10 text-primary; }
+
+  /* ---------- Alertas ---------- */
+  .alert {
+    @apply flex items-start gap-3 px-4 py-3 rounded-lg border text-sm font-medium;
+  }
+  .alert-success { @apply alert bg-success-soft text-success-text border-success/30; }
+  .alert-warning { @apply alert bg-warning-soft text-warning-text border-warning/30; }
+  .alert-danger  { @apply alert bg-danger-soft text-danger-text border-danger/30; }
+  .alert-info    { @apply alert bg-info-soft text-info-text border-info/30; }
+
+  /* ---------- Tablas ---------- */
+  .data-table {
+    @apply w-full text-sm;
+  }
+  .data-table thead th {
+    @apply bg-surface-2 text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted whitespace-nowrap;
+  }
+  .data-table tbody td {
+    @apply px-4 py-3 border-t border-line align-middle;
+  }
+  .data-table tbody tr {
+    @apply transition-colors hover:bg-surface-2;
+  }
+  .table-wrap {
+    @apply overflow-x-auto rounded-lg border border-line;
+  }
+
+  /* ---------- Modales ---------- */
+  .modal-backdrop {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-[2px];
+  }
+  .modal {
+    @apply w-full max-w-md max-h-[90vh] overflow-y-auto bg-surface border border-line rounded-xl shadow-e3;
+  }
+  .modal-header {
+    @apply px-5 py-4 border-b border-line flex items-center gap-3;
+  }
+  .modal-body {
+    @apply p-5 space-y-4;
+  }
+  .modal-footer {
+    @apply px-5 py-4 border-t border-line flex gap-3 justify-end;
+  }
+
+  /* ---------- Carga ---------- */
+  .skeleton {
+    @apply animate-pulse rounded-md bg-line/60;
+  }
+  .spinner {
+    @apply inline-block w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin;
+  }
+
+  /* ---------- Varios ---------- */
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .icon-tile {
+    @apply inline-flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0;
+  }
+  .empty-state {
+    @apply flex flex-col items-center justify-center text-center py-12 px-4 text-muted;
+  }
+  .divider {
+    @apply border-t border-line;
+  }
+}
+
+/* Área táctil mínima de 44px en pantallas táctiles */
+@media (pointer: coarse) {
+  .btn-sm {
+    min-height: 44px;
+  }
 }

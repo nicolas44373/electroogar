@@ -1,7 +1,51 @@
 import { useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { hoyISO } from '@/app/lib/fechas'
 import { Transaccion, Pago } from '@/app/lib/types/cobranzas'
-import { CheckCircle, XCircle, AlertTriangle, Calendar, DollarSign, RotateCcw } from 'lucide-react'
+import EstadoBadge from '@/app/components/ui/EstadoBadge'
+import { CheckCircle, XCircle, AlertTriangle, Calendar, DollarSign, RotateCcw, CalendarClock, ArrowRight } from 'lucide-react'
+
+const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+
+const parseFecha = (fecha: string) => {
+  const [y, m, d] = fecha.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+const aFechaISO = (fecha: Date) => {
+  const y = fecha.getFullYear()
+  const m = String(fecha.getMonth() + 1).padStart(2, '0')
+  const d = String(fecha.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+// Genera `cantidad` fechas consecutivas a partir de `inicio` según la frecuencia de pago
+// mantenerDiaSemana: en quincenal usa 14 días (en vez de 15) para que todas las cuotas caigan el mismo día
+const generarFechas = (inicio: string, cantidad: number, tipoPago: string, mantenerDiaSemana = false): string[] => {
+  const base = parseFecha(inicio)
+  const fechas: string[] = []
+  for (let i = 0; i < cantidad; i++) {
+    let fecha: Date
+    if (tipoPago === 'mensual') {
+      // Mantener el mismo día del mes; si el mes es más corto, usar el último día
+      const ultimoDia = new Date(base.getFullYear(), base.getMonth() + i + 1, 0).getDate()
+      fecha = new Date(base.getFullYear(), base.getMonth() + i, Math.min(base.getDate(), ultimoDia))
+    } else {
+      const dias = tipoPago === 'quincenal' ? (mantenerDiaSemana ? 14 : 15) : 7
+      fecha = new Date(base.getFullYear(), base.getMonth(), base.getDate() + dias * i)
+    }
+    fechas.push(aFechaISO(fecha))
+  }
+  return fechas
+}
+
+// Próxima fecha (desde hoy inclusive) que cae en el día de la semana indicado
+const proximoDiaSemana = (diaSemana: number) => {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  hoy.setDate(hoy.getDate() + ((diaSemana - hoy.getDay() + 7) % 7))
+  return aFechaISO(hoy)
+}
 
 interface TablaPagosProps {
   transaccion: Transaccion
@@ -31,6 +75,46 @@ export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: Tab
     motivoReprogramacion: '',
   })
 
+  const [cambioDia, setCambioDia] = useState<{ abierto: boolean; nuevaFecha: string; porDiaSemana?: boolean }>({
+    abierto: false,
+    nuevaFecha: '',
+  })
+
+  // Cuotas que todavía se deben cobrar, en orden
+  const cuotasPendientes = pagos
+    .filter((p) => p.estado !== 'pagado')
+    .sort((a, b) => (a.numero_cuota || 0) - (b.numero_cuota || 0))
+
+  const nuevasFechas = cambioDia.nuevaFecha
+    ? generarFechas(cambioDia.nuevaFecha, cuotasPendientes.length, transaccion.tipo_pago, cambioDia.porDiaSemana)
+    : []
+
+  const cambiarDiaDePago = async () => {
+    if (!cambioDia.nuevaFecha || cuotasPendientes.length === 0) return
+
+    setProcesando('cambio-dia')
+    try {
+      const resultados = await Promise.all(
+        cuotasPendientes.map((pago, i) =>
+          supabase.from('pagos').update({ fecha_vencimiento: nuevasFechas[i] }).eq('id', pago.id)
+        )
+      )
+      const fallo = resultados.find((r) => r.error)
+      if (fallo?.error) throw fallo.error
+
+      mostrarToast(
+        'success',
+        `Día de pago cambiado: ${cuotasPendientes.length} cuota${cuotasPendientes.length !== 1 ? 's' : ''} actualizada${cuotasPendientes.length !== 1 ? 's' : ''}`
+      )
+      setCambioDia({ abierto: false, nuevaFecha: '' })
+      onPagoRegistrado()
+    } catch (error: any) {
+      mostrarToast('error', 'Error al cambiar el día de pago: ' + error.message)
+    } finally {
+      setProcesando(null)
+    }
+  }
+
   const mostrarToast = (tipo: 'success' | 'error', texto: string) => {
     setToast({ tipo, texto })
     setTimeout(() => setToast(null), 4000)
@@ -43,7 +127,7 @@ export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: Tab
         .from('pagos')
         .update({
           monto_pagado: montoPago,
-          fecha_pago: new Date().toISOString().split('T')[0],
+          fecha_pago: hoyISO(),
           estado: 'pagado',
         })
         .eq('id', pagoId)
@@ -72,15 +156,18 @@ export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: Tab
 
     setProcesando(reprogramacion.pagoId)
     try {
-      const nuevoMonto = transaccion.monto_cuota + reprogramacion.interesesMora
+      // El importe de la cuota no cambia: el interés va solo en intereses_mora
+      // (todas las pantallas muestran monto_cuota + intereses_mora). Si ya tenía
+      // interés de una reprogramación anterior, se acumula.
+      const pagoActual = pagos.find((p) => p.id === reprogramacion.pagoId)
+      const moraAnterior = pagoActual?.intereses_mora || 0
 
       const { error } = await supabase
         .from('pagos')
         .update({
           fecha_vencimiento: reprogramacion.nuevaFecha,
-          monto_cuota: nuevoMonto,
-          intereses_mora: reprogramacion.interesesMora,
-          fecha_reprogramacion: new Date().toISOString().split('T')[0],
+          intereses_mora: moraAnterior + reprogramacion.interesesMora,
+          fecha_reprogramacion: hoyISO(),
           motivo_reprogramacion: reprogramacion.motivoReprogramacion || null,
           estado: 'reprogramado',
         })
@@ -117,7 +204,7 @@ export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: Tab
   }
 
   const formatearMoneda = (monto: number) =>
-    new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(monto)
+    new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(monto)
 
   const calcularInteresesSugeridos = (diasAtraso: number, montoBase: number) => {
     const tasaMensual = 0.01
@@ -139,43 +226,51 @@ export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: Tab
     setReprogramacion({ pagoId: null, nuevaFecha: '', interesesMora: 0, motivoReprogramacion: '' })
 
   return (
-    <div className="border-t">
+    <div>
       {/* Toast notification */}
       {toast && (
-        <div
-          className={`mx-4 mt-3 flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-            toast.tipo === 'success'
-              ? 'bg-green-50 border border-green-200 text-green-800'
-              : 'bg-red-50 border border-red-200 text-red-800'
-          }`}
-        >
-          {toast.tipo === 'success' ? (
-            <CheckCircle className="w-4 h-4 flex-shrink-0 text-green-600" />
-          ) : (
-            <XCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
-          )}
-          {toast.texto}
+        <div className="px-4 sm:px-5 pt-4">
+          <div className={toast.tipo === 'success' ? 'alert-success' : 'alert-danger'} role="status">
+            {toast.tipo === 'success' ? (
+              <CheckCircle className="w-4 h-4 flex-shrink-0" />
+            ) : (
+              <XCircle className="w-4 h-4 flex-shrink-0" />
+            )}
+            {toast.texto}
+          </div>
         </div>
       )}
 
-      <div className="p-4">
-        <h4 className="font-semibold mb-3 text-gray-800 flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-gray-500" />
-          Detalle de Cuotas
-        </h4>
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-sm">
+      <div className="p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h4 className="text-sm font-semibold text-fg flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-muted" />
+            Cuotas
+          </h4>
+          {cuotasPendientes.length > 0 && (
+            <button
+              onClick={() => setCambioDia({ abierto: true, nuevaFecha: '' })}
+              className="btn-secondary btn-sm"
+            >
+              <CalendarClock className="w-4 h-4" />
+              Cambiar día de pago
+            </button>
+          )}
+        </div>
+
+        <div className="table-wrap">
+          <table className="data-table min-w-[640px]">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-gray-500 tracking-wide">Cuota</th>
-                <th className="text-left px-4 py-3 font-semibold text-xs uppercase text-gray-500 tracking-wide">Vencimiento</th>
-                <th className="text-right px-4 py-3 font-semibold text-xs uppercase text-gray-500 tracking-wide">Monto</th>
-                <th className="text-right px-4 py-3 font-semibold text-xs uppercase text-gray-500 tracking-wide">Pagado</th>
-                <th className="text-center px-4 py-3 font-semibold text-xs uppercase text-gray-500 tracking-wide">Estado</th>
-                <th className="text-center px-4 py-3 font-semibold text-xs uppercase text-gray-500 tracking-wide">Acciones</th>
+              <tr>
+                <th>Cuota</th>
+                <th>Vencimiento</th>
+                <th className="!text-right">Importe</th>
+                <th className="!text-right">Pagado</th>
+                <th className="!text-center">Estado</th>
+                <th className="!text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {pagos.map((pago) => {
                 const diasVencimiento = calcularDiasVencimiento(pago.fecha_vencimiento)
                 const estaVencido = diasVencimiento < 0 && pago.estado !== 'pagado'
@@ -185,94 +280,92 @@ export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: Tab
                 return (
                   <tr
                     key={pago.id}
-                    className={`hover:bg-gray-50 transition-colors ${
-                      estaVencido ? 'bg-red-50/30' : proximoAVencer ? 'bg-amber-50/30' : ''
-                    }`}
+                    className={estaVencido ? '!bg-danger-soft/30' : proximoAVencer ? '!bg-warning-soft/30' : ''}
                   >
-                    <td className="px-4 py-3">
-                      <span className="font-semibold text-gray-800">#{pago.numero_cuota}</span>
+                    <td>
+                      <span className="font-semibold text-fg num">{pago.numero_cuota}</span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="text-gray-800">{formatearFecha(pago.fecha_vencimiento)}</p>
-                        {pago.fecha_reprogramacion && (
-                          <p className="text-xs text-blue-600 mt-0.5">
-                            Reprog: {formatearFecha(pago.fecha_reprogramacion)}
-                          </p>
-                        )}
-                        {pago.estado !== 'pagado' && (
-                          <p
-                            className={`text-xs mt-0.5 font-medium ${
-                              estaVencido
-                                ? 'text-red-600'
-                                : proximoAVencer
-                                ? 'text-amber-600'
-                                : 'text-gray-400'
-                            }`}
-                          >
-                            {estaVencido
-                              ? `Vencido hace ${Math.abs(diasVencimiento)}d`
-                              : diasVencimiento === 0
-                              ? 'Vence hoy'
+                    <td>
+                      <p className="text-fg num whitespace-nowrap">{formatearFecha(pago.fecha_vencimiento)}</p>
+                      {pago.fecha_reprogramacion && (
+                        <p className="text-xs text-reprog-text mt-0.5 num">
+                          Reprogramada el {formatearFecha(pago.fecha_reprogramacion)}
+                        </p>
+                      )}
+                      {pago.estado !== 'pagado' && (
+                        <p
+                          className={`text-xs mt-0.5 font-medium ${
+                            estaVencido
+                              ? 'text-danger-text'
                               : proximoAVencer
-                              ? `Vence en ${diasVencimiento}d`
-                              : `En ${diasVencimiento}d`}
-                          </p>
-                        )}
-                      </div>
+                              ? 'text-warning-text'
+                              : 'text-muted'
+                          }`}
+                        >
+                          {estaVencido
+                            ? `Vencida hace ${Math.abs(diasVencimiento)} d`
+                            : diasVencimiento === 0
+                            ? 'Vence hoy'
+                            : proximoAVencer
+                            ? `Vence en ${diasVencimiento} d`
+                            : `En ${diasVencimiento} d`}
+                        </p>
+                      )}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <p className="font-semibold text-gray-800">{formatearMoneda(montoTotal)}</p>
+                    <td className="text-right">
+                      <p className="font-semibold text-fg num whitespace-nowrap">{formatearMoneda(montoTotal)}</p>
                       {(pago.intereses_mora || 0) > 0 && (
-                        <p className="text-xs text-red-500 mt-0.5">
+                        <p className="text-xs text-danger-text mt-0.5 num whitespace-nowrap">
                           +{formatearMoneda(pago.intereses_mora || 0)} mora
                         </p>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <p className="font-semibold text-green-600">
+                    <td className="text-right">
+                      <p className="font-medium text-success-text num whitespace-nowrap">
                         {formatearMoneda(pago.monto_pagado || 0)}
                       </p>
                       {pago.fecha_pago && (
-                        <p className="text-xs text-gray-400 mt-0.5">{formatearFecha(pago.fecha_pago)}</p>
+                        <p className="text-xs text-muted mt-0.5 num">{formatearFecha(pago.fecha_pago)}</p>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="text-center">
                       <EstadoPago
                         estado={pago.estado}
                         vencido={estaVencido}
                         reprogramado={pago.estado === 'reprogramado'}
+                        porVencer={proximoAVencer}
                       />
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td>
                       {pago.estado !== 'pagado' && (
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => registrarPago(pago.id, montoTotal)}
-                            disabled={procesando === pago.id}
-                            className="inline-flex items-center gap-1 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {procesando === pago.id ? (
-                              <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <CheckCircle className="w-3 h-3" />
-                            )}
-                            Cobrar
-                          </button>
+                        <div className="flex justify-end gap-1.5">
                           <button
                             onClick={() => abrirReprogramacion(pago.id)}
                             disabled={procesando === pago.id}
-                            className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="btn-secondary btn-sm"
+                            title="Reprogramar cuota"
                           >
-                            <RotateCcw className="w-3 h-3" />
-                            Reprog.
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Reprogramar
+                          </button>
+                          <button
+                            onClick={() => registrarPago(pago.id, montoTotal)}
+                            disabled={procesando === pago.id}
+                            className="btn-accent btn-sm"
+                          >
+                            {procesando === pago.id ? (
+                              <span className="spinner w-3.5 h-3.5" />
+                            ) : (
+                              <CheckCircle className="w-3.5 h-3.5" />
+                            )}
+                            Cobrar
                           </button>
                         </div>
                       )}
                       {pago.estado === 'pagado' && (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 text-xs font-medium">
+                        <span className="flex justify-end items-center gap-1 text-success-text text-xs font-medium">
                           <CheckCircle className="w-3.5 h-3.5" />
-                          Cobrado
+                          Cobrada
                         </span>
                       )}
                     </td>
@@ -284,123 +377,262 @@ export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: Tab
         </div>
       </div>
 
+      {/* Modal de Cambio de Día de Pago */}
+      {cambioDia.abierto && cuotasPendientes.length > 0 && (
+        <div className="modal-backdrop">
+          <div className="modal flex flex-col" role="dialog" aria-modal="true" aria-labelledby="titulo-cambio-dia">
+            <div className="modal-header">
+              <div className="icon-tile bg-primary/10 text-primary">
+                <CalendarClock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 id="titulo-cambio-dia" className="text-base font-semibold text-fg">Cambiar día de pago</h3>
+                <p className="text-xs text-muted">
+                  Las cuotas pendientes se reacomodan solas ({transaccion.tipo_pago})
+                </p>
+              </div>
+            </div>
+
+            <div className="modal-body overflow-y-auto">
+              <div className="rounded-lg bg-surface-2 p-3 text-sm space-y-0.5">
+                <p className="text-muted">
+                  Próxima cuota a cobrar: <strong className="text-fg num">{cuotasPendientes[0].numero_cuota}</strong>
+                </p>
+                <p className="text-muted">
+                  Vence actualmente el{' '}
+                  <strong className="text-fg num">
+                    {DIAS_SEMANA[parseFecha(cuotasPendientes[0].fecha_vencimiento).getDay()]}{' '}
+                    {formatearFecha(cuotasPendientes[0].fecha_vencimiento)}
+                  </strong>
+                </p>
+              </div>
+
+              {transaccion.tipo_pago !== 'mensual' && (
+                <fieldset>
+                  <legend className="label">
+                    Nuevo día de la semana
+                  </legend>
+                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                    {[1, 2, 3, 4, 5, 6, 0].map((dia) => {
+                      const fecha = proximoDiaSemana(dia)
+                      const activo = cambioDia.nuevaFecha === fecha
+                      return (
+                        <button
+                          key={dia}
+                          type="button"
+                          onClick={() => setCambioDia((prev) => ({ ...prev, nuevaFecha: fecha, porDiaSemana: true }))}
+                          aria-pressed={activo}
+                          className={`min-h-[44px] px-2 rounded-lg text-xs font-semibold border transition-colors ${
+                            activo
+                              ? 'bg-primary text-on-primary border-primary'
+                              : 'bg-surface text-fg border-line hover:border-primary/50'
+                          }`}
+                        >
+                          {DIAS_SEMANA[dia].slice(0, 3)}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </fieldset>
+              )}
+
+              <div>
+                <label htmlFor="cambio-dia-fecha" className="label">
+                  {transaccion.tipo_pago === 'mensual'
+                    ? 'Nueva fecha de la próxima cuota *'
+                    : 'O elegí la fecha exacta de la próxima cuota'}
+                </label>
+                <input
+                  id="cambio-dia-fecha"
+                  type="date"
+                  value={cambioDia.nuevaFecha}
+                  onChange={(e) => setCambioDia((prev) => ({ ...prev, nuevaFecha: e.target.value, porDiaSemana: false }))}
+                  className="input"
+                />
+              </div>
+
+              {nuevasFechas.length > 0 && (
+                <div>
+                  <p className="label">Así quedan las cuotas</p>
+                  <div className="border border-line rounded-lg divide-y divide-line max-h-56 overflow-y-auto text-sm">
+                    {cuotasPendientes.map((pago, i) => (
+                      <div key={pago.id} className="flex items-center justify-between px-3 py-2">
+                        <span className="font-semibold text-fg num">Cuota {pago.numero_cuota}</span>
+                        <span className="flex items-center gap-2 num">
+                          <span className="text-muted line-through">{formatearFecha(pago.fecha_vencimiento)}</span>
+                          <ArrowRight className="w-3 h-3 text-muted" />
+                          <span className="text-primary font-medium">
+                            {DIAS_SEMANA[parseFecha(nuevasFechas[i]).getDay()].slice(0, 3)} {formatearFecha(nuevasFechas[i])}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="help">
+                    Las cuotas ya pagadas no se modifican.
+                    {transaccion.tipo_pago === 'quincenal' && (cambioDia.porDiaSemana
+                      ? ' Cada 14 días, para que siempre caigan el mismo día de la semana.'
+                      : ' Cada 15 días a partir de la fecha elegida.')}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button
+                onClick={() => setCambioDia({ abierto: false, nuevaFecha: '' })}
+                disabled={procesando !== null}
+                className="btn-secondary flex-1 sm:flex-none"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={cambiarDiaDePago}
+                disabled={!cambioDia.nuevaFecha || procesando !== null}
+                className="btn-primary flex-1 sm:flex-none"
+              >
+                {procesando === 'cambio-dia' ? (
+                  <span className="spinner" />
+                ) : (
+                  <CalendarClock className="w-4 h-4" />
+                )}
+                Confirmar cambio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Reprogramación */}
       {reprogramacion.pagoId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div className="p-5 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">Reprogramar Cuota</h3>
+        <div className="modal-backdrop">
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-reprogramar">
+            <div className="modal-header">
+              <div className="icon-tile bg-reprog-soft text-reprog-text">
+                <Calendar className="w-5 h-5" />
               </div>
+              <h3 id="titulo-reprogramar" className="text-base font-semibold text-fg">Reprogramar cuota</h3>
             </div>
 
             {(() => {
               const pago = pagos.find((p) => p.id === reprogramacion.pagoId)
               const diasAtraso = pago ? calcularDiasVencimiento(pago.fecha_vencimiento) : 0
               return (
-                <div className="p-5 space-y-4">
+                <>
+                <div className="modal-body">
                   {transaccion.descripcion && (
-                    <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-lg">
-                      <p className="text-xs text-gray-600 font-medium mb-1">Transacción:</p>
-                      <p className="text-sm text-gray-800">{transaccion.descripcion}</p>
-                    </div>
+                    <p className="text-sm text-muted border-l-2 border-primary/40 pl-3">
+                      {transaccion.descripcion}
+                    </p>
                   )}
 
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      Cuota #{pago?.numero_cuota} — Vencimiento original:
+                  <div className="rounded-lg bg-surface-2 p-3 text-sm">
+                    <p className="font-medium text-fg">
+                      Cuota {pago?.numero_cuota}
                     </p>
-                    <p className="text-sm text-gray-600">{pago ? formatearFecha(pago.fecha_vencimiento) : ''}</p>
+                    <p className="text-muted num">Vencimiento actual: {pago ? formatearFecha(pago.fecha_vencimiento) : ''}</p>
                     {diasAtraso < 0 && (
-                      <p className="text-sm text-red-600 font-medium mt-1">
-                        Vencido hace {Math.abs(diasAtraso)} días
-                      </p>
+                      <span className="badge-danger mt-2">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Vencida hace {Math.abs(diasAtraso)} días
+                      </span>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Nueva fecha de vencimiento *
+                    <label htmlFor="reprog-fecha" className="label">
+                      Nueva fecha de vencimiento <span className="text-danger" aria-hidden="true">*</span>
                     </label>
                     <input
+                      id="reprog-fecha"
                       type="date"
                       value={reprogramacion.nuevaFecha}
                       onChange={(e) => setReprogramacion((prev) => ({ ...prev, nuevaFecha: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      min={new Date().toISOString().split('T')[0]}
+                      className="input"
+                      min={hoyISO()}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Intereses por mora
+                    <label htmlFor="reprog-interes" className="label">
+                      Interés por atraso
                     </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={reprogramacion.interesesMora}
-                      onChange={(e) =>
-                        setReprogramacion((prev) => ({ ...prev, interesesMora: parseFloat(e.target.value) || 0 }))
-                      }
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      placeholder="0.00"
-                    />
-                    <div className="mt-2 p-3 bg-gray-50 rounded-lg text-sm space-y-1">
-                      <div className="flex justify-between text-gray-600">
-                        <span>Monto original:</span>
-                        <span>{formatearMoneda(transaccion.monto_cuota)}</span>
-                      </div>
-                      <div className="flex justify-between text-red-600">
-                        <span>Intereses mora:</span>
-                        <span>+{formatearMoneda(reprogramacion.interesesMora)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-gray-900 border-t pt-1">
-                        <span>Total nuevo:</span>
-                        <span>{formatearMoneda(transaccion.monto_cuota + reprogramacion.interesesMora)}</span>
-                      </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-medium pointer-events-none">$</span>
+                      <input
+                        id="reprog-interes"
+                        type="number"
+                        step="0.01"
+                        value={reprogramacion.interesesMora}
+                        onChange={(e) =>
+                          setReprogramacion((prev) => ({ ...prev, interesesMora: parseFloat(e.target.value) || 0 }))
+                        }
+                        className="input pl-8 num"
+                        placeholder="0,00"
+                      />
                     </div>
+                    <p className="help">Se sugiere un 1% por cada mes de atraso. Podés modificarlo.</p>
+                    <dl className="mt-3 p-3 rounded-lg bg-surface-2 text-sm space-y-1 num">
+                      <div className="flex justify-between text-muted">
+                        <dt>Cuota original</dt>
+                        <dd>{formatearMoneda(pago?.monto_cuota || transaccion.monto_cuota)}</dd>
+                      </div>
+                      {(pago?.intereses_mora || 0) > 0 && (
+                        <div className="flex justify-between text-danger-text">
+                          <dt>Interés de reprogramaciones anteriores</dt>
+                          <dd>+{formatearMoneda(pago?.intereses_mora || 0)}</dd>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-danger-text">
+                        <dt>Interés por atraso</dt>
+                        <dd>+{formatearMoneda(reprogramacion.interesesMora)}</dd>
+                      </div>
+                      <div className="flex justify-between font-bold text-fg border-t border-line pt-1">
+                        <dt>Nuevo total</dt>
+                        <dd>{formatearMoneda((pago?.monto_cuota || transaccion.monto_cuota) + (pago?.intereses_mora || 0) + reprogramacion.interesesMora)}</dd>
+                      </div>
+                    </dl>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Motivo (opcional)
+                    <label htmlFor="reprog-motivo" className="label">
+                      Motivo <span className="font-normal text-muted">(opcional)</span>
                     </label>
                     <textarea
+                      id="reprog-motivo"
                       value={reprogramacion.motivoReprogramacion}
                       onChange={(e) =>
                         setReprogramacion((prev) => ({ ...prev, motivoReprogramacion: e.target.value }))
                       }
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
-                      placeholder="Ej: Problemas económicos temporales..."
+                      className="input resize-none"
+                      placeholder="Ej: Pidió pagar a fin de mes"
                       rows={2}
                     />
                   </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      onClick={cerrarReprogramacion}
-                      disabled={procesando !== null}
-                      className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={reprogramarPago}
-                      disabled={!reprogramacion.nuevaFecha || procesando !== null}
-                      className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                    >
-                      {procesando ? (
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <RotateCcw className="w-4 h-4" />
-                      )}
-                      Confirmar
-                    </button>
-                  </div>
                 </div>
+
+                <div className="modal-footer">
+                  <button
+                    onClick={cerrarReprogramacion}
+                    disabled={procesando !== null}
+                    className="btn-secondary flex-1 sm:flex-none"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={reprogramarPago}
+                    disabled={!reprogramacion.nuevaFecha || procesando !== null}
+                    className="btn-primary flex-1 sm:flex-none"
+                  >
+                    {procesando ? (
+                      <span className="spinner" />
+                    ) : (
+                      <RotateCcw className="w-4 h-4" />
+                    )}
+                    Reprogramar
+                  </button>
+                </div>
+                </>
               )
             })()}
           </div>
@@ -414,36 +646,17 @@ function EstadoPago({
   estado,
   vencido,
   reprogramado,
+  porVencer,
 }: {
   estado: string
   vencido?: boolean
   reprogramado?: boolean
+  porVencer?: boolean
 }) {
-  if (estado === 'pagado')
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-        <CheckCircle className="w-3 h-3" />
-        Pagado
-      </span>
-    )
-  if (reprogramado)
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-        <RotateCcw className="w-3 h-3" />
-        Reprog.
-      </span>
-    )
-  if (vencido)
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
-        <AlertTriangle className="w-3 h-3" />
-        Vencido
-      </span>
-    )
-  return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-      <Calendar className="w-3 h-3" />
-      Pendiente
-    </span>
-  )
+  if (estado === 'pagado') return <EstadoBadge estado="pagado" />
+  if (reprogramado) return <EstadoBadge estado="reprogramado" />
+  if (vencido) return <EstadoBadge estado="vencido" />
+  if (estado === 'parcial') return <EstadoBadge estado="parcial" />
+  if (porVencer) return <EstadoBadge estado="por_vencer" />
+  return <EstadoBadge estado="pendiente" />
 }

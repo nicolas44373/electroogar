@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { fechaLocalISO } from '@/app/lib/fechas'
 import { Cliente, Transaccion, Pago, Producto, NotificacionVencimiento } from '@/app/lib/types/cobranzas'
 import BusquedaCliente from './components/BusquedaCliente'
 import InfoCliente from './components/InfoCliente'
@@ -158,10 +159,25 @@ export default function CobranzasPage() {
         .map(p => p.transaccion?.id)
         .filter(Boolean))]
 
-      const { data: todosPagosCompletos } = await supabase
-        .from('pagos')
-        .select('*')
-        .in('transaccion_id', transaccionIds)
+      // Se consulta en lotes: con cientos de ids la URL queda demasiado larga y Supabase
+      // responde 400. Cada lote se pagina porque Supabase devuelve como máximo 1000 filas.
+      const LOTE_IDS = 100
+      const POR_PAGINA = 1000
+      const todosPagosCompletos: any[] = []
+      for (let i = 0; i < transaccionIds.length; i += LOTE_IDS) {
+        const lote = transaccionIds.slice(i, i + LOTE_IDS)
+        for (let desde = 0; ; desde += POR_PAGINA) {
+          const { data: pagina, error } = await supabase
+            .from('pagos')
+            .select('transaccion_id, estado, monto_cuota, intereses_mora, monto_pagado')
+            .in('transaccion_id', lote)
+            .range(desde, desde + POR_PAGINA - 1)
+          if (error) throw error
+          if (!pagina || pagina.length === 0) break
+          todosPagosCompletos.push(...pagina)
+          if (pagina.length < POR_PAGINA) break
+        }
+      }
 
       const saldosPorTransaccion = new Map<string, number>()
       
@@ -282,7 +298,7 @@ export default function CobranzasPage() {
       ] = await Promise.all([
         supabase.from('clientes').select('*', { count: 'exact', head: true }),
         supabase.from('transacciones').select('monto_total').gte('created_at', inicioMes.toISOString()),
-        supabase.from('pagos').select('monto_pagado').eq('estado', 'pagado').gte('fecha_pago', inicioMes.toISOString().split('T')[0]),
+        supabase.from('pagos').select('monto_pagado').eq('estado', 'pagado').gte('fecha_pago', fechaLocalISO(inicioMes)),
         supabase.from('pagos').select('*', { count: 'exact', head: true })
           .in('estado', ['pendiente', 'parcial', 'reprogramado'])
           .lt('fecha_vencimiento', hoyStr),
@@ -388,7 +404,7 @@ export default function CobranzasPage() {
             <BusquedaCliente clientes={clientes} clienteSeleccionado={clienteSeleccionado} onClienteSeleccionado={setClienteSeleccionado} />
             {clienteActual && (
               <>
-                <InfoCliente cliente={clienteActual} mostrarFormulario={mostrarNuevaVenta} onToggleFormulario={() => setMostrarNuevaVenta(!mostrarNuevaVenta)} />
+                <InfoCliente cliente={clienteActual} mostrarFormulario={mostrarNuevaVenta} onToggleFormulario={() => setMostrarNuevaVenta(!mostrarNuevaVenta)} onClienteActualizado={cargarClientes} />
                 {mostrarNuevaVenta && <FormularioVenta clienteId={clienteSeleccionado} productos={productos} onVentaCreada={() => { setMostrarNuevaVenta(false); cargarHistorial(clienteSeleccionado) }} onCancelar={() => setMostrarNuevaVenta(false)} />}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <CuentaCorriente clienteId={clienteSeleccionado} transacciones={transacciones} pagos={pagos} onTransaccionesUpdate={() => cargarHistorial(clienteSeleccionado)} />
@@ -406,172 +422,110 @@ export default function CobranzasPage() {
   }
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'emerald' },
+    { id: 'dashboard', label: 'Resumen', icon: LayoutDashboard, color: 'emerald' },
     { id: 'clientes', label: 'Clientes', icon: Users, color: 'blue' },
     { id: 'recibos', label: 'Recibos', icon: FileText, color: 'purple' },
     { id: 'notificaciones', label: 'Notificaciones', icon: AlertTriangle, color: 'orange' }
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 relative overflow-hidden">
-      {/* Animated background pattern */}
-      <div className="absolute inset-0 overflow-hidden opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }}></div>
-      </div>
-
-      {/* Floating shapes */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-20 left-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse animation-delay-2000"></div>
-        <div className="absolute top-1/2 right-1/3 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse animation-delay-4000"></div>
-      </div>
-
-      <div className="relative">
-        {/* HEADER */}
-        <header className="backdrop-blur-xl bg-slate-800/40 border-b border-slate-700/50 sticky top-0 z-40 shadow-xl">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between py-4">
-              <div className="flex items-center space-x-3">
-                <button 
-                  className="lg:hidden p-2 rounded-lg text-slate-300 hover:bg-slate-700/50 transition-colors" 
-                  onClick={() => setMenuAbierto(!menuAbierto)}
-                >
-                  {menuAbierto ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                </button>
-                
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-lg blur opacity-50"></div>
-                    <div className="relative bg-gradient-to-br from-slate-700 to-slate-800 w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center border border-emerald-500/30">
-                      <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" strokeWidth={2.5} />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h1 className="text-lg sm:text-xl font-bold text-white">Sistema de Cobranzas</h1>
-                    <p className="text-xs text-slate-400 hidden sm:block">Gestión profesional de cobranzas</p>
-                  </div>
-                </div>
+    <div className="page">
+      {/* HEADER */}
+      <header className="bg-surface border-b border-line">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-3 pt-5 pb-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="icon-tile bg-primary/10 text-primary">
+                <Zap className="w-5 h-5" />
               </div>
-
-              {/* Notificaciones */}
-              {notificacionesUrgentes.length > 0 && (
-                <button 
-                  onClick={() => setVistaActiva('notificaciones')} 
-                  className="group relative p-3 hover:bg-red-500/10 rounded-xl transition-all"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-orange-600 rounded-xl blur opacity-0 group-hover:opacity-50 transition-opacity"></div>
-                  <div className="relative flex items-center gap-2">
-                    <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-red-400 group-hover:text-red-300 transition-colors" />
-                    <div className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-lg">
-                      {notificacionesUrgentes.length}
-                    </div>
-                  </div>
-                </button>
-              )}
+              <div className="min-w-0">
+                <h1 className="text-lg font-semibold text-fg">Cobranzas</h1>
+                <p className="text-xs text-muted hidden sm:block">Cuotas, pagos, recibos y vencimientos</p>
+              </div>
             </div>
 
-            {/* NAVIGATION - Desktop */}
-            <nav className="hidden lg:block pb-4">
-              <div className="flex space-x-2">
-                {tabs.map(({ id, label, icon: Icon, color }) => {
-                  const isActive = vistaActiva === id
-                  const colorClasses = {
-                    emerald: {
-                      active: 'from-emerald-600 to-emerald-500 text-white border-emerald-400/50',
-                      inactive: 'text-slate-300 hover:text-emerald-400 border-transparent hover:border-emerald-500/30'
-                    },
-                    blue: {
-                      active: 'from-blue-600 to-blue-500 text-white border-blue-400/50',
-                      inactive: 'text-slate-300 hover:text-blue-400 border-transparent hover:border-blue-500/30'
-                    },
-                    purple: {
-                      active: 'from-purple-600 to-purple-500 text-white border-purple-400/50',
-                      inactive: 'text-slate-300 hover:text-purple-400 border-transparent hover:border-purple-500/30'
-                    },
-                    orange: {
-                      active: 'from-orange-600 to-red-500 text-white border-orange-400/50',
-                      inactive: 'text-slate-300 hover:text-orange-400 border-transparent hover:border-orange-500/30'
-                    }
-                  }
-                  
-                  const classes = colorClasses[color as keyof typeof colorClasses]
-                  
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => { setVistaActiva(id as any); setMenuAbierto(false) }}
-                      className={`group relative flex items-center space-x-2 px-5 py-3 rounded-lg font-medium text-sm transition-all ${
-                        isActive 
-                          ? `bg-gradient-to-r ${classes.active} shadow-lg`
-                          : `backdrop-blur-sm bg-slate-800/30 ${classes.inactive} border hover:bg-slate-700/30`
-                      }`}
-                    >
-                      {isActive && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-lg"></div>
-                      )}
-                      <Icon className={`w-4 h-4 relative z-10 ${isActive ? 'animate-pulse' : ''}`} />
-                      <span className="relative z-10">{label}</span>
-                      {id === 'notificaciones' && notificacionesUrgentes.length > 0 && (
-                        <div className="relative z-10 bg-white text-red-600 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold ml-1">
-                          {notificacionesUrgentes.length}
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            </nav>
-          </div>
-        </header>
+            <div className="flex items-center gap-2">
+              {/* Notificaciones */}
+              {notificacionesUrgentes.length > 0 && (
+                <button
+                  onClick={() => setVistaActiva('notificaciones')}
+                  className="relative btn-icon text-danger hover:text-danger hover:bg-danger-soft"
+                  aria-label={`${notificacionesUrgentes.length} cuotas vencidas o que vencen hoy`}
+                  title="Cuotas vencidas o que vencen hoy"
+                >
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute top-1 right-1 min-w-[20px] h-5 px-1 rounded-full bg-danger text-white text-xs font-bold flex items-center justify-center num">
+                    {notificacionesUrgentes.length}
+                  </span>
+                </button>
+              )}
 
-        {/* NAVIGATION - Mobile */}
-        {menuAbierto && (
-          <div className="lg:hidden backdrop-blur-xl bg-slate-800/95 border-b border-slate-700/50 shadow-xl">
-            <div className="max-w-7xl mx-auto px-4 py-4 space-y-2">
-              {tabs.map(({ id, label, icon: Icon, color }) => {
+              <button
+                className="lg:hidden btn-icon"
+                onClick={() => setMenuAbierto(!menuAbierto)}
+                aria-label={menuAbierto ? 'Cerrar secciones' : 'Ver secciones'}
+                aria-expanded={menuAbierto}
+              >
+                {menuAbierto ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
+          </div>
+
+          {/* NAVIGATION - Desktop */}
+          <nav className="hidden lg:block" aria-label="Secciones de cobranzas">
+            <div className="flex gap-1 -mb-px">
+              {tabs.map(({ id, label, icon: Icon }) => {
                 const isActive = vistaActiva === id
-                const colorClasses = {
-                  emerald: {
-                    active: 'from-emerald-600 to-emerald-500 text-white',
-                    inactive: 'text-slate-300 hover:text-emerald-400'
-                  },
-                  blue: {
-                    active: 'from-blue-600 to-blue-500 text-white',
-                    inactive: 'text-slate-300 hover:text-blue-400'
-                  },
-                  purple: {
-                    active: 'from-purple-600 to-purple-500 text-white',
-                    inactive: 'text-slate-300 hover:text-purple-400'
-                  },
-                  orange: {
-                    active: 'from-orange-600 to-red-500 text-white',
-                    inactive: 'text-slate-300 hover:text-orange-400'
-                  }
-                }
-                
-                const classes = colorClasses[color as keyof typeof colorClasses]
-                
                 return (
                   <button
                     key={id}
                     onClick={() => { setVistaActiva(id as any); setMenuAbierto(false) }}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg font-medium text-sm transition-all ${
-                      isActive 
-                        ? `bg-gradient-to-r ${classes.active} shadow-lg`
-                        : `bg-slate-800/30 ${classes.inactive} hover:bg-slate-700/30`
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`flex items-center gap-2 min-h-[44px] px-4 border-b-2 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted hover:text-fg hover:border-line'
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
+                    <Icon className="w-4 h-4" />
+                    <span>{label}</span>
+                    {id === 'notificaciones' && notificacionesUrgentes.length > 0 && (
+                      <span className="badge-danger !px-2 !py-0.5 num">
+                        {notificacionesUrgentes.length}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
+        </div>
+
+        {/* NAVIGATION - Mobile */}
+        {menuAbierto && (
+          <div className="lg:hidden border-t border-line">
+            <div className="max-w-7xl mx-auto px-4 py-3 space-y-1">
+              {tabs.map(({ id, label, icon: Icon }) => {
+                const isActive = vistaActiva === id
+                return (
+                  <button
+                    key={id}
+                    onClick={() => { setVistaActiva(id as any); setMenuAbierto(false) }}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`w-full flex items-center justify-between min-h-[48px] px-3 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-fg hover:bg-surface-2'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
                       <Icon className="w-5 h-5" />
                       <span>{label}</span>
                     </div>
                     {id === 'notificaciones' && notificacionesUrgentes.length > 0 && (
-                      <div className="bg-white text-red-600 text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                      <span className="badge-danger num">
                         {notificacionesUrgentes.length}
-                      </div>
+                      </span>
                     )}
                   </button>
                 )
@@ -579,60 +533,34 @@ export default function CobranzasPage() {
             </div>
           </div>
         )}
+      </header>
 
-        {/* MAIN CONTENT */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          {loading && vistaActiva === 'clientes' ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full blur-xl opacity-50 animate-pulse"></div>
-                <div className="relative animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-emerald-400"></div>
-              </div>
-              <span className="mt-4 text-slate-300 font-medium">Cargando datos...</span>
+      {/* MAIN CONTENT */}
+      <main className="page-container">
+        {loading && vistaActiva === 'clientes' ? (
+          <div className="space-y-4" role="status" aria-live="polite">
+            <span className="sr-only">Cargando datos…</span>
+            <div className="card p-5 space-y-3">
+              <div className="skeleton h-5 w-48" />
+              <div className="skeleton h-11 w-full" />
             </div>
-          ) : (
-            <div className="animate-fade-in">
-              {renderVistaActiva()}
-            </div>
-          )}
-        </main>
-
-        {/* Status indicator */}
-        <div className="fixed bottom-6 right-6 z-40">
-          <div className="backdrop-blur-sm bg-slate-800/80 rounded-full px-4 py-2 border border-slate-700/50 shadow-xl">
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-              <span className="text-slate-300 font-medium">Sistema activo</span>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {[0, 1].map((i) => (
+                <div key={i} className="card p-5 space-y-3">
+                  <div className="skeleton h-5 w-40" />
+                  <div className="skeleton h-4 w-full" />
+                  <div className="skeleton h-4 w-5/6" />
+                  <div className="skeleton h-4 w-2/3" />
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Custom animations */}
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.5s ease-out;
-        }
-
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
+        ) : (
+          <div>
+            {renderVistaActiva()}
+          </div>
+        )}
+      </main>
     </div>
   )
 }

@@ -15,8 +15,7 @@ import {
   Search,
   Tag,
   Box,
-  TrendingUp,
-  Zap
+  TrendingUp
 } from 'lucide-react'
 
 interface Producto {
@@ -215,18 +214,18 @@ export default function ProductosPage() {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS',
-      minimumFractionDigits: 0
+      minimumFractionDigits: 2
     }).format(monto)
   }
 
   const getTipoColor = (tipo: string) => {
     switch (tipo) {
       case 'electrodomestico':
-        return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+        return 'badge-primary'
       case 'prestamo':
-        return 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+        return 'badge-reprog'
       default:
-        return 'bg-slate-500/20 text-slate-300 border-slate-500/30'
+        return 'badge-neutral'
     }
   }
 
@@ -245,349 +244,325 @@ export default function ProductosPage() {
   const totalProductos = productosFiltrados.reduce((sum, p) => sum + (p.stock || 0), 0)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 relative overflow-hidden">
-      {/* Animated background pattern */}
-      <div className="absolute inset-0 overflow-hidden opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }}></div>
-      </div>
-
-      {/* Floating shapes */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-20 left-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse animation-delay-2000"></div>
-        <div className="absolute top-1/2 right-1/3 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse animation-delay-4000"></div>
-      </div>
-
-      <div className="relative max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="page">
+      <div className="page-container">
         {/* Header */}
-        <div className="backdrop-blur-xl bg-slate-800/40 rounded-xl border border-slate-700/50 shadow-2xl p-6 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-xl blur opacity-50"></div>
-                <div className="relative bg-gradient-to-br from-emerald-600 to-blue-600 p-4 rounded-xl">
-                  <Package className="w-8 h-8 text-white" />
-                </div>
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="page-title">Productos</h1>
+            <p className="page-subtitle num">
+              {productosFiltrados.length} producto{productosFiltrados.length !== 1 ? 's' : ''} · {totalProductos} unidades en stock
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              limpiarFormulario()
+              setMostrarFormulario(!mostrarFormulario)
+            }}
+            className="btn-primary"
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo producto
+          </button>
+        </div>
+
+        {/* Stats Cards */}
+        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="card p-5">
+            <div className="flex items-center gap-3">
+              <div className="icon-tile bg-primary/10 text-primary">
+                <Package className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white">Gestión de Productos</h1>
-                <p className="text-slate-300 mt-1">
-                  {productosFiltrados.length} producto{productosFiltrados.length !== 1 ? 's' : ''} • {totalProductos} unidades
-                </p>
-              </div>
-            </div>
-            
-            <button
-              onClick={() => {
-                limpiarFormulario()
-                setMostrarFormulario(!mostrarFormulario)
-              }}
-              className="group relative px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                Nuevo Producto
-              </div>
-            </button>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-slate-700/30 backdrop-blur-sm rounded-lg p-4 border border-slate-600/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/20 rounded-lg">
-                  <Package className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Total Productos</p>
-                  <p className="text-xl font-bold text-white">{productosFiltrados.length}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-slate-700/30 backdrop-blur-sm rounded-lg p-4 border border-slate-600/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-500/20 rounded-lg">
-                  <Box className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Stock Total</p>
-                  <p className="text-xl font-bold text-white">{totalProductos}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-slate-700/30 backdrop-blur-sm rounded-lg p-4 border border-slate-600/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-500/20 rounded-lg">
-                  <TrendingUp className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Valor Inventario</p>
-                  <p className="text-xl font-bold text-white">{formatearMoneda(totalValorInventario)}</p>
-                </div>
+                <dt className="text-sm text-muted">Productos</dt>
+                <dd className="text-2xl font-bold text-fg num">{productosFiltrados.length}</dd>
               </div>
             </div>
           </div>
 
-          {/* Barra de búsqueda */}
-          <div className="mt-6">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, descripción o tipo..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent backdrop-blur-sm"
-              />
+          <div className="card p-5">
+            <div className="flex items-center gap-3">
+              <div className="icon-tile bg-success-soft text-success-text">
+                <Box className="w-5 h-5" />
+              </div>
+              <div>
+                <dt className="text-sm text-muted">Unidades en stock</dt>
+                <dd className="text-2xl font-bold text-fg num">{totalProductos}</dd>
+              </div>
             </div>
           </div>
+
+          <div className="card p-5 border-l-4 border-l-primary">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="icon-tile bg-reprog-soft text-reprog-text">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <dt className="text-sm text-muted">Valor del inventario</dt>
+                <dd className="text-2xl font-bold text-fg num truncate">{formatearMoneda(totalValorInventario)}</dd>
+              </div>
+            </div>
+          </div>
+        </dl>
+
+        {/* Barra de búsqueda */}
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-5 h-5 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, descripción o tipo"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="input input-icon bg-surface shadow-e1"
+            aria-label="Buscar productos"
+          />
         </div>
 
         {/* Mensaje de éxito/error */}
         {mensaje && (
-          <div className={`mb-6 backdrop-blur-xl rounded-xl p-4 flex items-center gap-3 shadow-lg animate-fade-in ${
-            mensaje.tipo === 'exito' 
-              ? 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-100'
-              : 'bg-red-500/20 border border-red-500/50 text-red-100'
-          }`}>
+          <div className={`mb-6 ${mensaje.tipo === 'exito' ? 'alert-success' : 'alert-danger'}`} role="status">
             {mensaje.tipo === 'exito' ? (
               <Check className="w-5 h-5 flex-shrink-0" />
             ) : (
               <AlertTriangle className="w-5 h-5 flex-shrink-0" />
             )}
-            <span className="font-medium">{mensaje.texto}</span>
+            <span>{mensaje.texto}</span>
           </div>
         )}
 
         {/* Formulario */}
         {mostrarFormulario && (
-          <div className="backdrop-blur-xl bg-slate-800/40 rounded-xl border border-slate-700/50 shadow-2xl p-6 mb-6 animate-fade-in">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Package className="w-6 h-6 text-emerald-400" />
-                {modoEdicion ? 'Editar Producto' : 'Nuevo Producto'}
+          <div className="card mb-6">
+            <div className="card-header">
+              <h2 className="section-title">
+                <Package className="w-5 h-5 text-primary" />
+                {modoEdicion ? 'Editar producto' : 'Nuevo producto'}
               </h2>
               <button
                 onClick={limpiarFormulario}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+                className="btn-icon"
+                aria-label="Cerrar formulario"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
-            <form onSubmit={guardarProducto} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <form onSubmit={guardarProducto} className="card-body grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Nombre del Producto *
+                <label htmlFor="prod-nombre" className="label">
+                  Nombre <span className="text-danger" aria-hidden="true">*</span>
                 </label>
                 <div className="relative">
-                  <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4 pointer-events-none" />
                   <input
+                    id="prod-nombre"
                     type="text"
                     name="nombre"
-                    placeholder="Ej: Heladera Samsung 350L"
+                    placeholder="Ej: Heladera Samsung 350 L"
                     value={formData.nombre}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="input input-icon"
                     required
                   />
                 </div>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Precio Unitario *
+                <label htmlFor="prod-precio" className="label">
+                  Precio unitario <span className="text-danger" aria-hidden="true">*</span>
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4 pointer-events-none" />
                   <input
+                    id="prod-precio"
                     type="number"
                     name="precio"
-                    placeholder="0.00"
+                    placeholder="0,00"
                     value={formData.precio}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="input input-icon num"
                     step="0.01"
                     min="0"
                     required
                   />
                 </div>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Tipo de Producto *
+                <label htmlFor="prod-tipo" className="label">
+                  Tipo <span className="text-danger" aria-hidden="true">*</span>
                 </label>
                 <select
+                  id="prod-tipo"
                   name="tipo"
                   value={formData.tipo}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="input"
                 >
                   <option value="electrodomestico">Electrodoméstico</option>
                   <option value="prestamo">Préstamo</option>
                 </select>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Stock Disponible
+                <label htmlFor="prod-stock" className="label">
+                  Stock disponible
                 </label>
                 <div className="relative">
-                  <Box className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <Box className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4 pointer-events-none" />
                   <input
+                    id="prod-stock"
                     type="number"
                     name="stock"
                     placeholder="0"
                     value={formData.stock}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="input input-icon num"
                     min="0"
                   />
                 </div>
+                <p className="help">Cantidad de unidades que tenés para vender.</p>
               </div>
-              
+
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Descripción
+                <label htmlFor="prod-descripcion" className="label">
+                  Descripción <span className="font-normal text-muted">(opcional)</span>
                 </label>
                 <div className="relative">
-                  <FileText className="absolute left-3 top-3 text-slate-400 w-4 h-4" />
+                  <FileText className="absolute left-3 top-3 text-muted w-4 h-4 pointer-events-none" />
                   <textarea
+                    id="prod-descripcion"
                     name="descripcion"
-                    placeholder="Descripción detallada del producto..."
+                    placeholder="Marca, modelo, medidas, garantía…"
                     value={formData.descripcion}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                    className="input input-icon resize-none"
                     rows={3}
                   />
                 </div>
               </div>
-              
-              <div className="md:col-span-2 flex justify-end gap-3 mt-4">
-                <button
-                  type="button"
-                  onClick={limpiarFormulario}
-                  className="px-6 py-3 border border-slate-600 rounded-xl text-slate-300 hover:bg-slate-700/50 transition-colors font-medium"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      Guardando...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      {modoEdicion ? 'Actualizar' : 'Guardar'}
-                    </>
-                  )}
-                </button>
+
+              <div className="md:col-span-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+                <p className="text-xs text-muted"><span className="text-danger">*</span> Campos obligatorios</p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={limpiarFormulario}
+                    className="btn-secondary"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-primary"
+                  >
+                    {loading ? (
+                      <>
+                        <span className="spinner" />
+                        Guardando…
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        {modoEdicion ? 'Guardar cambios' : 'Crear producto'}
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         )}
 
         {/* Tabla de productos */}
-        <div className="backdrop-blur-xl bg-slate-800/40 rounded-xl border border-slate-700/50 shadow-2xl overflow-hidden">
-          <div className="p-4 border-b border-slate-700/50 bg-slate-800/60">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Package className="w-5 h-5 text-emerald-400" />
-              Catálogo de Productos
+        <div className="card overflow-hidden">
+          <div className="card-header">
+            <h2 className="section-title">
+              <Package className="w-5 h-5 text-primary" />
+              Catálogo
             </h2>
           </div>
-          
+
           {loading && productosFiltrados.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-600 border-t-emerald-500 mb-4"></div>
-              <p className="text-slate-300 font-medium">Cargando productos...</p>
+            <div className="p-4 space-y-3" role="status" aria-live="polite">
+              <span className="sr-only">Cargando productos…</span>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-4 py-2">
+                  <div className="flex-1 space-y-2">
+                    <div className="skeleton h-4 w-1/3" />
+                    <div className="skeleton h-3 w-1/2" />
+                  </div>
+                  <div className="skeleton h-4 w-24" />
+                  <div className="skeleton h-6 w-28 rounded-full" />
+                </div>
+              ))}
             </div>
           ) : productosFiltrados.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-800/60 border-b border-slate-700/50">
+              <table className="data-table min-w-[560px]">
+                <thead>
                   <tr>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      Producto
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider hidden md:table-cell">
-                      Descripción
-                    </th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      Precio
-                    </th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      Tipo
-                    </th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider hidden sm:table-cell">
-                      Stock
-                    </th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      Acciones
-                    </th>
+                    <th>Producto</th>
+                    <th className="hidden md:table-cell">Descripción</th>
+                    <th className="!text-right">Precio</th>
+                    <th className="!text-center">Tipo</th>
+                    <th className="!text-right">Stock</th>
+                    <th className="!text-right">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700/50">
+                <tbody>
                   {productosFiltrados.map((producto) => (
-                    <tr key={producto.id} className="hover:bg-slate-700/30 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-white">{producto.nombre}</div>
-                        <div className="text-sm text-slate-400 md:hidden mt-1">
+                    <tr key={producto.id}>
+                      <td>
+                        <div className="font-medium text-fg">{producto.nombre}</div>
+                        <div className="text-xs text-muted md:hidden mt-0.5 line-clamp-2">
                           {producto.descripcion}
                         </div>
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
+                      <td className="hidden md:table-cell">
                         {producto.descripcion ? (
-                          <div className="text-sm text-slate-300 max-w-xs truncate" title={producto.descripcion}>
+                          <div className="text-muted max-w-xs truncate" title={producto.descripcion}>
                             {producto.descripcion}
                           </div>
                         ) : (
-                          <span className="text-slate-500 text-sm">-</span>
+                          <span className="text-muted">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="font-bold text-emerald-400">
+                      <td className="text-right">
+                        <div className="font-semibold text-fg num whitespace-nowrap">
                           {formatearMoneda(producto.precio)}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-center">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getTipoColor(producto.tipo)}`}>
-                            {getTipoLabel(producto.tipo)}
-                          </span>
-                        </div>
+                      <td className="text-center">
+                        <span className={getTipoColor(producto.tipo)}>
+                          {getTipoLabel(producto.tipo)}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-center hidden sm:table-cell">
-                        <span className={`font-semibold ${
-                          (producto.stock || 0) > 0 ? 'text-emerald-400' : 'text-red-400'
+                      <td className="text-right">
+                        <span className={`inline-flex items-center gap-1 font-semibold num ${
+                          (producto.stock || 0) > 0 ? 'text-fg' : 'text-danger-text'
                         }`}>
+                          {(producto.stock || 0) > 0 ? null : <AlertTriangle className="w-3.5 h-3.5" aria-label="Sin stock" />}
                           {producto.stock || 0}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
+                      <td>
+                        <div className="flex items-center justify-end gap-0.5">
                           <button
                             onClick={() => iniciarEdicion(producto)}
-                            className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
+                            className="btn-icon"
                             title="Editar"
+                            aria-label={`Editar ${producto.nombre}`}
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => confirmarEliminar(producto)}
-                            className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                            className="btn-icon hover:!text-danger hover:!bg-danger-soft"
                             title="Eliminar"
+                            aria-label={`Eliminar ${producto.nombre}`}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -599,15 +574,15 @@ export default function ProductosPage() {
               </table>
             </div>
           ) : (
-            <div className="p-12 text-center">
-              <Package className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">
-                {busqueda ? 'No se encontraron productos' : 'No hay productos registrados'}
+            <div className="empty-state">
+              <Package className="w-10 h-10 text-muted/60 mb-3" />
+              <h3 className="text-base font-semibold text-fg mb-1">
+                {busqueda ? 'No encontramos productos' : 'Todavía no hay productos'}
               </h3>
-              <p className="text-slate-400">
-                {busqueda 
-                  ? 'Intenta con otros términos de búsqueda'
-                  : 'Comienza agregando tu primer producto'
+              <p className="text-sm">
+                {busqueda
+                  ? 'Probá con otro nombre o tipo.'
+                  : 'Tocá “Nuevo producto” para cargar el primero.'
                 }
               </p>
             </div>
@@ -617,59 +592,54 @@ export default function ProductosPage() {
 
       {/* Modal de confirmación de eliminación */}
       {mostrarModalEliminar && productoAEliminar && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="backdrop-blur-xl bg-slate-800/95 border border-slate-700/50 rounded-xl max-w-md w-full p-6 shadow-2xl animate-fade-in">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="flex-shrink-0 w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-white mb-2">
-                  Confirmar eliminación
-                </h3>
-                <p className="text-slate-300 mb-4">
-                  ¿Estás seguro de que deseas eliminar el producto <strong className="text-white">
-                    {productoAEliminar.nombre}
-                  </strong>?
-                </p>
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-amber-200">
-                    <strong>⚠️ Advertencia:</strong> Esta acción no se puede deshacer.
+        <div className="modal-backdrop">
+          <div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="titulo-eliminar-producto">
+            <div className="modal-body">
+              <div className="flex items-start gap-4">
+                <div className="icon-tile w-11 h-11 bg-danger-soft text-danger-text">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 id="titulo-eliminar-producto" className="text-base font-semibold text-fg">
+                    ¿Eliminar {productoAEliminar.nombre}?
+                  </h3>
+                  <p className="text-sm text-muted mt-1">
+                    Se borra el producto del catálogo. Esta acción no se puede deshacer.
                   </p>
                 </div>
-                <div className="bg-slate-700/50 rounded-lg p-3 space-y-1 text-sm text-slate-300">
-                  <p><strong>Precio:</strong> {formatearMoneda(productoAEliminar.precio)}</p>
-                  <p><strong>Tipo:</strong> {getTipoLabel(productoAEliminar.tipo)}</p>
-                  <p><strong>Stock:</strong> {productoAEliminar.stock || 0} unidades</p>
-                </div>
               </div>
+              <dl className="rounded-lg bg-surface-2 p-3 space-y-1 text-sm">
+                <div className="flex gap-2"><dt className="text-muted">Precio:</dt><dd className="text-fg num">{formatearMoneda(productoAEliminar.precio)}</dd></div>
+                <div className="flex gap-2"><dt className="text-muted">Tipo:</dt><dd className="text-fg">{getTipoLabel(productoAEliminar.tipo)}</dd></div>
+                <div className="flex gap-2"><dt className="text-muted">Stock:</dt><dd className="text-fg num">{productoAEliminar.stock || 0} unidades</dd></div>
+              </dl>
             </div>
-            
-            <div className="flex justify-end gap-3">
+
+            <div className="modal-footer">
               <button
                 onClick={() => {
                   setMostrarModalEliminar(false)
                   setProductoAEliminar(null)
                 }}
-                className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700/50 transition-colors"
+                className="btn-secondary"
                 disabled={loading}
               >
                 Cancelar
               </button>
               <button
                 onClick={eliminarProducto}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="btn-danger"
                 disabled={loading}
               >
                 {loading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    Eliminando...
+                    <span className="spinner" />
+                    Eliminando…
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    Eliminar Producto
+                    Eliminar producto
                   </>
                 )}
               </button>
@@ -677,32 +647,6 @@ export default function ProductosPage() {
           </div>
         </div>
       )}
-
-      {/* Custom animations */}
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
     </div>
   )
 }
