@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react'
+import EmojiImagen from '@/app/components/ui/EmojiImagen'
 import { supabase } from '@/app/lib/supabase'
 import { sincronizarEstadoTransaccion } from '@/app/lib/estadoTransaccion'
 import { hoyISO } from '@/app/lib/fechas'
 import { Cliente, Pago, Transaccion } from '@/app/lib/types/cobranzas'
-import { Search, CreditCard, Calendar, DollarSign, Check, AlertTriangle, Filter, X } from 'lucide-react'
+import {
+  Search,
+  Calendar,
+  DollarSign,
+  Check,
+  AlertTriangle,
+  Filter,
+  X,
+} from 'lucide-react'
 import EstadoBadge from '@/app/components/ui/EstadoBadge'
 
 // Definir PagoExtendido sin extender Pago para evitar conflictos de tipos
@@ -275,7 +284,7 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
         <div className="card-header">
           <div>
             <h2 className="section-title">
-              <CreditCard className="w-5 h-5 text-primary" />
+              <span className="emoji" aria-hidden="true">💳</span>
               Registrar pago
             </h2>
             <p className="text-xs text-muted mt-0.5">Elegí la cuota que te pagaron y cargá el cobro.</p>
@@ -421,7 +430,7 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
             })
           ) : (
             <div className="empty-state">
-              <Check className="w-10 h-10 text-success mb-2" />
+              <span className="empty-emoji" aria-hidden="true">✅</span>
               <p className="text-sm font-medium text-fg">No hay cuotas para mostrar</p>
               <p className="text-xs mt-1">Probá cambiando la búsqueda o los filtros.</p>
             </div>
@@ -434,7 +443,7 @@ export default function GestorPagos({ clientes, onPagoRegistrado }: GestorPagosP
         <div className="modal-backdrop">
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-registrar-pago">
             <div className="modal-header justify-between">
-              <h3 id="titulo-registrar-pago" className="text-base font-semibold text-fg">Registrar pago</h3>
+              <h3 id="titulo-registrar-pago" className="text-base font-semibold text-fg"><EmojiImagen nombre="billete" className="w-5 h-5" /> Registrar pago</h3>
               <button
                 onClick={() => setMostrarModal(false)}
                 className="btn-icon"

@@ -4,6 +4,7 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { Cliente, Transaccion, Pago } from '@/app/lib/types/cobranzas'
 import { hoyISO } from '@/app/lib/fechas'
+import { telefonoWhatsApp } from '@/app/lib/whatsapp'
 import { FileText, Download, Phone, X, Eye, CheckCircle, AlertTriangle } from 'lucide-react'
 
 interface ExportadorPDFClienteProps {
@@ -158,7 +159,7 @@ export default function ExportadorPDFCliente({
       setTimeout(() => { URL.revokeObjectURL(blobUrl); document.body.removeChild(a) }, 0)
       const nombre = `${cliente.nombre} ${cliente.apellido}`.trim()
       const msg = encodeURIComponent(`Hola ${nombre}, te envio tu estado de cuenta actualizado. Cualquier consulta estoy a disposicion.`)
-      const tel = (cliente.telefono || '').replace(/[^\d]/g, '')
+      const tel = telefonoWhatsApp(cliente.telefono)
       setTimeout(() => window.open(`https://wa.me/${tel}?text=${msg}`, '_blank'), 400)
       mostrarToast('success', 'PDF descargado - adjuntalo en WhatsApp')
     } catch (err) {

@@ -1,7 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { Cliente } from '@/app/lib/types/cobranzas'
-import { NotebookPen, Save, MapPin, Navigation, LocateFixed, CheckCircle, XCircle, Move, FileText, Phone, Mail, Plus, X } from 'lucide-react'
+import {
+  Save,
+  MapPin,
+  Navigation,
+  LocateFixed,
+  CheckCircle,
+  XCircle,
+  Move,
+  FileText,
+  Phone,
+  Mail,
+  Plus,
+  X,
+} from 'lucide-react'
 import dynamic from 'next/dynamic'
 
 const MapaPin = dynamic(() => import('./MapaPin'), {
@@ -74,8 +87,6 @@ export default function InfoCliente({
   onToggleFormulario,
   onClienteActualizado,
 }: InfoClienteProps) {
-  const [notas, setNotas] = useState(cliente.observaciones || '')
-  const [guardandoNotas, setGuardandoNotas] = useState(false)
   const [medicion, setMedicion] = useState<MedicionGPS | null>(null)
   const [guardandoUbicacion, setGuardandoUbicacion] = useState(false)
   const [pinEnEdicion, setPinEnEdicion] = useState<PinEnEdicion | null>(null)
@@ -85,11 +96,6 @@ export default function InfoCliente({
   const lecturasRef = useRef<LecturaGPS[]>([])
   const inicioRef = useRef(0)
   const obteniendoUbicacion = medicion !== null
-
-  // Al cambiar de cliente, cargar sus notas
-  useEffect(() => {
-    setNotas(cliente.observaciones || '')
-  }, [cliente.id, cliente.observaciones])
 
   // Al cambiar de cliente (o salir), cortar cualquier medición en curso
   useEffect(() => {
@@ -108,25 +114,7 @@ export default function InfoCliente({
     setTimeout(() => setToast(null), 4000)
   }
 
-  const notasModificadas = notas !== (cliente.observaciones || '')
   const tieneUbicacion = cliente.latitud != null && cliente.longitud != null
-
-  const guardarNotas = async () => {
-    setGuardandoNotas(true)
-    try {
-      const { error } = await supabase
-        .from('clientes')
-        .update({ observaciones: notas.trim() ? notas : null })
-        .eq('id', cliente.id)
-      if (error) throw error
-      mostrarToast('success', 'Notas guardadas')
-      onClienteActualizado()
-    } catch (error: any) {
-      mostrarToast('error', 'Error al guardar las notas: ' + error.message)
-    } finally {
-      setGuardandoNotas(false)
-    }
-  }
 
   const guardarUbicacion = async () => {
     if (!pinEnEdicion) return
@@ -290,44 +278,11 @@ export default function InfoCliente({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 border-t border-line">
-        {/* Bloc de notas */}
-        <section className="p-4 sm:p-5 flex flex-col lg:border-r border-line">
-          <h3 className="text-sm font-semibold text-fg flex items-center gap-2 mb-3">
-            <NotebookPen className="w-4 h-4 text-warning" />
-            Bloc de notas
-          </h3>
-          <textarea
-            value={notas}
-            onChange={(e) => setNotas(e.target.value)}
-            rows={6}
-            placeholder="Ej: Cobrar después de las 18 hs. Casa con portón verde. Preguntar por la hermana."
-            className="input flex-1 resize-y bg-warning-soft/40"
-            aria-label="Notas del cliente"
-          />
-          <div className="flex items-center justify-between gap-3 mt-3">
-            <p className="text-xs text-muted">
-              {notasModificadas ? 'Hay cambios sin guardar' : 'Sin cambios pendientes'}
-            </p>
-            <button
-              onClick={guardarNotas}
-              disabled={!notasModificadas || guardandoNotas}
-              className="btn-primary btn-sm"
-            >
-              {guardandoNotas ? (
-                <span className="spinner" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              {notasModificadas ? 'Guardar notas' : 'Guardado'}
-            </button>
-          </div>
-        </section>
-
+      <div className="border-t border-line">
         {/* Ubicación */}
-        <section className="p-4 sm:p-5 border-t lg:border-t-0 border-line">
+        <section className="p-4 sm:p-5">
           <h3 className="text-sm font-semibold text-fg flex items-center gap-2 mb-3">
-            <MapPin className="w-4 h-4 text-primary" />
+            <span className="emoji" aria-hidden="true">📍</span>
             Ubicación
           </h3>
 
@@ -474,7 +429,7 @@ export default function InfoCliente({
             </>
           ) : (
             <div className="empty-state py-6 rounded-lg border border-dashed border-line">
-              <MapPin className="w-8 h-8 text-muted/60 mb-2" />
+              <span className="empty-emoji" aria-hidden="true">🗺️</span>
               <p className="text-sm text-fg font-medium">Todavía no hay ubicación guardada</p>
               <p className="text-xs mt-1 mb-4 max-w-xs">
                 Cuando estés en la casa del cliente, marcá dónde estás parado. Después podés ajustar el pin antes de guardar.

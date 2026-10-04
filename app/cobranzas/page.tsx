@@ -12,15 +12,14 @@ import GestorPagos from './components/GestorPagos'
 import GeneradorRecibos from './components/GeneradorRecibos'
 import PanelNotificaciones from './components/PanelNotificaciones'
 import Dashboard from './components/Dashboard'
-import { 
-  Bell, 
-  Menu, 
+import {
+  Bell,
+  Menu,
   LayoutDashboard,
   X,
-  Zap,
   Users,
   FileText,
-  AlertTriangle
+  AlertTriangle,
 } from 'lucide-react'
 
 export default function CobranzasPage() {
@@ -30,6 +29,7 @@ export default function CobranzasPage() {
   const [pagos, setPagos] = useState<{ [key: string]: Pago[] }>({})
   const [productos, setProductos] = useState<Producto[]>([])
   const [notificaciones, setNotificaciones] = useState<NotificacionVencimiento[]>([])
+  const [notificacionesCargadas, setNotificacionesCargadas] = useState(false)
   const [mostrarNuevaVenta, setMostrarNuevaVenta] = useState(false)
   const [vistaActiva, setVistaActiva] = useState<'dashboard' | 'clientes' | 'pagos' | 'recibos' | 'notificaciones'>('dashboard')
   const [loading, setLoading] = useState(false)
@@ -155,7 +155,7 @@ export default function CobranzasPage() {
         .in('estado', ['pendiente', 'parcial', 'reprogramado'])
         .order('fecha_vencimiento')
       
-      if (!notificacionesRango) return
+      if (!notificacionesRango) { setNotificacionesCargadas(true); return }
 
       const transaccionIds = [...new Set(notificacionesRango
         .map(p => p.transaccion?.id)
@@ -165,9 +165,11 @@ export default function CobranzasPage() {
       // responde 400. Cada lote se pagina porque Supabase devuelve como máximo 1000 filas.
       const LOTE_IDS = 100
       const POR_PAGINA = 1000
-      const todosPagosCompletos: any[] = []
-      for (let i = 0; i < transaccionIds.length; i += LOTE_IDS) {
-        const lote = transaccionIds.slice(i, i + LOTE_IDS)
+      const lotes: string[][] = []
+      for (let i = 0; i < transaccionIds.length; i += LOTE_IDS) lotes.push(transaccionIds.slice(i, i + LOTE_IDS))
+      // Los lotes se piden en paralelo para que cargue más rápido
+      const resultadosLotes = await Promise.all(lotes.map(async (lote) => {
+        const filas: any[] = []
         for (let desde = 0; ; desde += POR_PAGINA) {
           const { data: pagina, error } = await supabase
             .from('pagos')
@@ -176,10 +178,12 @@ export default function CobranzasPage() {
             .range(desde, desde + POR_PAGINA - 1)
           if (error) throw error
           if (!pagina || pagina.length === 0) break
-          todosPagosCompletos.push(...pagina)
+          filas.push(...pagina)
           if (pagina.length < POR_PAGINA) break
         }
-      }
+        return filas
+      }))
+      const todosPagosCompletos: any[] = resultadosLotes.flat()
 
       const saldosPorTransaccion = new Map<string, number>()
       
@@ -275,8 +279,10 @@ export default function CobranzasPage() {
       })
       
       setNotificaciones(notificacionesMapeadas)
+      setNotificacionesCargadas(true)
     } catch (error) {
       console.error('Error cargando notificaciones:', error)
+      setNotificacionesCargadas(true)
     }
   }
 
@@ -396,6 +402,7 @@ export default function CobranzasPage() {
         return <Dashboard
           estadisticas={estadisticas}
           notificaciones={notificaciones}
+          cargandoNotificaciones={!notificacionesCargadas}
           onVerNotificaciones={() => setVistaActiva('notificaciones')}
           onRegistrarPago={() => setVistaActiva('pagos')}
           onNuevaVenta={() => { setVistaActiva('clientes'); setMostrarNuevaVenta(true) }}
@@ -439,7 +446,7 @@ export default function CobranzasPage() {
           <div className="flex items-center justify-between gap-3 pt-5 pb-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="icon-tile bg-primary/10 text-primary">
-                <Zap className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">💰</span>
               </div>
               <div className="min-w-0">
                 <h1 className="text-lg font-semibold text-fg">Cobranzas</h1>

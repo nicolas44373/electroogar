@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import EmojiImagen from '@/app/components/ui/EmojiImagen'
 import { supabase } from '@/app/lib/supabase'
 import { fechaLocalISO } from '@/app/lib/fechas'
 import { Producto } from '@/app/lib/types/cobranzas'
@@ -7,10 +8,6 @@ import ComprobanteCompra from './ComprobanteCompra'
 import {
   X,
   AlertCircle,
-  ShoppingCart,
-  Banknote,
-  FilePlus2,
-  Receipt,
   Info,
   CheckCircle2,
   Check,
@@ -314,9 +311,9 @@ export default function FormularioVenta({
     <div className="card">
       <div className="card-header">
         <h3 className="section-title">
-          {!tipoTransaccion && <><FilePlus2 className="w-5 h-5 text-primary" /> Nueva venta o préstamo</>}
-          {tipoTransaccion === 'venta' && <><ShoppingCart className="w-5 h-5 text-primary" /> Nueva venta</>}
-          {tipoTransaccion === 'prestamo' && <><Banknote className="w-5 h-5 text-primary" /> Nuevo préstamo</>}
+          {!tipoTransaccion && <><span className="emoji" aria-hidden="true">✍️</span> Nueva venta o préstamo</>}
+          {tipoTransaccion === 'venta' && <><EmojiImagen nombre="carrito" className="w-5 h-5" /> Nueva venta</>}
+          {tipoTransaccion === 'prestamo' && <><EmojiImagen nombre="billete" className="w-5 h-5" /> Nuevo préstamo</>}
         </h3>
         <button
           onClick={onCancelar}
@@ -351,8 +348,8 @@ export default function FormularioVenta({
                 }`}
                 disabled={guardando}
               >
-                <div className={`icon-tile ${tipoTransaccion === 'venta' ? 'bg-primary text-on-primary' : 'bg-surface-2 text-muted'}`}>
-                  <ShoppingCart className="w-5 h-5" />
+                <div className={`icon-tile w-14 h-14 rounded-xl ${tipoTransaccion === 'venta' ? 'bg-primary/15 ring-2 ring-primary' : 'bg-surface-2'}`}>
+                  <EmojiImagen nombre="carrito" className="w-10 h-10" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-fg">Venta de producto</p>
@@ -370,8 +367,8 @@ export default function FormularioVenta({
                 }`}
                 disabled={guardando}
               >
-                <div className={`icon-tile ${tipoTransaccion === 'prestamo' ? 'bg-primary text-on-primary' : 'bg-surface-2 text-muted'}`}>
-                  <Banknote className="w-5 h-5" />
+                <div className={`icon-tile w-14 h-14 rounded-xl ${tipoTransaccion === 'prestamo' ? 'bg-primary/15 ring-2 ring-primary' : 'bg-surface-2'}`}>
+                  <EmojiImagen nombre="billete" className="w-10 h-10" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-fg">Préstamo de dinero</p>
@@ -530,7 +527,7 @@ export default function FormularioVenta({
               {/* Vista previa unificada con detalles */}
               <section className="rounded-xl border border-line bg-surface-2 p-4 sm:p-5" aria-label="Resumen">
                 <h4 className="text-sm font-semibold text-fg mb-4 flex items-center gap-2">
-                  <Receipt className="w-4 h-4 text-primary" />
+                  <span className="emoji" aria-hidden="true">🧾</span>
                   {tipoTransaccion === 'venta' ? 'Resumen de la venta' : 'Resumen del préstamo'}
                 </h4>
                 <dl className="grid grid-cols-2 gap-3 text-sm">

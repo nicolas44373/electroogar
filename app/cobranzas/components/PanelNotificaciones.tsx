@@ -1,10 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
+import EmojiImagen from '@/app/components/ui/EmojiImagen'
 import { supabase } from '@/app/lib/supabase'
 import { sincronizarEstadoTransaccion } from '@/app/lib/estadoTransaccion'
 import { hoyISO } from '@/app/lib/fechas'
+import { telefonoWhatsApp } from '@/app/lib/whatsapp'
 import {
-  Bell, AlertTriangle, Calendar, Clock, Phone, Mail,
-  DollarSign, Check, ChevronLeft, ChevronRight, RefreshCw, X
+  AlertTriangle,
+  Calendar,
+  Clock,
+  Phone,
+  Mail,
+  DollarSign,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  X,
 } from 'lucide-react'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -291,11 +302,20 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
   // ─── Acciones de contacto ─────────────────────────────────────────────────────
   const enviarRecordatorio = (notif: NotificacionVencimiento, metodo: 'whatsapp' | 'email') => {
     if (metodo === 'whatsapp' && notif.cliente_telefono) {
-      const phone = notif.cliente_telefono.replace(/[^\d]/g, '')
-      window.open(`https://wa.me/${phone}`, '_blank')
+      const phone = telefonoWhatsApp(notif.cliente_telefono)
+      if (phone) window.open(`https://wa.me/${phone}`, '_blank')
     } else if (metodo === 'email' && notif.cliente_email) {
       window.location.href = `mailto:${notif.cliente_email}`
     }
+  }
+
+  // Botón rápido: pregunta por WhatsApp a qué hora pasar a cobrar
+  const MENSAJE_HORARIO = 'Hola, ¿cómo estás? ¿A qué hora paso hoy?'
+  const preguntarHorario = (notif: NotificacionVencimiento) => {
+    if (!notif.cliente_telefono) return
+    const phone = telefonoWhatsApp(notif.cliente_telefono)
+    if (!phone) return
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(MENSAJE_HORARIO)}`, '_blank')
   }
 
   // ─── Descripciones / notas de la transacción ─────────────────────────────────
@@ -493,10 +513,10 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
   }
 
   const obtenerIconoTipo = (tipo: string) => {
-    if (tipo === 'vencido') return <span className="icon-tile bg-danger-soft text-danger-text"><AlertTriangle className="w-5 h-5" /></span>
-    if (tipo === 'hoy') return <span className="icon-tile bg-warning-soft text-warning-text"><Clock className="w-5 h-5" /></span>
-    if (tipo === 'por_vencer') return <span className="icon-tile bg-warning-soft text-warning-text"><Calendar className="w-5 h-5" /></span>
-    return <span className="icon-tile bg-neutral-soft text-neutral-text"><Bell className="w-5 h-5" /></span>
+    if (tipo === 'vencido') return <span className="icon-tile bg-danger-soft text-danger-text"><span className="emoji text-xl" aria-hidden="true">🚨</span></span>
+    if (tipo === 'hoy') return <span className="icon-tile bg-warning-soft text-warning-text"><span className="emoji text-xl" aria-hidden="true">⏰</span></span>
+    if (tipo === 'por_vencer') return <span className="icon-tile bg-warning-soft text-warning-text"><span className="emoji text-xl" aria-hidden="true">📅</span></span>
+    return <span className="icon-tile bg-neutral-soft text-neutral-text"><span className="emoji text-xl" aria-hidden="true">🔔</span></span>
   }
 
   const obtenerColorFondo = (tipo: string): string => {
@@ -518,7 +538,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
           <div>
             <h2 className="section-title">
-              <Bell className="w-5 h-5 text-primary" />
+              <span className="emoji" aria-hidden="true">🔔</span>
               Vencimientos
             </h2>
             <p className="text-xs text-muted mt-0.5">Cuotas vencidas, que vencen hoy y próximas a vencer.</p>
@@ -540,7 +560,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
         <dl className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           <div className="rounded-lg p-3 md:p-4 bg-danger-soft border-l-4 border-danger">
             <dt className="text-xs font-medium text-danger-text flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4" /> Vencidas
+              <span className="emoji" aria-hidden="true">🚨</span> Vencidas
             </dt>
             <dd className="text-2xl font-bold text-danger-text num mt-1">{estadisticas.vencidos}</dd>
             <dd className="text-xs font-medium text-danger-text num">{formatearMoneda(estadisticas.montoVencido)}</dd>
@@ -548,7 +568,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
 
           <div className="rounded-lg p-3 md:p-4 bg-warning-soft border-l-4 border-warning">
             <dt className="text-xs font-medium text-warning-text flex items-center gap-1.5">
-              <Clock className="w-4 h-4" /> Vencen hoy
+              <span className="emoji" aria-hidden="true">⏰</span> Vencen hoy
             </dt>
             <dd className="text-2xl font-bold text-warning-text num mt-1">{estadisticas.hoy}</dd>
             <dd className="text-xs font-medium text-warning-text num">{formatearMoneda(estadisticas.montoHoy)}</dd>
@@ -556,7 +576,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
 
           <div className="rounded-lg p-3 md:p-4 bg-surface-2 border-l-4 border-warning/50">
             <dt className="text-xs font-medium text-muted flex items-center gap-1.5">
-              <Calendar className="w-4 h-4" /> Por vencer
+              <span className="emoji" aria-hidden="true">📅</span> Por vencer
             </dt>
             <dd className="text-2xl font-bold text-fg num mt-1">{estadisticas.porVencer}</dd>
             <dd className="text-xs font-medium text-muted num">{formatearMoneda(estadisticas.montoFuturo)}</dd>
@@ -564,7 +584,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
 
           <div className="rounded-lg p-3 md:p-4 bg-surface-2 border-l-4 border-primary">
             <dt className="text-xs font-medium text-muted flex items-center gap-1.5">
-              <DollarSign className="w-4 h-4" /> Total a cobrar
+              <span className="emoji" aria-hidden="true">💰</span> Total a cobrar
             </dt>
             <dd className="text-lg font-bold text-fg num mt-1 truncate">{formatearMoneda(estadisticas.montoTotal)}</dd>
             <dd className="text-xs text-muted num">{notificacionesDetalladas.length} cuotas</dd>
@@ -762,6 +782,15 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
                     <span className="whitespace-nowrap">Registrar pago</span>
                   </button>
 
+                  {telefonoWhatsApp(notif.cliente_telefono) && (
+                    <button onClick={() => preguntarHorario(notif)}
+                      className="inline-flex items-center justify-center w-11 h-11 rounded-lg bg-[#16A34A] text-white shadow-e1 hover:bg-[#15803D] transition-colors flex-shrink-0"
+                      title="WhatsApp: «Hola, ¿cómo estás? ¿A qué hora paso hoy?»"
+                      aria-label="Preguntar por WhatsApp a qué hora paso hoy">
+                      <Phone className="w-5 h-5" />
+                    </button>
+                  )}
+
                   <button onClick={() => abrirModalReprogramacion(notif)}
                     className="btn-secondary btn-sm flex-1 sm:flex-none">
                     <RefreshCw className="w-4 h-4" />
@@ -776,9 +805,9 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
                   )}
 
                   <div className="flex items-center gap-1">
-                    {notif.cliente_telefono && (
+                    {telefonoWhatsApp(notif.cliente_telefono) && (
                       <button onClick={() => enviarRecordatorio(notif, 'whatsapp')}
-                        className="btn-icon text-success-text" title="Enviar recordatorio por WhatsApp" aria-label="Enviar recordatorio por WhatsApp">
+                        className="btn-icon bg-surface border border-line text-success-text" title="Abrir WhatsApp (sin mensaje)" aria-label="Abrir WhatsApp sin mensaje">
                         <Phone className="w-4 h-4" />
                       </button>
                     )}
@@ -814,7 +843,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
 
                   {/* Descripciones y notas */}
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted mb-2">Notas y descripciones</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted mb-2">🗒️ Notas y descripciones</p>
 
                     {cargandoNotas === notif.transaccion_id ? (
                       <div className="space-y-2" role="status">
@@ -890,7 +919,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
                         <span className="font-medium text-fg num break-all">{notif.cliente_telefono}</span>
                         <button onClick={() => enviarRecordatorio(notif, 'whatsapp')}
                           className="btn-secondary btn-sm whitespace-nowrap">
-                          Enviar recordatorio
+                          Abrir WhatsApp
                         </button>
                       </div>
                     )}
@@ -943,7 +972,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
           </>
         ) : (
           <div className="card empty-state">
-            <Bell className="w-10 h-10 text-muted/50 mb-3" />
+            <span className="empty-emoji" aria-hidden="true">🎉</span>
             <h3 className="text-base font-semibold text-fg mb-1">
               {filtroTipo === 'todos' ? 'Todo al día' : 'Sin vencimientos'}
             </h3>
@@ -965,7 +994,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
         <div className="modal-backdrop">
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="notif-titulo-pago">
             <div className="modal-header justify-between">
-              <h3 id="notif-titulo-pago" className="text-base font-semibold text-fg">Registrar pago</h3>
+              <h3 id="notif-titulo-pago" className="text-base font-semibold text-fg"><EmojiImagen nombre="billete" className="w-5 h-5" /> Registrar pago</h3>
               <button onClick={cerrarModalPago} className="btn-icon" aria-label="Cerrar"><X className="w-5 h-5" /></button>
             </div>
 
@@ -1051,7 +1080,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="notif-titulo-reprog">
             <div className="modal-header justify-between">
               <h3 id="notif-titulo-reprog" className="text-base font-semibold text-fg flex items-center gap-2">
-                <RefreshCw className="w-5 h-5 text-reprog" /> Reprogramar cuota
+                <span className="emoji" aria-hidden="true">📅</span> Reprogramar cuota
               </h3>
               <button onClick={cerrarModalReprogramacion} className="btn-icon" aria-label="Cerrar"><X className="w-5 h-5" /></button>
             </div>

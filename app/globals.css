@@ -245,6 +245,87 @@
   }
 }
 
+/* ==========================================================================
+   Toques de vida: encabezados con degradé, emojis, tarjetas con color y animaciones
+   ========================================================================== */
+@layer components {
+  /* Emoji decorativo (siempre acompañado de texto) */
+  .emoji {
+    font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+    line-height: 1;
+    display: inline-block;
+    font-style: normal;
+  }
+  .emoji-tile {
+    @apply inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl text-2xl sm:text-3xl flex-shrink-0
+      bg-white/15 ring-1 ring-white/25 backdrop-blur-sm;
+  }
+  .emoji-chip {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-xl text-lg flex-shrink-0 bg-surface-2 ring-1 ring-line;
+  }
+
+  /* Encabezado de página con degradé azul → turquesa */
+  .hero {
+    @apply relative overflow-hidden rounded-2xl text-white p-5 sm:p-7 shadow-e2 mb-6;
+    background:
+      radial-gradient(circle at 90% -20%, rgb(20 184 166 / 0.55), transparent 45%),
+      radial-gradient(circle at -10% 120%, rgb(96 165 250 / 0.35), transparent 40%),
+      linear-gradient(135deg, #0F4C81 0%, #0B3A63 55%, #0F766E 100%);
+  }
+  .hero::after {
+    content: '';
+    @apply absolute -right-10 -bottom-16 w-56 h-56 rounded-full pointer-events-none;
+    border: 28px solid rgb(255 255 255 / 0.06);
+  }
+  .hero-title {
+    @apply text-2xl sm:text-3xl font-bold tracking-tight text-white;
+  }
+  .hero-subtitle {
+    @apply text-sm sm:text-base text-white/80 mt-1;
+  }
+  .hero .btn-secondary {
+    @apply bg-white/10 text-white border-white/25 hover:bg-white/20;
+  }
+  .hero .btn-primary {
+    @apply bg-white text-[#0F4C81] hover:bg-white/90;
+  }
+
+  /* Tarjetas con un toque de color según su significado */
+  .tint-primary { background-image: linear-gradient(135deg, rgb(var(--primary) / 0.10), transparent 65%); }
+  .tint-success { background-image: linear-gradient(135deg, rgb(var(--success) / 0.12), transparent 65%); }
+  .tint-warning { background-image: linear-gradient(135deg, rgb(var(--warning) / 0.14), transparent 65%); }
+  .tint-danger  { background-image: linear-gradient(135deg, rgb(var(--danger) / 0.12), transparent 65%); }
+  .tint-info    { background-image: linear-gradient(135deg, rgb(var(--info) / 0.12), transparent 65%); }
+  .tint-reprog  { background-image: linear-gradient(135deg, rgb(var(--reprog) / 0.12), transparent 65%); }
+
+  /* Elevación al pasar el mouse */
+  .card-hover {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-e2;
+  }
+
+  /* Estado vacío con emoji grande */
+  .empty-emoji {
+    @apply emoji text-5xl mb-3;
+  }
+}
+
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-aparecer {
+  animation: aparecer 0.35s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-aparecer, .card-hover { animation: none; transition: none; transform: none; }
+}
+
+/* Fondo general con un brillo suave arriba */
+body {
+  background-image: radial-gradient(1200px 400px at 50% -200px, rgb(var(--primary) / 0.07), transparent);
+  background-repeat: no-repeat;
+}
+
 /* Área táctil mínima de 44px en pantallas táctiles */
 @media (pointer: coarse) {
   .btn-sm {

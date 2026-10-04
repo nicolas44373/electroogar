@@ -1,11 +1,20 @@
 import { useState } from 'react'
+import EmojiImagen from '@/app/components/ui/EmojiImagen'
 import { Cliente, Transaccion, Pago } from '@/app/lib/types/cobranzas'
 import TablaPagos from './TablaPagos'
 import ResumenPagos from './ResumenPagos'
 import ExportadorPDFCliente from './Exportadorpdfcliente'
 import ComprobanteTransaccion from './Comprobantetransaccion'
 import ComprobanteCompra from './ComprobanteCompra'
-import { FileText, ShoppingBag, ShoppingCart, Banknote, Trash2, AlertTriangle, Inbox, Circle, CheckCircle2, ChevronDown } from 'lucide-react'
+import {
+  FileText,
+  ShoppingBag,
+  Trash2,
+  AlertTriangle,
+  Circle,
+  CheckCircle2,
+  ChevronDown,
+} from 'lucide-react'
 
 // Solo presentación: muestra un número como $ 1.234,56
 const mostrarPesos = (valor: number | undefined) =>
@@ -48,7 +57,7 @@ export default function HistorialTransacciones({
   if (transacciones.length === 0) {
     return (
       <div className="card empty-state">
-        <Inbox className="w-10 h-10 text-muted/60 mb-3" />
+        <span className="empty-emoji" aria-hidden="true">📭</span>
         <p className="text-base font-semibold text-fg mb-1">Este cliente todavía no tiene ventas ni préstamos</p>
         <p className="text-sm">Usá “Nueva venta o préstamo” para cargar la primera.</p>
       </div>
@@ -192,7 +201,7 @@ export default function HistorialTransacciones({
   return (
     <div className="space-y-4">
       <h2 className="section-title">
-        <ShoppingBag className="w-5 h-5 text-primary" />
+        <span className="emoji" aria-hidden="true">🛍️</span>
         Ventas y préstamos
       </h2>
 
@@ -233,7 +242,7 @@ export default function HistorialTransacciones({
                 <div className="modal-body">
                   <div className="flex items-start gap-3">
                     <div className="icon-tile bg-danger-soft text-danger-text">
-                      <AlertTriangle className="w-5 h-5" />
+                      <span className="emoji text-xl" aria-hidden="true">⚠️</span>
                     </div>
                     <div>
                       <h3 className="text-base font-semibold text-fg">
@@ -299,7 +308,7 @@ export default function HistorialTransacciones({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3">
                   <div className="icon-tile bg-primary/10 text-primary">
-                    {transaccion.tipo_transaccion === 'venta' ? <ShoppingCart className="w-5 h-5" /> : <Banknote className="w-5 h-5" />}
+                    <EmojiImagen nombre={transaccion.tipo_transaccion === 'venta' ? 'carrito' : 'billete'} className="w-8 h-8" />
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-semibold text-base text-fg truncate">

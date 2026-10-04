@@ -1,10 +1,18 @@
 import { useState } from 'react'
+import EmojiImagen from '@/app/components/ui/EmojiImagen'
 import { supabase } from '@/app/lib/supabase'
 import { sincronizarEstadoTransaccion } from '@/app/lib/estadoTransaccion'
 import { hoyISO } from '@/app/lib/fechas'
 import { Transaccion, Pago } from '@/app/lib/types/cobranzas'
 import EstadoBadge from '@/app/components/ui/EstadoBadge'
-import { CheckCircle, XCircle, AlertTriangle, Calendar, DollarSign, RotateCcw, CalendarClock, ArrowRight } from 'lucide-react'
+import {
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  RotateCcw,
+  CalendarClock,
+  ArrowRight,
+} from 'lucide-react'
 
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -242,7 +250,7 @@ export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: Tab
       <div className="p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h4 className="text-sm font-semibold text-fg flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-muted" />
+            <EmojiImagen nombre="billete" className="w-5 h-5" />
             Cuotas
           </h4>
           {cuotasPendientes.length > 0 && (
@@ -381,7 +389,7 @@ export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: Tab
           <div className="modal flex flex-col" role="dialog" aria-modal="true" aria-labelledby="titulo-cambio-dia">
             <div className="modal-header">
               <div className="icon-tile bg-primary/10 text-primary">
-                <CalendarClock className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">🗓️</span>
               </div>
               <div>
                 <h3 id="titulo-cambio-dia" className="text-base font-semibold text-fg">Cambiar día de pago</h3>
@@ -507,7 +515,7 @@ export default function TablaPagos({ transaccion, pagos, onPagoRegistrado }: Tab
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-reprogramar">
             <div className="modal-header">
               <div className="icon-tile bg-reprog-soft text-reprog-text">
-                <Calendar className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">📅</span>
               </div>
               <h3 id="titulo-reprogramar" className="text-base font-semibold text-fg">Reprogramar cuota</h3>
             </div>

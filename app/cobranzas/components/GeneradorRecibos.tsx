@@ -1,15 +1,28 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import EmojiImagen from '@/app/components/ui/EmojiImagen'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { supabase } from '@/app/lib/supabase'
 import { sincronizarEstadoTransaccion } from '@/app/lib/estadoTransaccion'
 import { hoyISO } from '@/app/lib/fechas'
+import { telefonoWhatsApp } from '@/app/lib/whatsapp'
 import { Cliente, Transaccion, Pago } from '@/app/lib/types/cobranzas'
 import {
-  FileText, Download, Eye, Search, DollarSign, CheckCircle,
-  User, X, Phone, Mail, AlertTriangle, Filter, MessageCircle,
-  CircleDashed, CalendarClock, Circle, ShoppingCart, Banknote
+  Download,
+  Eye,
+  Search,
+  DollarSign,
+  CheckCircle,
+  X,
+  Phone,
+  Mail,
+  AlertTriangle,
+  Filter,
+  MessageCircle,
+  CircleDashed,
+  CalendarClock,
+  Circle,
 } from 'lucide-react'
 
 interface DeudaCliente {
@@ -301,7 +314,7 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
       setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a) }, 0)
       const nombre = `${reciboGenerado.cliente.nombre} ${reciboGenerado.cliente.apellido || ''}`.trim()
       const msg = encodeURIComponent(`Hola ${nombre}, te envio tu recibo de pago N° ${reciboGenerado.numero_recibo} por ${fmt(reciboGenerado.monto_pagado)}. Gracias!`)
-      const tel = (reciboGenerado.cliente.telefono || '').replace(/[^\d]/g, '')
+      const tel = telefonoWhatsApp(reciboGenerado.cliente.telefono)
       setTimeout(() => window.open(`https://wa.me/${tel}?text=${msg}`, '_blank'), 400)
       mostrarToast('success', 'PDF descargado - adjuntalo en WhatsApp')
     } catch (err) {
@@ -403,7 +416,7 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
         <div className="card card-body">
           <div className="mb-4">
             <h1 className="section-title">
-              <FileText className="w-5 h-5 text-primary" />
+              <span className="emoji" aria-hidden="true">🧾</span>
               Recibos y pagos
             </h1>
             <p className="text-sm text-muted mt-1">Buscá un cliente para registrar pagos y descargar recibos.</p>
@@ -440,7 +453,7 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="icon-tile w-8 h-8 rounded-full bg-surface-2 text-muted">
-                          <User className="w-4 h-4" />
+                          <span className="emoji text-xl" aria-hidden="true">👤</span>
                         </div>
                         <div className="min-w-0">
                           <div className="font-medium text-fg text-sm truncate">
@@ -467,7 +480,7 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
         {/* Estado inicial sin cliente */}
         {!clienteSeleccionado && !loading && (
           <div className="card empty-state">
-            <Search className="w-10 h-10 text-muted/50 mb-3" />
+            <span className="empty-emoji" aria-hidden="true">🔎</span>
             <h3 className="text-base font-semibold text-fg mb-1">Buscá un cliente para empezar</h3>
             <p className="text-sm">Vas a ver sus cuotas, registrar pagos y generar recibos.</p>
           </div>
@@ -481,7 +494,7 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div className="icon-tile w-10 h-10 rounded-full bg-primary text-on-primary">
-                    <User className="w-5 h-5" />
+                    <span className="emoji text-xl" aria-hidden="true">👤</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h2 className="text-lg font-semibold text-fg">
@@ -592,7 +605,7 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
               </div>
             ) : deudasFiltradas.length === 0 ? (
               <div className="card empty-state">
-                <CheckCircle className="w-10 h-10 text-success mb-2" />
+                <span className="empty-emoji" aria-hidden="true">✅</span>
                 <p className="text-sm font-medium text-fg">No hay cuotas con este filtro</p>
                 <p className="text-xs mt-1">Elegí otro estado o tipo para ver más cuotas.</p>
               </div>
@@ -605,7 +618,7 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-fg flex items-center gap-2 text-base">
-                            <span className="text-primary">{deuda.transaccion.tipo_transaccion === 'venta' ? <ShoppingCart className="w-4 h-4" /> : <Banknote className="w-4 h-4" />}</span>
+                            <EmojiImagen nombre={deuda.transaccion.tipo_transaccion === 'venta' ? 'carrito' : 'billete'} className="w-5 h-5" />
                             {deuda.transaccion.tipo_transaccion === 'prestamo'
                               ? 'Préstamo de dinero'
                               : (deuda.transaccion as any).producto?.nombre || 'Venta'}
@@ -753,7 +766,7 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="rec-titulo-pago">
             <div className="modal-header justify-between">
               <h3 id="rec-titulo-pago" className="text-base font-semibold text-fg flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-accent-strong" />
+                <EmojiImagen nombre="billete" className="w-5 h-5" />
                 Registrar pago
               </h3>
               <button type="button" onClick={() => setModalPagoAbierto(false)} className="btn-icon" aria-label="Cerrar"><X className="w-5 h-5" /></button>
@@ -832,7 +845,7 @@ export default function GeneradorRecibos({ clientes: _c, transacciones: _t, pago
             {/* Header modal */}
             <div className="modal-header justify-between">
               <h3 id="rec-titulo-recibo" className="font-semibold text-fg flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
+                <span className="emoji" aria-hidden="true">🧾</span>
                 Recibo de pago
               </h3>
               <button type="button" onClick={() => setMostrarRecibo(false)} className="btn-icon" aria-label="Cerrar"><X className="w-5 h-5" /></button>

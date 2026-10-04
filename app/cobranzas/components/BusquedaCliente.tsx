@@ -120,7 +120,7 @@ export default function BusquedaCliente({
     <div className="card card-body">
       <div className="flex items-center gap-3 mb-4">
         <div className="icon-tile bg-primary/10 text-primary">
-          <Search className="w-5 h-5" />
+          <span className="emoji text-xl" aria-hidden="true">🔎</span>
         </div>
         <div>
           <h2 className="text-base font-semibold text-fg">Buscar cliente</h2>
@@ -133,7 +133,7 @@ export default function BusquedaCliente({
         <div className="mb-4 flex items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="icon-tile w-9 h-9 rounded-full bg-primary text-on-primary">
-              <User className="w-4 h-4" />
+              <span className="emoji text-xl" aria-hidden="true">👤</span>
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-fg truncate">
@@ -212,7 +212,7 @@ export default function BusquedaCliente({
                   className="w-full text-left px-3 min-h-[52px] py-2 hover:bg-surface-2 transition-colors flex items-center gap-3"
                 >
                   <div className="icon-tile w-8 h-8 rounded-full bg-surface-2 text-muted">
-                    <User className="w-4 h-4" />
+                    <span className="emoji text-xl" aria-hidden="true">👤</span>
                   </div>
                   <div className="min-w-0">
                     <p className="font-medium text-sm text-fg truncate">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
+import EmojiImagen from '@/app/components/ui/EmojiImagen'
 import {
-  Calendar,
   DollarSign,
   FileText,
   TrendingUp,
@@ -326,7 +326,7 @@ export default function CuentaCorriente({
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-line">
           <h3 className="section-title">
-            <FileText className="w-5 h-5 text-primary" />
+            <span className="emoji" aria-hidden="true">📒</span>
             Cuenta corriente
           </h3>
 
@@ -646,7 +646,7 @@ export default function CuentaCorriente({
           <div className="relative w-full sm:max-w-md bg-surface border border-line rounded-t-xl sm:rounded-xl shadow-e3">
             {/* header */}
             <div className="modal-header justify-between">
-              <h4 id="cc-titulo-pago" className="text-base font-semibold text-fg">Registrar pago</h4>
+              <h4 id="cc-titulo-pago" className="text-base font-semibold text-fg"><EmojiImagen nombre="billete" className="w-5 h-5" /> Registrar pago</h4>
               <button onClick={cerrarModalPago} className="btn-icon" aria-label="Cerrar">
                 <X className="w-5 h-5" />
               </button>
@@ -715,7 +715,7 @@ export default function CuentaCorriente({
             <div className="modal-body">
               <div className="flex items-start gap-3">
                 <div className="icon-tile bg-warning-soft text-warning-text">
-                  <AlertCircle className="w-5 h-5" />
+                  <span className="emoji text-xl" aria-hidden="true">⚠️</span>
                 </div>
                 <div className="flex-1">
                   <h4 id="cc-titulo-eliminar" className="text-base font-semibold text-fg">

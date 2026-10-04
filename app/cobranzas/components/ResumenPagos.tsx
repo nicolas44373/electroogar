@@ -1,6 +1,6 @@
 'use client'
 import { Transaccion, Pago } from '@/app/lib/types/cobranzas'
-import { CheckCircle2, AlertTriangle, CalendarDays, BarChart3 } from 'lucide-react'
+import { CheckCircle2, AlertTriangle } from 'lucide-react'
 
 interface ResumenPagosProps {
   transaccion: Transaccion
@@ -85,7 +85,7 @@ export default function ResumenPagos({ transaccion, pagos }: ResumenPagosProps) 
           {pagosVencidos.length > 0 ? (
             <>
               <p className="text-xs font-medium text-danger-text flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4" /> Cuotas vencidas
+                <span className="emoji" aria-hidden="true">🚨</span> Cuotas vencidas
               </p>
               <p className="text-xl font-bold text-danger-text num mt-1">
                 {pagosVencidos.length} {pagosVencidos.length === 1 ? 'cuota' : 'cuotas'}
@@ -102,7 +102,7 @@ export default function ResumenPagos({ transaccion, pagos }: ResumenPagosProps) 
           ) : proximoPago ? (
             <>
               <p className="text-xs font-medium text-muted flex items-center gap-1.5">
-                <CalendarDays className="w-4 h-4" /> Próxima cuota
+                <span className="emoji" aria-hidden="true">📅</span> Próxima cuota
               </p>
               <p className="text-xl font-bold text-fg num mt-1">
                 Cuota {proximoPago.numero_cuota}
@@ -127,7 +127,7 @@ export default function ResumenPagos({ transaccion, pagos }: ResumenPagosProps) 
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center py-2">
-              <CheckCircle2 className="w-8 h-8 text-success mb-2" />
+              <span className="emoji text-4xl mb-2" aria-hidden="true">🎉</span>
               <p className="text-success-text font-semibold">
                 Todo pagado
               </p>
@@ -171,7 +171,7 @@ export default function ResumenPagos({ transaccion, pagos }: ResumenPagosProps) 
       {/* Información del plan de pago */}
       <div className="flex flex-wrap justify-between items-center gap-2 text-sm px-1">
         <span className="flex items-center gap-1.5 text-muted">
-          <BarChart3 className="w-4 h-4" />
+          <span className="emoji" aria-hidden="true">📊</span>
           Plan <span className="capitalize">{transaccion.tipo_pago}</span>
         </span>
         <span className="text-fg font-medium num">

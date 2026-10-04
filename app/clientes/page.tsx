@@ -1,25 +1,22 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
-import { 
-  Search, 
-  Plus, 
-  Edit2, 
-  Trash2, 
-  Save, 
-  X, 
-  User, 
-  Phone, 
-  Mail, 
+import PageHero from '@/app/components/ui/PageHero'
+import {
+  Search,
+  Plus,
+  Edit2,
+  Trash2,
+  Save,
+  X,
+  User,
+  Phone,
+  Mail,
   MapPin,
   Navigation,
-  NotebookPen,
   FileText,
   AlertTriangle,
   Check,
-  Users,
-  Calendar,
-  Filter
 } from 'lucide-react'
 
 interface Cliente {
@@ -50,9 +47,6 @@ export default function ClientesPage() {
   
   const [mensaje, setMensaje] = useState<{tipo: 'exito' | 'error', texto: string} | null>(null)
 
-  const [clienteNotas, setClienteNotas] = useState<Cliente | null>(null)
-  const [textoNotas, setTextoNotas] = useState('')
-  const [guardandoNotas, setGuardandoNotas] = useState(false)
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -246,32 +240,6 @@ export default function ClientesPage() {
     }
   }
 
-  const abrirNotas = (cliente: Cliente) => {
-    setClienteNotas(cliente)
-    setTextoNotas(cliente.observaciones || '')
-  }
-
-  const guardarNotas = async () => {
-    if (!clienteNotas) return
-
-    setGuardandoNotas(true)
-    try {
-      const { error } = await supabase
-        .from('clientes')
-        .update({ observaciones: textoNotas.trim() ? textoNotas : null })
-        .eq('id', clienteNotas.id)
-
-      if (error) throw error
-      setMensaje({ tipo: 'exito', texto: 'Notas guardadas' })
-      setClienteNotas(null)
-      cargarClientes()
-    } catch (error: any) {
-      setMensaje({ tipo: 'error', texto: 'Error al guardar las notas: ' + error.message })
-    } finally {
-      setGuardandoNotas(false)
-    }
-  }
-
   const formatearFecha = (fecha?: string) => {
     if (!fecha) return ''
     return new Date(fecha).toLocaleDateString('es-AR', {
@@ -285,14 +253,8 @@ export default function ClientesPage() {
     <div className="page">
       <div className="page-container">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="page-title">Clientes</h1>
-            <p className="page-subtitle num">
-              {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}
-              {busqueda ? ' encontrados' : ' registrados'}
-            </p>
-          </div>
+        <PageHero emoji="👥" titulo="Clientes" subtitulo={<span className="num">{clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}
+              {busqueda ? ' encontrados' : ' registrados'}</span>}>
 
           <button
             onClick={() => {
@@ -304,7 +266,7 @@ export default function ClientesPage() {
             <Plus className="w-4 h-4" />
             Nuevo cliente
           </button>
-        </div>
+        </PageHero>
 
         {/* Barra de búsqueda */}
         <div className="relative mb-6">
@@ -336,7 +298,7 @@ export default function ClientesPage() {
           <div className="card mb-6">
             <div className="card-header">
               <h2 className="section-title">
-                <User className="w-5 h-5 text-primary" />
+                <span className="emoji" aria-hidden="true">📝</span>
                 {modoEdicion ? 'Editar cliente' : 'Nuevo cliente'}
               </h2>
               <button
@@ -542,15 +504,6 @@ export default function ClientesPage() {
                         )}
                       </div>
                     </div>
-                    {cliente.observaciones && (
-                      <button
-                        onClick={() => abrirNotas(cliente)}
-                        className="mt-2 w-full min-h-[44px] flex items-center gap-2 px-3 py-2 rounded-lg bg-warning-soft text-warning-text text-xs text-left"
-                      >
-                        <NotebookPen className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                        <span className="line-clamp-2">{cliente.observaciones}</span>
-                      </button>
-                    )}
                     <div className="flex items-center gap-1 mt-2 -ml-2">
                       {cliente.latitud != null && cliente.longitud != null && (
                         <a
@@ -564,14 +517,6 @@ export default function ClientesPage() {
                           <Navigation className="w-5 h-5" />
                         </a>
                       )}
-                      <button
-                        onClick={() => abrirNotas(cliente)}
-                        className="btn-icon"
-                        title="Bloc de notas"
-                        aria-label={`Notas de ${cliente.nombre}`}
-                      >
-                        <NotebookPen className="w-5 h-5" />
-                      </button>
                       <button
                         onClick={() => iniciarEdicion(cliente)}
                         className="btn-icon"
@@ -614,15 +559,6 @@ export default function ClientesPage() {
                           <div className="font-medium text-fg">
                             {cliente.nombre} {cliente.apellido}
                           </div>
-                          {cliente.observaciones && (
-                            <button
-                              onClick={() => abrirNotas(cliente)}
-                              className="mt-1 flex items-center gap-1 text-xs text-warning-text hover:underline text-left"
-                            >
-                              <NotebookPen className="w-3 h-3 flex-shrink-0" />
-                              <span className="truncate max-w-[14rem]">{cliente.observaciones}</span>
-                            </button>
-                          )}
                         </td>
                         <td>
                           <span className="text-muted num whitespace-nowrap">
@@ -670,14 +606,6 @@ export default function ClientesPage() {
                               </a>
                             )}
                             <button
-                              onClick={() => abrirNotas(cliente)}
-                              className="btn-icon"
-                              title="Bloc de notas"
-                              aria-label={`Notas de ${cliente.nombre}`}
-                            >
-                              <NotebookPen className="w-4 h-4" />
-                            </button>
-                            <button
                               onClick={() => iniciarEdicion(cliente)}
                               className="btn-icon"
                               title="Editar"
@@ -703,7 +631,7 @@ export default function ClientesPage() {
             </>
           ) : (
             <div className="empty-state">
-              <Users className="w-10 h-10 text-muted/60 mb-3" />
+              <span className="empty-emoji" aria-hidden="true">👥</span>
               <h3 className="text-base font-semibold text-fg mb-1">
                 {busqueda ? 'No encontramos clientes' : 'Todavía no hay clientes'}
               </h3>
@@ -718,61 +646,6 @@ export default function ClientesPage() {
         </div>
       </div>
 
-      {/* Modal de bloc de notas */}
-      {clienteNotas && (
-        <div className="modal-backdrop">
-          <div className="modal max-w-lg" role="dialog" aria-modal="true" aria-labelledby="titulo-notas">
-            <div className="modal-header justify-between">
-              <h3 id="titulo-notas" className="text-base font-semibold text-fg flex items-center gap-2">
-                <NotebookPen className="w-5 h-5 text-warning" />
-                Notas de {clienteNotas.nombre} {clienteNotas.apellido}
-              </h3>
-              <button
-                onClick={() => setClienteNotas(null)}
-                className="btn-icon"
-                aria-label="Cerrar"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <textarea
-                value={textoNotas}
-                onChange={(e) => setTextoNotas(e.target.value)}
-                rows={8}
-                autoFocus
-                placeholder="Ej: Cobrar después de las 18 hs. Casa con portón verde. Preguntar por la hermana."
-                className="input resize-y"
-                aria-label="Notas del cliente"
-              />
-            </div>
-
-            <div className="modal-footer">
-              <button
-                onClick={() => setClienteNotas(null)}
-                className="btn-secondary"
-                disabled={guardandoNotas}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={guardarNotas}
-                className="btn-primary"
-                disabled={guardandoNotas || textoNotas === (clienteNotas.observaciones || '')}
-              >
-                {guardandoNotas ? (
-                  <span className="spinner" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                Guardar notas
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Modal de confirmación de eliminación */}
       {mostrarModalEliminar && clienteAEliminar && (
         <div className="modal-backdrop">
@@ -780,7 +653,7 @@ export default function ClientesPage() {
             <div className="modal-body">
               <div className="flex items-start gap-4">
                 <div className="icon-tile w-11 h-11 bg-danger-soft text-danger-text">
-                  <AlertTriangle className="w-5 h-5" />
+                  <span className="emoji text-xl" aria-hidden="true">⚠️</span>
                 </div>
                 <div className="flex-1">
                   <h3 id="titulo-eliminar" className="text-base font-semibold text-fg">

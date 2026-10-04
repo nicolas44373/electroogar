@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       <div className="min-h-screen flex items-center justify-center bg-canvas">
         <div className="flex flex-col items-center gap-4" role="status" aria-live="polite">
           <div className="icon-tile w-12 h-12 bg-primary text-on-primary shadow-e2">
-            <Zap className="w-6 h-6" />
+            <span className="emoji text-xl" aria-hidden="true">⚡</span>
           </div>
           <div className="w-40 h-1.5 rounded-full bg-line overflow-hidden">
             <div className="h-full w-1/2 bg-primary rounded-full animate-pulse" />
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             </div>
 
             <div className="card p-6 sm:p-8">
-              <h2 className="text-lg font-semibold text-fg mb-1">Iniciar sesión</h2>
+              <h2 className="text-lg font-semibold text-fg mb-1"><span className="emoji" aria-hidden="true">👋</span> ¡Hola! Iniciá sesión</h2>
               <p className="text-sm text-muted mb-6">Ingresá con tu usuario y contraseña.</p>
 
               {/* Login form */}

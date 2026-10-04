@@ -1,23 +1,20 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
-import { 
-  Users, 
-  DollarSign, 
-  TrendingUp, 
-  AlertTriangle, 
-  Calendar, 
-  CreditCard, 
-  Receipt,
+import {
+  Users,
+  DollarSign,
+  TrendingUp,
+  AlertTriangle,
+  Calendar,
+  CreditCard,
   ArrowUpRight,
-  ArrowDownRight,
   Clock,
   CheckCircle,
   XCircle,
   TrendingDown,
-  Activity,
-  Percent
 } from 'lucide-react'
 import EstadoBadge from '@/app/components/ui/EstadoBadge'
+import PageHero from '@/app/components/ui/PageHero'
 
 interface NotificacionVencimiento {
   id: string
@@ -54,6 +51,7 @@ interface Estadisticas {
 interface DashboardProps {
   estadisticas: Estadisticas
   notificaciones: NotificacionVencimiento[]
+  cargandoNotificaciones?: boolean
   onVerNotificaciones: () => void
   onRegistrarPago: () => void
   onNuevaVenta: () => void
@@ -77,6 +75,7 @@ interface ClienteConPrestamo {
 export default function Dashboard({
   estadisticas,
   notificaciones,
+  cargandoNotificaciones = false,
   onVerNotificaciones,
   onRegistrarPago,
   onNuevaVenta,
@@ -176,6 +175,20 @@ export default function Dashboard({
   const montoHoy            = estadisticas?.montoHoy            || 0
   const montoProximo        = notificacionesProximas.reduce((sum, n) => sum + n.monto, 0)
 
+  // Mientras cargan las listas, mostrar esqueletos (no "todo al día")
+  const cargandoListas = cargandoNotificaciones
+  const esqueletoLista = (
+    <div className="space-y-2" role="status" aria-live="polite">
+      <span className="sr-only">Cargando cuotas…</span>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="rounded-lg p-3 border border-line space-y-2">
+          <div className="skeleton h-4 w-2/3" />
+          <div className="skeleton h-3 w-1/2" />
+        </div>
+      ))}
+    </div>
+  )
+
   const efectividadCobros = estadisticas?.ventasDelMes > 0
     ? ((estadisticas.cobrosDelMes / estadisticas.ventasDelMes) * 100)
     : 0
@@ -195,6 +208,8 @@ export default function Dashboard({
       valor: formatearMoneda(estadisticas?.montoTotalPendiente || 0),
       subtitulo: null,
       icon: DollarSign,
+      emoji: '💰',
+      tinte: 'tint-primary',
       tile: 'bg-primary/10 text-primary',
       acento: 'border-l-primary',
       descripcion: 'Todas las cuotas pendientes',
@@ -204,6 +219,8 @@ export default function Dashboard({
       valor: formatearMoneda(estadisticas?.cobrosDelMes || 0),
       subtitulo: null,
       icon: CheckCircle,
+      emoji: '✅',
+      tinte: 'tint-success',
       tile: 'bg-success-soft text-success-text',
       acento: 'border-l-success',
       descripcion: 'Pagos registrados en el mes',
@@ -213,6 +230,8 @@ export default function Dashboard({
       valor: formatearMoneda(montoVencido),
       subtitulo: `${pagosVencidosCount} cuota${pagosVencidosCount !== 1 ? 's' : ''} · ${estadisticas?.clientesVencidos || 0} cliente${(estadisticas?.clientesVencidos || 0) !== 1 ? 's' : ''}`,
       icon: AlertTriangle,
+      emoji: '🚨',
+      tinte: 'tint-danger',
       tile: 'bg-danger-soft text-danger-text',
       acento: 'border-l-danger',
       descripcion: 'Cuotas con fecha ya pasada',
@@ -222,6 +241,8 @@ export default function Dashboard({
       valor: formatearMoneda(montoProximo),
       subtitulo: `Hoy: ${formatearMoneda(montoHoy)} · ${pagosHoyCount} cuota${pagosHoyCount !== 1 ? 's' : ''}`,
       icon: Clock,
+      emoji: '⏰',
+      tinte: 'tint-warning',
       tile: 'bg-warning-soft text-warning-text',
       acento: 'border-l-warning',
       descripcion: `${notificacionesProximas.length} cuota${notificacionesProximas.length !== 1 ? 's' : ''} en la próxima semana`,
@@ -231,19 +252,11 @@ export default function Dashboard({
   return (
     <div className="space-y-6">
       {/* Header del Dashboard */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-        <div>
-          <h2 className="page-title">Resumen</h2>
-          <p className="page-subtitle first-letter:uppercase">
-            {new Date().toLocaleDateString('es-AR', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <PageHero
+        emoji="📊"
+        titulo="Resumen"
+        subtitulo={<span className="first-letter:uppercase inline-block">{new Date().toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>}
+      >
           <button onClick={onRegistrarPago} className="btn-primary">
             <CreditCard className="w-4 h-4" />
             Registrar pago
@@ -256,19 +269,18 @@ export default function Dashboard({
             <AlertTriangle className="w-4 h-4" />
             Ver vencimientos
           </button>
-        </div>
-      </div>
+      </PageHero>
 
       {/* Tarjetas de estadísticas principales */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {tarjetasEstadisticas.map((tarjeta, index) => (
           <div
             key={index}
-            className={`card p-5 border-l-4 ${tarjeta.acento}`}
+            className={`card card-hover animate-aparecer p-5 border-l-4 ${tarjeta.acento} ${tarjeta.tinte}`}
           >
             <div className="flex items-center gap-3 mb-3">
               <div className={`icon-tile ${tarjeta.tile}`}>
-                <tarjeta.icon className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">{tarjeta.emoji}</span>
               </div>
               <p className="text-sm font-medium text-muted">{tarjeta.titulo}</p>
             </div>
@@ -288,7 +300,7 @@ export default function Dashboard({
           <div className="card-header">
             <div className="flex items-center gap-3 min-w-0">
               <div className="icon-tile bg-danger-soft text-danger-text">
-                <AlertTriangle className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">🚨</span>
               </div>
               <div className="min-w-0">
                 <h3 className="text-base font-semibold text-fg">Cuotas vencidas</h3>
@@ -301,7 +313,7 @@ export default function Dashboard({
           </div>
 
           <div className="p-3 max-h-80 overflow-y-auto">
-            {notificacionesVencidas.length > 0 ? (
+            {cargandoListas ? esqueletoLista : notificacionesVencidas.length > 0 ? (
               <div className="space-y-2">
                 {notificacionesVencidas.slice(0, 5).map((notif, index) => (
                   <div
@@ -341,7 +353,7 @@ export default function Dashboard({
               </div>
             ) : (
               <div className="empty-state py-8">
-                <CheckCircle className="w-10 h-10 text-success mb-2" />
+                <span className="empty-emoji" aria-hidden="true">🎉</span>
                 <p className="text-sm font-medium text-fg">No hay cuotas vencidas</p>
                 <p className="text-xs mt-1">Todos los clientes están al día.</p>
               </div>
@@ -354,7 +366,7 @@ export default function Dashboard({
           <div className="card-header">
             <div className="flex items-center gap-3 min-w-0">
               <div className="icon-tile bg-warning-soft text-warning-text">
-                <Clock className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">⏰</span>
               </div>
               <div className="min-w-0">
                 <h3 className="text-base font-semibold text-fg">Vencen hoy</h3>
@@ -367,7 +379,7 @@ export default function Dashboard({
           </div>
 
           <div className="p-3 max-h-80 overflow-y-auto">
-            {notificacionesHoy.length > 0 ? (
+            {cargandoListas ? esqueletoLista : notificacionesHoy.length > 0 ? (
               <div className="space-y-2">
                 {notificacionesHoy.map((notif, index) => (
                   <div
@@ -397,7 +409,7 @@ export default function Dashboard({
               </div>
             ) : (
               <div className="empty-state py-8">
-                <CheckCircle className="w-10 h-10 text-success mb-2" />
+                <span className="empty-emoji" aria-hidden="true">😌</span>
                 <p className="text-sm font-medium text-fg">Nada para hoy</p>
                 <p className="text-xs mt-1">No hay cuotas que venzan hoy.</p>
               </div>
@@ -410,7 +422,7 @@ export default function Dashboard({
           <div className="card-header">
             <div className="flex items-center gap-3 min-w-0">
               <div className="icon-tile bg-primary/10 text-primary">
-                <Calendar className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">📅</span>
               </div>
               <div className="min-w-0">
                 <h3 className="text-base font-semibold text-fg">Próximos 7 días</h3>
@@ -423,7 +435,7 @@ export default function Dashboard({
           </div>
 
           <div className="p-3 max-h-80 overflow-y-auto">
-            {notificacionesProximas.length > 0 ? (
+            {cargandoListas ? esqueletoLista : notificacionesProximas.length > 0 ? (
               <div className="space-y-2">
                 {notificacionesProximas.slice(0, 5).map((notif, index) => (
                   <div
@@ -463,7 +475,7 @@ export default function Dashboard({
               </div>
             ) : (
               <div className="empty-state py-8">
-                <CheckCircle className="w-10 h-10 text-success mb-2" />
+                <span className="empty-emoji" aria-hidden="true">🌤️</span>
                 <p className="text-sm font-medium text-fg">Semana tranquila</p>
                 <p className="text-xs mt-1">No hay cuotas en los próximos 7 días.</p>
               </div>
@@ -476,26 +488,26 @@ export default function Dashboard({
       <section className="card">
         <div className="card-header">
           <h3 className="section-title">
-            <Activity className="w-5 h-5 text-primary" />
+            <span className="emoji" aria-hidden="true">📈</span>
             Indicadores del mes
           </h3>
         </div>
 
         <div className="card-body grid grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="p-4 rounded-lg bg-surface-2">
-            <p className="text-xs font-medium text-muted flex items-center gap-1.5"><Users className="w-4 h-4" /> Clientes</p>
+            <p className="text-xs font-medium text-muted flex items-center gap-1.5"><span className="emoji" aria-hidden="true">👥</span> Clientes</p>
             <p className="text-2xl font-bold text-fg num mt-1">{estadisticas?.totalClientes || 0}</p>
             <p className="text-xs text-muted mt-1">Registrados</p>
           </div>
 
           <div className="p-4 rounded-lg bg-surface-2">
-            <p className="text-xs font-medium text-muted flex items-center gap-1.5"><TrendingUp className="w-4 h-4" /> Ventas del mes</p>
+            <p className="text-xs font-medium text-muted flex items-center gap-1.5"><span className="emoji" aria-hidden="true">📈</span> Ventas del mes</p>
             <p className="text-lg font-bold text-fg num mt-1 truncate">{formatearMoneda(estadisticas?.ventasDelMes || 0)}</p>
             <p className="text-xs text-muted mt-1">Ventas y préstamos nuevos</p>
           </div>
 
           <div className="p-4 rounded-lg bg-surface-2">
-            <p className="text-xs font-medium text-muted flex items-center gap-1.5"><Percent className="w-4 h-4" /> Efectividad de cobro</p>
+            <p className="text-xs font-medium text-muted flex items-center gap-1.5"><span className="emoji" aria-hidden="true">🎯</span> Efectividad de cobro</p>
             <p className="text-2xl font-bold text-fg num mt-1">{efectividadCobros.toFixed(1)}%</p>
             <div className="mt-2 w-full bg-line rounded-full h-1.5">
               <div
@@ -511,13 +523,13 @@ export default function Dashboard({
           </div>
 
           <div className="p-4 rounded-lg bg-surface-2">
-            <p className="text-xs font-medium text-muted flex items-center gap-1.5"><DollarSign className="w-4 h-4" /> Deuda vencida promedio</p>
+            <p className="text-xs font-medium text-muted flex items-center gap-1.5"><span className="emoji" aria-hidden="true">💸</span> Deuda vencida promedio</p>
             <p className="text-lg font-bold text-fg num mt-1 truncate">{formatearMoneda(promedioPorCliente)}</p>
             <p className="text-xs text-muted mt-1">Por cliente con cuotas vencidas</p>
           </div>
 
           <div className="p-4 rounded-lg bg-surface-2 col-span-2 lg:col-span-1">
-            <p className="text-xs font-medium text-muted flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Clientes con atraso</p>
+            <p className="text-xs font-medium text-muted flex items-center gap-1.5"><span className="emoji" aria-hidden="true">⚠️</span> Clientes con atraso</p>
             <p className="text-2xl font-bold text-fg num mt-1">{porcentajeClientesMora.toFixed(1)}%</p>
             <div className="mt-2 w-full bg-line rounded-full h-1.5">
               <div
@@ -541,7 +553,7 @@ export default function Dashboard({
         <div className="card-header">
           <div className="flex items-center gap-3">
             <div className="icon-tile bg-reprog-soft text-reprog-text">
-              <Receipt className="w-5 h-5" />
+              <span className="emoji text-xl" aria-hidden="true">💸</span>
             </div>
             <div>
               <h3 className="text-base font-semibold text-fg">Préstamos</h3>
@@ -670,7 +682,7 @@ export default function Dashboard({
             </>
           ) : (
             <div className="empty-state">
-              <Receipt className="w-10 h-10 text-muted/60 mb-3" />
+              <span className="empty-emoji" aria-hidden="true">💸</span>
               <p className="text-sm font-medium text-fg">Todavía no hay préstamos</p>
               <p className="text-xs mt-1">Cuando registres un préstamo, vas a ver su avance acá.</p>
             </div>

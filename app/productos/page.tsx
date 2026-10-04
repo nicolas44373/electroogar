@@ -1,21 +1,20 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
-import { 
-  Package, 
-  Plus, 
-  Edit2, 
-  Trash2, 
-  Save, 
-  X, 
-  DollarSign, 
+import PageHero from '@/app/components/ui/PageHero'
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Save,
+  X,
+  DollarSign,
   FileText,
   AlertTriangle,
   Check,
   Search,
   Tag,
   Box,
-  TrendingUp
 } from 'lucide-react'
 
 interface Producto {
@@ -247,13 +246,7 @@ export default function ProductosPage() {
     <div className="page">
       <div className="page-container">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="page-title">Productos</h1>
-            <p className="page-subtitle num">
-              {productosFiltrados.length} producto{productosFiltrados.length !== 1 ? 's' : ''} · {totalProductos} unidades en stock
-            </p>
-          </div>
+        <PageHero emoji="📦" titulo="Productos" subtitulo={<span className="num">{productosFiltrados.length} producto{productosFiltrados.length !== 1 ? 's' : ''} · {totalProductos} unidades en stock</span>}>
 
           <button
             onClick={() => {
@@ -265,14 +258,14 @@ export default function ProductosPage() {
             <Plus className="w-4 h-4" />
             Nuevo producto
           </button>
-        </div>
+        </PageHero>
 
         {/* Stats Cards */}
         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="card p-5">
+          <div className="card card-hover animate-aparecer p-5">
             <div className="flex items-center gap-3">
               <div className="icon-tile bg-primary/10 text-primary">
-                <Package className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">📦</span>
               </div>
               <div>
                 <dt className="text-sm text-muted">Productos</dt>
@@ -281,10 +274,10 @@ export default function ProductosPage() {
             </div>
           </div>
 
-          <div className="card p-5">
+          <div className="card card-hover animate-aparecer p-5">
             <div className="flex items-center gap-3">
               <div className="icon-tile bg-success-soft text-success-text">
-                <Box className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">🧮</span>
               </div>
               <div>
                 <dt className="text-sm text-muted">Unidades en stock</dt>
@@ -293,10 +286,10 @@ export default function ProductosPage() {
             </div>
           </div>
 
-          <div className="card p-5 border-l-4 border-l-primary">
+          <div className="card card-hover animate-aparecer tint-primary p-5 border-l-4 border-l-primary">
             <div className="flex items-center gap-3 min-w-0">
               <div className="icon-tile bg-reprog-soft text-reprog-text">
-                <TrendingUp className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">💎</span>
               </div>
               <div className="min-w-0">
                 <dt className="text-sm text-muted">Valor del inventario</dt>
@@ -336,7 +329,7 @@ export default function ProductosPage() {
           <div className="card mb-6">
             <div className="card-header">
               <h2 className="section-title">
-                <Package className="w-5 h-5 text-primary" />
+                <span className="emoji" aria-hidden="true">📝</span>
                 {modoEdicion ? 'Editar producto' : 'Nuevo producto'}
               </h2>
               <button
@@ -480,7 +473,7 @@ export default function ProductosPage() {
         <div className="card overflow-hidden">
           <div className="card-header">
             <h2 className="section-title">
-              <Package className="w-5 h-5 text-primary" />
+              <span className="emoji" aria-hidden="true">🗂️</span>
               Catálogo
             </h2>
           </div>
@@ -575,7 +568,7 @@ export default function ProductosPage() {
             </div>
           ) : (
             <div className="empty-state">
-              <Package className="w-10 h-10 text-muted/60 mb-3" />
+              <span className="empty-emoji" aria-hidden="true">📦</span>
               <h3 className="text-base font-semibold text-fg mb-1">
                 {busqueda ? 'No encontramos productos' : 'Todavía no hay productos'}
               </h3>
@@ -597,7 +590,7 @@ export default function ProductosPage() {
             <div className="modal-body">
               <div className="flex items-start gap-4">
                 <div className="icon-tile w-11 h-11 bg-danger-soft text-danger-text">
-                  <AlertTriangle className="w-5 h-5" />
+                  <span className="emoji text-xl" aria-hidden="true">⚠️</span>
                 </div>
                 <div className="flex-1">
                   <h3 id="titulo-eliminar-producto" className="text-base font-semibold text-fg">

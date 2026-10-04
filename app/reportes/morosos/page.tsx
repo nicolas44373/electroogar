@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { fechaLocalISO } from '@/app/lib/fechas'
-import { AlertTriangle, CheckCircle2 } from 'lucide-react'
+import PageHero from '@/app/components/ui/PageHero'
+import { AlertTriangle } from 'lucide-react'
 
 export default function ReporteMorosos() {
   const [morosos, setMorosos] = useState<any[]>([])
@@ -38,10 +39,7 @@ export default function ReporteMorosos() {
   return (
     <div className="page">
       <div className="page-container max-w-6xl">
-        <div className="mb-6">
-          <h1 className="page-title">Cuotas atrasadas</h1>
-          <p className="page-subtitle">Cuotas pendientes con más días de atraso que el filtro elegido.</p>
-        </div>
+        <PageHero emoji="⏳" titulo="Cuotas atrasadas" subtitulo="Cuotas pendientes con más días de atraso que el filtro elegido." />
 
         <div className="card card-body mb-6 max-w-xs">
           <label htmlFor="morosos-dias" className="label">Días de atraso</label>
@@ -102,7 +100,7 @@ export default function ReporteMorosos() {
           </div>
           {morosos.length === 0 && (
             <div className="empty-state">
-              <CheckCircle2 className="w-10 h-10 text-success mb-2" />
+              <span className="empty-emoji" aria-hidden="true">🎉</span>
               <p className="text-sm font-medium text-fg">No hay cuotas con ese atraso</p>
               <p className="text-xs mt-1">Probá con un filtro de menos días.</p>
             </div>

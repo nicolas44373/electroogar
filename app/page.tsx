@@ -1,18 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
+import EmojiImagen from '@/app/components/ui/EmojiImagen'
 import { supabase } from '@/app/lib/supabase'
 import Link from 'next/link'
-import {
-  Users,
-  ShoppingCart, 
-  DollarSign, 
-  TrendingUp, 
-  Package, 
-  CreditCard,
-  AlertCircle,
-  ArrowRight,
-  Activity
-} from 'lucide-react'
+import PageHero from '@/app/components/ui/PageHero'
+import NotasPersonales from '@/app/components/NotasPersonales'
+import { ArrowRight } from 'lucide-react'
 
 export default function HomePage() {
   const [estadisticas, setEstadisticas] = useState({
@@ -94,18 +87,22 @@ export default function HomePage() {
     <div className="page">
       <div className="page-container">
         {/* Header Section */}
-        <div className="mb-8">
-          <h1 className="page-title">Inicio</h1>
-          <p className="page-subtitle">Resumen general de Electro Hogar</p>
-        </div>
+        <PageHero
+          emoji="👋"
+          titulo="¡Hola de nuevo!"
+          subtitulo={<>Así está Electro Hogar hoy, <span className="first-letter:uppercase inline-block">{new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</span></>}
+        />
+
+        {/* Bloc de notas personal */}
+        <NotasPersonales />
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           {/* Cartera pendiente: protagonista */}
-          <div className="card p-5 sm:col-span-2 lg:col-span-1 lg:order-last border-l-4 border-l-primary">
+          <div className="card card-hover animate-aparecer tint-primary p-5 sm:col-span-2 lg:col-span-1 lg:order-last border-l-4 border-l-primary">
             <div className="flex items-center gap-3 mb-3">
               <div className="icon-tile bg-primary/10 text-primary">
-                <DollarSign className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">💰</span>
               </div>
               <h2 className="text-sm font-medium text-muted">Total a cobrar</h2>
             </div>
@@ -118,10 +115,10 @@ export default function HomePage() {
           </div>
 
           {/* Total Clientes */}
-          <div className="card p-5">
+          <div className="card card-hover animate-aparecer p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="icon-tile bg-info-soft text-info-text">
-                <Users className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">👥</span>
               </div>
               <h2 className="text-sm font-medium text-muted">Clientes</h2>
             </div>
@@ -134,10 +131,10 @@ export default function HomePage() {
           </div>
 
           {/* Total Productos */}
-          <div className="card p-5">
+          <div className="card card-hover animate-aparecer p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="icon-tile bg-success-soft text-success-text">
-                <Package className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">📦</span>
               </div>
               <h2 className="text-sm font-medium text-muted">Productos</h2>
             </div>
@@ -150,10 +147,10 @@ export default function HomePage() {
           </div>
 
           {/* Ventas Activas */}
-          <div className="card p-5">
+          <div className="card card-hover animate-aparecer p-5">
             <div className="flex items-center gap-3 mb-3">
               <div className="icon-tile bg-reprog-soft text-reprog-text">
-                <TrendingUp className="w-5 h-5" />
+                <span className="emoji text-xl" aria-hidden="true">📈</span>
               </div>
               <h2 className="text-sm font-medium text-muted">Ventas y préstamos activos</h2>
             </div>
@@ -168,12 +165,12 @@ export default function HomePage() {
 
         {/* Quick Access Section */}
         <section className="mb-10">
-          <h2 className="section-title mb-4">Accesos rápidos</h2>
+          <h2 className="section-title mb-4"><span className="emoji" aria-hidden="true">🚀</span> Accesos rápidos</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Cobranzas */}
-            <Link href="/cobranzas" className="group card p-5 flex items-start gap-4 hover:shadow-e2 hover:border-primary/40 transition-all md:order-first">
+            <Link href="/cobranzas" className="group card card-hover p-5 flex items-start gap-4 hover:border-primary/40 md:order-first">
               <div className="icon-tile w-12 h-12 bg-primary text-on-primary">
-                <CreditCard className="w-6 h-6" />
+                <span className="emoji text-xl" aria-hidden="true">💳</span>
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-semibold text-fg flex items-center gap-1">
@@ -185,23 +182,23 @@ export default function HomePage() {
             </Link>
 
             {/* Clientes */}
-            <Link href="/clientes" className="group card p-5 flex items-start gap-4 hover:shadow-e2 hover:border-primary/40 transition-all">
+            <Link href="/clientes" className="group card card-hover p-5 flex items-start gap-4 hover:border-primary/40">
               <div className="icon-tile w-12 h-12 bg-info-soft text-info-text">
-                <Users className="w-6 h-6" />
+                <span className="emoji text-xl" aria-hidden="true">👥</span>
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-semibold text-fg flex items-center gap-1">
                   Clientes
                   <ArrowRight className="w-4 h-4 text-muted group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                 </h3>
-                <p className="text-sm text-muted mt-1">Datos de contacto, notas y ubicación</p>
+                <p className="text-sm text-muted mt-1">Datos de contacto y ubicación</p>
               </div>
             </Link>
 
             {/* Productos */}
-            <Link href="/productos" className="group card p-5 flex items-start gap-4 hover:shadow-e2 hover:border-primary/40 transition-all">
+            <Link href="/productos" className="group card card-hover p-5 flex items-start gap-4 hover:border-primary/40">
               <div className="icon-tile w-12 h-12 bg-success-soft text-success-text">
-                <Package className="w-6 h-6" />
+                <span className="emoji text-xl" aria-hidden="true">📦</span>
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-semibold text-fg flex items-center gap-1">
@@ -216,19 +213,19 @@ export default function HomePage() {
 
         {/* Features Section */}
         <section className="card card-body">
-          <h2 className="section-title mb-4">Qué podés hacer</h2>
+          <h2 className="section-title mb-4"><span className="emoji" aria-hidden="true">✨</span> Qué podés hacer</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[
-              { icono: ShoppingCart, titulo: 'Ventas en cuotas', texto: 'Registrá ventas y generá el plan de cuotas.' },
-              { icono: DollarSign, titulo: 'Préstamos', texto: 'Préstamos de dinero con interés y cuotas.' },
-              { icono: Activity, titulo: 'Seguimiento', texto: 'Estado de cada cuota y de cada cliente.' },
-              { icono: AlertCircle, titulo: 'Vencimientos', texto: 'Avisos de cuotas por vencer y vencidas.' },
-              { icono: CreditCard, titulo: 'Recibos', texto: 'Comprobantes de pago listos para imprimir.' },
-              { icono: TrendingUp, titulo: 'Resumen', texto: 'Indicadores de cobranza del mes.' },
-            ].map(({ icono: Icono, titulo, texto }) => (
+              { icono: '🛒', imagen: 'carrito' as const, titulo: 'Ventas en cuotas', texto: 'Registrá ventas y generá el plan de cuotas.' },
+              { icono: '💵', imagen: 'billete' as const, titulo: 'Préstamos', texto: 'Préstamos de dinero con interés y cuotas.' },
+              { icono: '👀', titulo: 'Seguimiento', texto: 'Estado de cada cuota y de cada cliente.' },
+              { icono: '⏰', titulo: 'Vencimientos', texto: 'Avisos de cuotas por vencer y vencidas.' },
+              { icono: '🧾', titulo: 'Recibos', texto: 'Comprobantes de pago listos para imprimir.' },
+              { icono: '📊', titulo: 'Resumen', texto: 'Indicadores de cobranza del mes.' },
+            ].map(({ icono, imagen, titulo, texto }: { icono: string; imagen?: 'carrito' | 'billete'; titulo: string; texto: string }) => (
               <div key={titulo} className="flex items-start gap-3 p-3 rounded-lg bg-surface-2">
                 <div className="icon-tile w-9 h-9 bg-surface text-primary border border-line">
-                  <Icono className="w-4 h-4" />
+                  {imagen ? <EmojiImagen nombre={imagen} className="w-6 h-6" /> : <span className="emoji text-lg" aria-hidden="true">{icono}</span>}
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-fg">{titulo}</h3>
