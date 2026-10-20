@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import EmojiImagen from '@/app/components/ui/EmojiImagen'
 import { supabase } from '@/app/lib/supabase'
 import { sincronizarEstadoTransaccion } from '@/app/lib/estadoTransaccion'
@@ -105,12 +105,33 @@ function fechaAStr(fecha: Date): string {
   return `${y}-${m}-${d}`
 }
 
+// Orden base: fecha de vencimiento, cliente, número de cuota (siempre el mismo resultado)
+function compararBase(a: NotificacionVencimiento, b: NotificacionVencimiento): number {
+  return (
+    a.fecha_vencimiento.localeCompare(b.fecha_vencimiento) ||
+    `${a.cliente_nombre} ${a.cliente_apellido ?? ''}`.localeCompare(`${b.cliente_nombre} ${b.cliente_apellido ?? ''}`, 'es', { sensitivity: 'base' }) ||
+    a.numero_cuota - b.numero_cuota ||
+    a.id.localeCompare(b.id)
+  )
+}
+
+interface ProcesadoInfo {
+  snapshot: NotificacionVencimiento // cómo estaba la cuota antes de la acción
+  accion: 'cobrada' | 'parcial' | 'reprogramada'
+  detalle: string
+}
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }: PanelNotificacionesProps) {
 
   // — Estado general —
   const [notificacionesDetalladas, setNotificacionesDetalladas] = useState<NotificacionVencimiento[]>([])
+
+  // Orden fijo: cada cuota conserva su lugar mientras se trabaja (se reinicia con "Actualizar")
+  const posicionesRef = useRef<Map<string, number>>(new Map())
+  // Cuotas cobradas/reprogramadas en esta sesión: se quedan visibles en su lugar con un cartel
+  const [procesados, setProcesados] = useState<Record<string, ProcesadoInfo>>({})
   const [loading, setLoading] = useState(false)
   const [mostrarContacto, setMostrarContacto] = useState<string | null>(null)
   const [notasPorTransaccion, setNotasPorTransaccion] = useState<Record<string, NotaDescripcion[]>>({})
@@ -246,6 +267,13 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
           transaccion_descripcion: transaccion.descripcion ?? undefined,
         }
       })
+
+      // Las cuotas nuevas se agregan al final en el orden base; las existentes no se mueven
+      const posiciones = posicionesRef.current
+      for (const n of [...notificacionesMapeadas].sort(compararBase)) {
+        if (!posiciones.has(n.id)) posiciones.set(n.id, posiciones.size)
+      }
+      notificacionesMapeadas.sort((a, b) => (posiciones.get(a.id) ?? 0) - (posiciones.get(b.id) ?? 0))
 
       setNotificacionesDetalladas(notificacionesMapeadas)
     } catch (err) {
@@ -420,6 +448,16 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
       if (error) throw error
       await sincronizarEstadoTransaccion(notifSeleccionada.transaccion_id)
 
+      const cuotaCobrada = notifSeleccionada
+      setProcesados((prev) => ({
+        ...prev,
+        [cuotaCobrada.id]: {
+          snapshot: prev[cuotaCobrada.id]?.snapshot ?? cuotaCobrada,
+          accion: nuevoEstado === 'pagado' ? 'cobrada' : 'parcial',
+          detalle: formatearMoneda(montoNum),
+        },
+      }))
+
       cerrarModalPago()
       setNotasPorTransaccion({})
       await cargarNotificacionesDetalladas()
@@ -476,6 +514,17 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
 
       if (error) throw error
 
+      const cuotaReprogramada = notifReprogramar
+      const fechaNueva = nuevaFechaVencimiento
+      setProcesados((prev) => ({
+        ...prev,
+        [cuotaReprogramada.id]: {
+          snapshot: prev[cuotaReprogramada.id]?.snapshot ?? cuotaReprogramada,
+          accion: 'reprogramada',
+          detalle: formatearFecha(fechaNueva),
+        },
+      }))
+
       cerrarModalReprogramacion()
       setNotasPorTransaccion({})
       await cargarNotificacionesDetalladas()
@@ -490,10 +539,20 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
 
   // ─── Datos derivados ──────────────────────────────────────────────────────────
   const notificacionesFiltradas = (() => {
-    if (filtroTipo === 'calendario' && fechaSeleccionada)
-      return obtenerNotificacionesPorFecha(fechaSeleccionada)
-    if (filtroTipo === 'todos') return notificacionesDetalladas
-    return notificacionesDetalladas.filter(n => n.tipo === filtroTipo)
+    const coincide = (n: NotificacionVencimiento) => {
+      if (filtroTipo === 'calendario') return !!fechaSeleccionada && n.fecha_vencimiento === fechaAStr(fechaSeleccionada)
+      if (filtroTipo === 'todos') return true
+      return n.tipo === filtroTipo
+    }
+    const lista = notificacionesDetalladas.filter(coincide)
+    const enLista = new Set(lista.map((n) => n.id))
+    const actuales = new Map(notificacionesDetalladas.map((n) => [n.id, n]))
+    // Las cuotas procesadas siguen en el lugar donde estaban (aunque ya no cumplan el filtro)
+    for (const [id, p] of Object.entries(procesados)) {
+      if (!enLista.has(id) && coincide(p.snapshot)) lista.push(actuales.get(id) ?? p.snapshot)
+    }
+    const pos = posicionesRef.current
+    return lista.sort((a, b) => (pos.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (pos.get(b.id) ?? Number.MAX_SAFE_INTEGER))
   })()
 
   const estadisticas = {
@@ -545,6 +604,9 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
           </div>
           <button
             onClick={async () => {
+              // Reordenar todo de cero y limpiar los carteles de cuotas procesadas
+              posicionesRef.current = new Map()
+              setProcesados({})
               await cargarNotificacionesDetalladas()
               onActualizar()
             }}
@@ -712,7 +774,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
 
       {/* ── Lista de notificaciones ── */}
       <div className="space-y-3">
-        {loading ? (
+        {loading && notificacionesDetalladas.length === 0 ? (
           <div className="space-y-3" role="status" aria-live="polite">
             <span className="sr-only">Cargando vencimientos…</span>
             {[0, 1, 2].map((i) => (
@@ -729,13 +791,31 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
           </div>
         ) : notificacionesFiltradas.length > 0 ? (
           <>
-          {notificacionesFiltradas.slice(0, cantidadVisible).map(notif => (
-            <div key={notif.id} className={`card p-4 border-l-4 ${obtenerColorFondo(notif.tipo)}`}>
+          {notificacionesFiltradas.slice(0, cantidadVisible).map((notif, indice) => {
+            const procesado = procesados[notif.id]
+            const cobrada = procesado?.accion === 'cobrada'
+            return (
+            <div key={notif.id} className={`card p-4 border-l-4 ${cobrada ? 'border-l-success opacity-70' : obtenerColorFondo(notif.tipo)}`}>
+              {procesado && (
+                <div className={`mb-3 ${cobrada ? 'alert-success' : procesado.accion === 'parcial' ? 'alert-info' : 'alert-info'}`} role="status">
+                  <span className="emoji" aria-hidden="true">{cobrada ? '✅' : procesado.accion === 'parcial' ? '💵' : '📅'}</span>
+                  <span>
+                    {cobrada && <>Cobrada · {procesado.detalle}</>}
+                    {procesado.accion === 'parcial' && <>Pago parcial registrado · {procesado.detalle}</>}
+                    {procesado.accion === 'reprogramada' && <>Reprogramada para el {procesado.detalle}</>}
+                  </span>
+                </div>
+              )}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 
                 {/* Info principal */}
                 <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
-                  <div className="flex-shrink-0">{obtenerIconoTipo(notif.tipo)}</div>
+                  <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
+                    <span className="inline-flex items-center justify-center min-w-[32px] h-8 px-2 rounded-full bg-primary text-on-primary text-sm font-bold num" title="Número de la lista">
+                      {indice + 1}
+                    </span>
+                    {obtenerIconoTipo(notif.tipo)}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <h3 className="font-semibold text-base text-fg">
@@ -775,6 +855,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
                 </div>
 
                 {/* Acciones */}
+                {!cobrada && (
                 <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 lg:flex-shrink-0">
                   <button onClick={() => abrirModalPago(notif)}
                     className="btn-accent btn-sm flex-1 sm:flex-none">
@@ -825,6 +906,7 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
                     </button>
                   </div>
                 </div>
+                )}
               </div>
 
               {/* Panel "Más Info" */}
@@ -955,7 +1037,8 @@ export default function PanelNotificaciones({ onActualizar, onVerCuentaCliente }
                 </div>
               )}
             </div>
-          ))}
+            )
+          })}
           {notificacionesFiltradas.length > cantidadVisible && (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <p className="text-sm text-muted num">
